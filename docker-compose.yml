@@ -1,0 +1,120 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Salary Insights Portal — Full Production Stack
+#
+# Services:
+#   postgres   PostgreSQL 15 database
+#   backend    Spring Boot 3.2 API (port 8080 internal only)
+#   frontend   React 18 + Nginx (port 80/443 external)
+#
+# Usage:
+#   docker compose up -d --build
+#   docker compose logs -f backend
+#   docker compose down -v   # remove including volumes
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: salary_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-salary_insights_db}
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_in_production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-salary_insights_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    # No port exposed externally — only accessible inside Docker network
+
+  # ── Spring Boot Backend ─────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: salary_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database
+      DB_USERNAME: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_in_production}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-salary_insights_db}
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+
+      # OAuth2 Social Login
+      GOOGLE_CLIENT_ID:     ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      FACEBOOK_CLIENT_ID:     ${FACEBOOK_CLIENT_ID:-}
+      FACEBOOK_CLIENT_SECRET: ${FACEBOOK_CLIENT_SECRET:-}
+      LINKEDIN_CLIENT_ID:     ${LINKEDIN_CLIENT_ID:-}
+      LINKEDIN_CLIENT_SECRET: ${LINKEDIN_CLIENT_SECRET:-}
+
+      # AI
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+
+      # App
+      APP_OAUTH2_REDIRECT_URI: ${FRONTEND_URL:-http://localhost}/oauth2/redirect
+      SPRING_PROFILES_ACTIVE: production
+
+    networks:
+      - internal
+    # Internal only — frontend nginx proxies /api to here
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health | grep -q UP || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # ── React Frontend + Nginx ──────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: salary_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"   # SSL handled by reverse proxy or cert manager
+    volumes:
+      # Mount SSL certs if using Let's Encrypt directly
+      - ./deploy/ssl:/etc/nginx/ssl:ro
+    networks:
+      - internal
+      - external
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health | grep -q OK || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+networks:
+  internal:
+    driver: bridge
+    internal: false   # backend needs internet for OAuth2 + Anthropic API
+  external:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
