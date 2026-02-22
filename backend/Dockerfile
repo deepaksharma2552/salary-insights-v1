@@ -1,18 +1,24 @@
-# ===== Build stage =====
-FROM maven:3.9-eclipse-temurin-17 AS builder
+# ── Stage 1: Build ──────────────────────────────────────────────────────────
+FROM eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /app
-COPY . .
-RUN mvn clean package -DskipTests
 
-# ===== Runtime stage =====
-FROM eclipse-temurin:17
+# Cache dependencies first
+COPY pom.xml .
+COPY mvnw .
+COPY .mvn .mvn
+RUN ./mvnw dependency:go-offline -q
+
+# Build
+COPY src ./src
+RUN ./mvnw clean package -DskipTests -q
+
+# ── Stage 2: Runtime ─────────────────────────────────────────────────────────
+FROM eclipse-temurin:21-jre-alpine AS runtime
 WORKDIR /app
-COPY --from=builder /app/target/*.jar app.jar
-CMD ["java", "-jar", "app.jar"]
-
 
 # Security: non-root user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN addgroup -S appgroup && \
+    adduser -S -G appgroup appuser
 USER appuser
 
 # Copy jar
