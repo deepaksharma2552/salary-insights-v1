@@ -11,6 +11,12 @@ spring:
       maximum-pool-size: 10
       minimum-idle: 5
       connection-timeout: 30000
+app:
+  ai:
+    anthropic-api-key: ${ANTHROPIC_API_KEY:}   # Set this env var to enable AI refresh
+    enabled: ${AI_REFRESH_ENABLED:true}
+  oauth2:
+    redirect-uri: ${APP_OAUTH2_REDIRECT_URI:http://localhost:3000/oauth2/redirect}
 
   jpa:
     hibernate:
@@ -83,13 +89,6 @@ app:
             token-uri: https://www.linkedin.com/oauth/v2/accessToken
             user-info-uri: https://api.linkedin.com/v2/userinfo
             user-name-attribute: sub
-
-app:
-  ai:
-    anthropic-api-key: ${ANTHROPIC_API_KEY:}   # Set this env var to enable AI refresh
-    enabled: ${AI_REFRESH_ENABLED:true}
-  oauth2:
-    redirect-uri: ${APP_OAUTH2_REDIRECT_URI:http://localhost:3000/oauth2/redirect}
 
 logging:
   level:
