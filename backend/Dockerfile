@@ -1,6 +1,6 @@
 # ── Stage 1: Build ──────────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jdk-alpine AS builder
-WORKDIR /app
+#FROM eclipse-temurin:21-jdk-alpine AS builder
+#WORKDIR /app
 
 # Cache dependencies first
 COPY pom.xml .
