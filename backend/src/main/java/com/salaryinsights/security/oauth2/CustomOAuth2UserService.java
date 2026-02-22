@@ -20,16 +20,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Called by Spring Security after a successful OAuth2 authorization.
- * Looks up or creates a User record, then returns a principal.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
-    private final UserRepository  userRepository;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -81,7 +77,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 .firstName(nameParts[0])
                 .lastName(nameParts[1])
                 .email(info.getEmail())
-                // OAuth2 users get a random password hash — they never use password login
                 .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                 .role(Role.USER)
                 .active(true)
@@ -90,7 +85,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     }
 
     private User updateExistingUser(User user, OAuth2UserInfo info) {
-        // Only update name if it came from a social provider (don't overwrite manual edits)
         if (info.getName() != null && !info.getName().isBlank()) {
             String[] parts = splitName(info.getName());
             user.setFirstName(parts[0]);
