@@ -2,6 +2,7 @@ package com.salaryinsights.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "level_mappings")
@@ -9,7 +10,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class LevelMapping extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY)

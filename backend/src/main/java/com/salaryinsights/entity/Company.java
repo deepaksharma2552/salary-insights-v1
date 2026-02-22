@@ -4,6 +4,7 @@ import com.salaryinsights.enums.CompanyLevelCategory;
 import com.salaryinsights.enums.CompanyStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +18,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class Company extends BaseEntity {
 
     @Column(name = "name", nullable = false, length = 255)

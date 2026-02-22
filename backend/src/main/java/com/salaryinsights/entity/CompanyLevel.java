@@ -2,6 +2,7 @@ package com.salaryinsights.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "company_levels", indexes = {
@@ -11,7 +12,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class CompanyLevel extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
