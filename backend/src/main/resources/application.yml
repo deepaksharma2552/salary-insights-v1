@@ -12,18 +12,7 @@ spring:
       minimum-idle: 5
       connection-timeout: 30000
 
-  # OAuth2 Client Registration (Fixes the 500 Error)
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
-            scope:
-              - profile
-              - email
-
+  # Moved JPA and Flyway out of the 'app' block back to 'spring' level
   jpa:
     hibernate:
       ddl-auto: validate
@@ -43,17 +32,16 @@ spring:
 server:
   port: ${PORT:8080}
   address: 0.0.0.0
-  # Crucial for Railway HTTPS to work with OAuth2
   forward-headers-strategy: framework
   servlet:
     context-path: /api
 
+# Unified 'app' block (merged line 16 and line 42)
 app:
   ai:
     anthropic-api-key: ${ANTHROPIC_API_KEY:}
     enabled: ${AI_REFRESH_ENABLED:true}
   oauth2:
-    # This is likely used in your SecurityConfig for the final frontend redirect
     redirect-uri: ${APP_OAUTH2_REDIRECT_URI:http://localhost:3000/oauth2/redirect}
   jwt:
     secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
@@ -62,4 +50,4 @@ app:
   cors:
     allowed-origins:
       - http://localhost:3000
-      - https://accurate-mercy-production.
+      - http
