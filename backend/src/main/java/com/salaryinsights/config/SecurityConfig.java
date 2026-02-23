@@ -26,7 +26,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+      public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
@@ -34,10 +34,11 @@ public class SecurityConfig {
                     "/", 
                     "/login/**", 
                     "/error", 
-                    "/api/auth/**", 
-                    // Add BOTH with and without /api prefix to be 100% safe
+                    "/api/auth/**",
+                    "/auth/**",
+                    // This covers the request whether Spring thinks it starts with /api or not
                     "/api/public/**", 
-                    "/public/**", 
+                    "/public/**",
                     "/api/health",
                     "/health"
                 ).permitAll()
