@@ -32,7 +32,7 @@ public class SecurityConfig {
                     "/api/public/**", "/public/**", "/api/health", "/health"
                 ).permitAll()
                 // 4. Secure Admin routes explicitly if needed
-                .requestMatchers("/api/admin/**").hasRole("ADMIN") 
+                .requestMatchers("/api/admin/**")..hasAuthority("ADMIN")
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
