@@ -1,10 +1,10 @@
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // Allows @PreAuthorize("hasRole('ADMIN')")
+@EnableMethodSecurity 
 public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
-    private final JwtAuthenticationFilter jwtAuthenticationFilter; // 1. Inject your filter
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     public SecurityConfig(CustomOAuth2UserService customOAuth2UserService, 
                           JwtAuthenticationFilter jwtAuthenticationFilter) {
@@ -16,13 +16,13 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            // 2. IMPORTANT: Return 401 instead of 302 Redirect
+            .cors(Customizer.withDefaults()) // Ensure React can connect
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint((request, response, authException) -> {
+                    // This kills the 302 Redirect loop
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
                 })
             )
-            // 3. IMPORTANT: Make it Stateless
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
@@ -31,17 +31,18 @@ public class SecurityConfig {
                     "/", "/login/**", "/error", "/api/auth/**", "/auth/**",
                     "/api/public/**", "/public/**", "/api/health", "/health"
                 ).permitAll()
-                // 4. Secure Admin routes explicitly if needed
-                .requestMatchers("/api/admin/**")..hasAuthority("ADMIN")
+                // Fixed syntax: changed .. to .
+                .requestMatchers("/api/admin/**").hasAuthority("ADMIN") 
                 .anyRequest().authenticated()
             )
+            // If you still need OAuth2 for some users, keep this, 
+            // but know it might conflict with STATELESS mode
             .oauth2Login(oauth2 -> oauth2
                 .userInfoEndpoint(userInfo -> userInfo
                     .userService(customOAuth2UserService)
                 )
             );
 
-        // 5. Add your JWT filter before the standard UsernamePassword filter
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
