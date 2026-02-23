@@ -22,12 +22,12 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID> 
        "(cast(:companyId as uuid) IS NULL OR s.company.id = :companyId) AND " +
        "(cast(:jobTitle as string) IS NULL OR LOWER(s.jobTitle) LIKE LOWER(CONCAT('%', cast(:jobTitle as string), '%'))) AND " +
        "(cast(:location as string) IS NULL OR LOWER(s.location) LIKE LOWER(CONCAT('%', cast(:location as string), '%'))) AND " +
-       "(cast(:experienceLevel as string) IS NULL OR s.experienceLevel = :experienceLevel)")
+       "(:experienceLevel IS NULL OR s.experienceLevel = :experienceLevel)")
 Page<SalaryEntry> findApprovedWithFilters(
     @Param("companyId") UUID companyId,
     @Param("jobTitle") String jobTitle,
     @Param("location") String location,
-    @Param("experienceLevel") ExperienceLevel experienceLevel,
+    @Param("experienceLevel") com.salaryinsights.enums.ExperienceLevel experienceLevel,
     Pageable pageable
 );
 
