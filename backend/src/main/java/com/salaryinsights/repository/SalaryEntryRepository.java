@@ -20,9 +20,9 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID> 
  @Query("SELECT s FROM SalaryEntry s JOIN s.company c " +
        "WHERE s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED AND " +
        "(cast(:companyId as uuid) IS NULL OR c.id = :companyId) AND " +
-       "(cast(:jobTitle as string) IS NULL OR LOWER(s.jobTitle) LIKE LOWER(CONCAT('%', cast(:jobTitle as string), '%'))) AND " +
-       "(cast(:location as string) IS NULL OR LOWER(s.location) LIKE LOWER(CONCAT('%', cast(:location as string), '%'))) AND " +
-       "(cast(:experienceLevel as string) IS NULL OR s.experienceLevel = :experienceLevel)") // Added cast here
+       "(:jobTitle IS NULL OR :jobTitle = '' OR LOWER(s.jobTitle) LIKE LOWER(CONCAT('%', cast(:jobTitle as string), '%'))) AND " +
+       "(:location IS NULL OR :location = '' OR LOWER(s.location) LIKE LOWER(CONCAT('%', cast(:location as string), '%'))) AND " +
+       "(cast(:experienceLevel as string) IS NULL OR s.experienceLevel = :experienceLevel)")
 Page<SalaryEntry> findApprovedWithFilters(
     @Param("companyId") UUID companyId,
     @Param("jobTitle") String jobTitle,
