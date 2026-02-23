@@ -66,14 +66,14 @@ export const adminApi = {
   getDashboard: () => api.get('/admin/salaries/dashboard'),
 
   // Companies
-  getCompanies: (params) => api.get('/admin/companies', { params }),
+  getCompanies: (params) => api.get('/admin/companies', { params: cleanParams(params) }),
   createCompany: (data) => api.post('/admin/companies', data),
   updateCompany: (id, data) => api.put(`/admin/companies/${id}`, data),
   toggleCompanyStatus: (id) => api.patch(`/admin/companies/${id}/toggle-status`),
   deleteCompany: (id) => api.delete(`/admin/companies/${id}`),
 
   // Salary reviews
-  getPendingSalaries: (params) => api.get('/admin/salaries/pending', { params }),
+  getPendingSalaries: (params) => api.get('/admin/salaries/pending', { params: cleanParams(params) }),
   approveSalary: (id) => api.patch(`/admin/salaries/${id}/approve`),
   rejectSalary: (id, reason) => api.patch(`/admin/salaries/${id}/reject`, { reason }),
 
@@ -89,8 +89,7 @@ export const adminApi = {
   deleteMapping: (companyLevelId) => api.delete(`/admin/levels/mappings/company-level/${companyLevelId}`),
 
   // Audit logs
-  getAuditLogs: (params) => api.get('/admin/levels/audit-logs', { params }),
-
+  getAuditLogs: (params) => api.get('/admin/levels/audit-logs', { params: cleanParams(params) }),
   // AI Refresh
   aiRefreshAll: () => api.post('/admin/ai/refresh'),
   aiRefreshOne: (companyId) => api.post(`/admin/ai/refresh/${companyId}`),
