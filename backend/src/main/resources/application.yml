@@ -30,8 +30,9 @@ spring:
     locations: classpath:db/migration
 
 server:
-  port: 8080
-  forward-headers-strategy: framework  # ADD THIS LINE
+  port: ${PORT:8080}
+  address: 0.0.0.0
+  forward-headers-strategy: framework
   servlet:
     context-path: /api
 

@@ -30,14 +30,16 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                // The order here is critical: permitAll MUST come before anyRequest().authenticated()
                 .requestMatchers(
                     "/", 
                     "/login/**", 
                     "/error", 
                     "/api/auth/**", 
-                    "/api/public/**",  // This covers all your 302 errors above
-                    "/api/health"      // Good for Railway health checks
+                    // Add BOTH with and without /api prefix to be 100% safe
+                    "/api/public/**", 
+                    "/public/**", 
+                    "/api/health",
+                    "/health"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
