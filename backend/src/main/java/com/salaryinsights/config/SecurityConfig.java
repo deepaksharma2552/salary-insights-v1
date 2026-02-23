@@ -13,40 +13,38 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(csrf -> csrf.disable())
-            .cors(Customizer.withDefaults()) // Ensure React can connect
-            .exceptionHandling(exception -> exception
-                .authenticationEntryPoint((request, response, authException) -> {
-                    // This kills the 302 Redirect loop
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
-                })
-            )
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                    "/", "/login/**", "/error", "/api/auth/**", "/auth/**",
-                    "/api/public/**", "/public/**", "/api/health", "/health"
-                ).permitAll()
-                // Fixed syntax: changed .. to .
-                .requestMatchers("/api/admin/**").hasAuthority("ADMIN") 
-                .anyRequest().authenticated()
-            )
-            // If you still need OAuth2 for some users, keep this, 
-            // but know it might conflict with STATELESS mode
-            .oauth2Login(oauth2 -> oauth2
-                .userInfoEndpoint(userInfo -> userInfo
-                    .userService(customOAuth2UserService)
-                )
-            );
+public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    http
+        .csrf(csrf -> csrf.disable())
+        .cors(Customizer.withDefaults())
+        // 1. ADD THIS: Specifically disable formLogin so it can't redirect
+        .formLogin(form -> form.disable()) 
+        .httpBasic(basic -> basic.disable())
+        
+        .exceptionHandling(exception -> exception
+            .authenticationEntryPoint((request, response, authException) -> {
+                // FORCE a 401. If you see a 302 after this, 
+                // it means the request isn't even hitting this filter chain.
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("{\"error\": \"Unauthorized access\"}");
+            })
+        )
+        .sessionManagement(session -> session
+            .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+        )
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers("/", "/login/**", "/error", "/api/auth/**", "/api/public/**").permitAll()
+            .requestMatchers("/api/admin/**").hasAuthority("ADMIN") 
+            .anyRequest().authenticated()
+        )
+        .oauth2Login(oauth2 -> oauth2
+            .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+        );
 
-        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+    http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+    return http.build();
+}
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
