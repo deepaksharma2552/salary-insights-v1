@@ -17,12 +17,13 @@ import java.util.UUID;
 @Repository
 public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID> {
 
-@Query("SELECT s FROM SalaryEntry s JOIN s.company c " +
+@Query("SELECT s FROM SalaryEntry s " +
+       "LEFT JOIN FETCH s.company c " + // <--- Add this JOIN FETCH
        "WHERE s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED " +
        "AND (:companyId IS NULL OR c.id = :companyId) " +
-       "AND (:jobTitle IS NULL OR :jobTitle = '' OR LOWER(s.jobTitle) LIKE LOWER(CONCAT('%', CAST(:jobTitle as string), '%'))) " +
-       "AND (:location IS NULL OR :location = '' OR LOWER(s.location) LIKE LOWER(CONCAT('%', CAST(:location as string), '%'))) " +
-       "AND (CAST(:experienceLevel as string) IS NULL OR s.experienceLevel = :experienceLevel)")
+       "AND (:jobTitle IS NULL OR CAST(:jobTitle AS string) = '' OR LOWER(s.jobTitle) LIKE LOWER(CONCAT('%', CAST(:jobTitle AS string), '%'))) " +
+       "AND (:location IS NULL OR CAST(:location AS string) = '' OR LOWER(s.location) LIKE LOWER(CONCAT('%', CAST(:location as string), '%'))) " +
+       "AND (CAST(:experienceLevel AS string) IS NULL OR s.experienceLevel = :experienceLevel)")
 Page<SalaryEntry> findApprovedWithFilters(
     @Param("companyId") UUID companyId,
     @Param("jobTitle") String jobTitle,
