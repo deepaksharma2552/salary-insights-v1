@@ -2,6 +2,16 @@ import axios from 'axios';
 
 const API_BASE = '/api';
 
+// Add this helper at the top of api.js or inside the publicApi block
+const cleanParams = (params) => {
+  if (!params) return {};
+  return Object.fromEntries(
+    Object.entries(params).filter(([_, value]) => 
+      value !== "" && value !== null && value !== undefined
+    )
+  );
+};
+
 const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
@@ -35,9 +45,9 @@ export const authApi = {
 
 // ─── Public ────────────────────────────────────────────────────────
 export const publicApi = {
-  getSalaries: (params) => api.get('/public/salaries', { params }),
+  getSalaries: (params) => api.get('/public/salaries', { params: cleanParams(params) }),
   getSalaryById: (id) => api.get(`/public/salaries/${id}`),
-  getCompanies: (params) => api.get('/public/companies', { params }),
+  getCompanies: (params) => api.get('/public/companies', { params: cleanParams(params) }),
   getCompanyById: (id) => api.get(`/public/companies/${id}`),
   getIndustries: () => api.get('/public/companies/industries'),
   getAnalyticsByLevel: () => api.get('/public/salaries/analytics/by-level'),
