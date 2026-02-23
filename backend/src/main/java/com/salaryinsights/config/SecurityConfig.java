@@ -1,47 +1,38 @@
-package com.salaryinsights.config;
-
-import com.salaryinsights.security.oauth2.CustomOAuth2UserService;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.web.SecurityFilterChain;
-
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity // Allows @PreAuthorize("hasRole('ADMIN')")
 public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter; // 1. Inject your filter
 
-    public SecurityConfig(CustomOAuth2UserService customOAuth2UserService) {
+    public SecurityConfig(CustomOAuth2UserService customOAuth2UserService, 
+                          JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.customOAuth2UserService = customOAuth2UserService;
-    }
-
-    // THIS IS THE NEW PART TO FIX THE LATEST ERROR
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
-        return configuration.getAuthenticationManager();
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
     @Bean
-      public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
+            // 2. IMPORTANT: Return 401 instead of 302 Redirect
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                })
+            )
+            // 3. IMPORTANT: Make it Stateless
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/", 
-                    "/login/**", 
-                    "/error", 
-                    "/api/auth/**",
-                    "/auth/**",
-                    // This covers the request whether Spring thinks it starts with /api or not
-                    "/api/public/**", 
-                    "/public/**",
-                    "/api/health",
-                    "/health"
+                    "/", "/login/**", "/error", "/api/auth/**", "/auth/**",
+                    "/api/public/**", "/public/**", "/api/health", "/health"
                 ).permitAll()
+                // 4. Secure Admin routes explicitly if needed
+                .requestMatchers("/api/admin/**").hasRole("ADMIN") 
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
@@ -49,6 +40,15 @@ public class SecurityConfig {
                     .userService(customOAuth2UserService)
                 )
             );
+
+        // 5. Add your JWT filter before the standard UsernamePassword filter
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
     }
 }
