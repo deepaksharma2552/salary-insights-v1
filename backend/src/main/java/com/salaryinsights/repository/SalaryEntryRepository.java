@@ -18,7 +18,8 @@ import java.util.UUID;
 public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID> {
 
 @Query("SELECT s FROM SalaryEntry s " +
-       "LEFT JOIN FETCH s.company c " + // <--- Add this JOIN FETCH
+       "LEFT JOIN FETCH s.company c " + 
+       "LEFT JOIN FETCH s.standardizedLevel sl " + // <--- ADD THIS LINE
        "WHERE s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED " +
        "AND (:companyId IS NULL OR c.id = :companyId) " +
        "AND (:jobTitle IS NULL OR CAST(:jobTitle AS string) = '' OR LOWER(s.jobTitle) LIKE LOWER(CONCAT('%', CAST(:jobTitle AS string), '%'))) " +
