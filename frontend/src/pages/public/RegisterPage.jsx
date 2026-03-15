@@ -1,68 +1,100 @@
-import { useState } from 'react';
-import { Box, Container, Paper, Typography, TextField, Button, Alert, Link } from '@mui/material';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import toast from 'react-hot-toast';
+import { useState, useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../../context/AuthContext';
 
 export default function RegisterPage() {
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '' });
-  const [error, setError] = useState('');
-  const { register, loading } = useAuth();
-  const navigate = useNavigate();
+  const { register } = useContext(AuthContext);
+  const navigate     = useNavigate();
+  const [name,     setName]     = useState('');
+  const [email,    setEmail]    = useState('');
+  const [password, setPassword] = useState('');
+  const [error,    setError]    = useState('');
 
-  const handleSubmit = async (e) => {
+  async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
     try {
-      await register(form);
-      toast.success('Account created!');
+      await register(name, email, password);
       navigate('/');
-    } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed. Please try again.');
+    } catch {
+      setError('Registration failed. Please try again.');
     }
-  };
-
-  const inputSx = {
-    '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: 'rgba(255,255,255,0.15)' },
-      '&:hover fieldset': { borderColor: '#e94560' }, '&.Mui-focused fieldset': { borderColor: '#e94560' } },
-    '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.5)' },
-    '& .MuiInputBase-input': { color: 'white' },
-  };
+  }
 
   return (
-    <Box sx={{ bgcolor: '#0f0f1a', minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
-      <Container maxWidth="xs">
-        <Paper sx={{ p: 4, bgcolor: '#1a1a2e', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <Typography variant="h5" fontWeight={700} color="white" gutterBottom textAlign="center">
-            Create Account
-          </Typography>
+    <div className="auth-page">
+      <div className="auth-bg" />
+      <div className="auth-card">
 
-          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {/* ── LOGO ── */}
+        <div className="auth-logo">
+          <div className="logo-mark" style={{ margin: '0 auto 16px', width: 48, height: 48, fontSize: 12 }}>360</div>
+          <div className="logo-text" style={{ justifyContent: 'center', marginBottom: 4 }}>
+            <span className="w-salary" style={{ fontSize: 17 }}>Salary</span>
+            <span className="w-insights" style={{ fontSize: 18 }}>Insights</span>
+            <em className="brand-360" style={{ fontSize: 11 }}>360</em>
+          </div>
+        </div>
 
-          <form onSubmit={handleSubmit}>
-            <TextField fullWidth label="First Name" sx={{ ...inputSx, mb: 2 }}
-              value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} required />
-            <TextField fullWidth label="Last Name" sx={{ ...inputSx, mb: 2 }}
-              value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} required />
-            <TextField fullWidth label="Email" type="email" sx={{ ...inputSx, mb: 2 }}
-              value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required />
-            <TextField fullWidth label="Password" type="password" sx={{ ...inputSx, mb: 3 }}
-              value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-              required helperText={<span style={{ color: 'rgba(255,255,255,0.3)' }}>Min 8 characters</span>} />
-            <Button
-              type="submit" fullWidth variant="contained" disabled={loading}
-              sx={{ bgcolor: '#e94560', '&:hover': { bgcolor: '#c73652' }, py: 1.5, mb: 2 }}
-            >
-              {loading ? 'Creating...' : 'Create Account'}
-            </Button>
-          </form>
+        <h2 className="auth-title">Join the community</h2>
+        <p className="auth-subtitle">Get the full 360° picture on compensation</p>
 
-          <Typography variant="body2" textAlign="center" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-            Already have an account?{' '}
-            <Link component={RouterLink} to="/login" sx={{ color: '#e94560' }}>Sign In</Link>
-          </Typography>
-        </Paper>
-      </Container>
-    </Box>
+        {error && (
+          <div style={{
+            padding: '12px 16px', background: 'var(--rose-dim)',
+            border: '1px solid rgba(224,92,122,0.2)', borderRadius: 10,
+            color: 'var(--rose)', fontSize: 13, marginBottom: 8
+          }}>
+            {error}
+          </div>
+        )}
+
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label">Full Name</label>
+            <input
+              className="form-input"
+              type="text"
+              placeholder="Your name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input
+              className="form-input"
+              type="email"
+              placeholder="you@company.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input
+              className="form-input"
+              type="password"
+              placeholder="Min. 8 characters"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              minLength={8}
+              required
+            />
+          </div>
+          <button type="submit" className="btn-auth">Create Account</button>
+          <div className="auth-divider">or</div>
+          <Link
+            to="/login"
+            className="btn-ghost"
+            style={{ width: '100%', padding: 12, textAlign: 'center', fontSize: 14, textDecoration: 'none', display: 'block' }}
+          >
+            Already have an account? Sign in →
+          </Link>
+        </form>
+
+      </div>
+    </div>
   );
 }

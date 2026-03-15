@@ -1,124 +1,130 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-  Box, Container, Typography, Grid, Paper, TextField, MenuItem,
-  Chip, CircularProgress, Pagination, Avatar
-} from '@mui/material';
-import { Business, Language } from '@mui/icons-material';
-import Navbar from '../../components/shared/Navbar';
-import { publicApi } from '../../services/api';
+import { useState, useMemo } from 'react';
+import { ALL_COMPANIES } from '../../data/salaryData';
 
-const STATUS_COLOR = { ACTIVE: '#4ade80', INACTIVE: '#f87171' };
-
-function CompanyCard({ company }) {
-  return (
-    <Paper sx={{
-      p: 3, bgcolor: '#1a1a2e', border: '1px solid rgba(255,255,255,0.05)',
-      transition: '0.2s', '&:hover': { borderColor: '#e94560', transform: 'translateY(-2px)' }
-    }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-        <Avatar sx={{ bgcolor: '#0f3460', width: 48, height: 48 }}>
-          {company.logoUrl ? <img src={company.logoUrl} alt="" width={48} /> : <Business />}
-        </Avatar>
-        <Box>
-          <Typography variant="h6" color="white" fontWeight={700}>{company.name}</Typography>
-          <Typography variant="body2" sx={{ color: '#e94560' }}>{company.industry}</Typography>
-        </Box>
-      </Box>
-      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-        {company.location && <Chip label={company.location} size="small"
-          sx={{ bgcolor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.6)' }} />}
-        {company.companySize && <Chip label={company.companySize} size="small"
-          sx={{ bgcolor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.6)' }} />}
-        {company.companyLevelCategory && <Chip label={company.companyLevelCategory} size="small"
-          sx={{ bgcolor: 'rgba(15,52,96,0.5)', color: '#60a5fa' }} />}
-      </Box>
-      {company.website && (
-        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Language fontSize="small" sx={{ color: 'rgba(255,255,255,0.3)' }} />
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)' }}>
-            {company.website.replace(/https?:\/\//, '')}
-          </Typography>
-        </Box>
-      )}
-    </Paper>
-  );
-}
+const PAGE_SIZE = 10;
 
 export default function CompaniesPage() {
-  const [companies, setCompanies] = useState([]);
-  const [industries, setIndustries] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search,   setSearch]   = useState('');
   const [industry, setIndustry] = useState('');
-  const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
+  const [page,     setPage]     = useState(1);
 
-  const fetch = useCallback(async (page = 1) => {
-    setLoading(true);
-    try {
-      const params = { page: page - 1, size: 12 };
-      if (search) params.name = search;
-      if (industry) params.industry = industry;
-      const res = await publicApi.getCompanies(params);
-      const d = res.data.data;
-      setCompanies(d.content);
-      setPagination({ page, totalPages: d.totalPages });
-    } finally { setLoading(false); }
-  }, [search, industry]);
+  const isSearching = search.trim() !== '' || industry !== '';
 
-  useEffect(() => { fetch(1); }, [fetch]);
-  useEffect(() => {
-    publicApi.getIndustries().then(res => setIndustries(res.data.data));
-  }, []);
+  const filtered = useMemo(() => {
+    if (!isSearching) return ALL_COMPANIES.slice(0, 10); // default: last 10 updated
+    const q = search.toLowerCase();
+    return ALL_COMPANIES.filter(c => {
+      const matchQ   = !q || c.name.toLowerCase().includes(q) || c.industry.toLowerCase().includes(q);
+      const matchInd = !industry || c.industry === industry;
+      return matchQ && matchInd;
+    });
+  }, [search, industry, isSearching]);
 
-  const inputSx = {
-    '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: 'rgba(255,255,255,0.15)' } },
-    '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.5)' },
-    '& .MuiInputBase-input': { color: 'white' },
-  };
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const pageItems  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const industries = [...new Set(ALL_COMPANIES.map(c => c.industry))].sort();
+
+  function handleFilter() { setPage(1); }
 
   return (
-    <Box sx={{ bgcolor: '#0f0f1a', minHeight: '100vh', color: 'white' }}>
-      <Navbar />
-      <Container sx={{ py: 4 }}>
-        <Typography variant="h4" fontWeight={700} gutterBottom>Companies</Typography>
+    <section className="section">
+      {/* ── HEADER ── */}
+      <div
+        className="section-header"
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 32 }}
+      >
+        <div>
+          <span className="section-tag">Company Directory</span>
+          <h2 className="section-title">Browse <em>Companies</em></h2>
+        </div>
+        <div style={{
+          fontFamily: "'JetBrains Mono', monospace", fontSize: 12,
+          color: 'var(--text-3)', padding: '6px 14px',
+          background: 'var(--ink-3)', border: '1px solid var(--border)', borderRadius: 8
+        }}>
+          {isSearching ? `${filtered.length} result${filtered.length !== 1 ? 's' : ''} found` : 'Showing last 10 updated'}
+        </div>
+      </div>
 
-        <Paper sx={{ p: 3, mb: 4, bgcolor: '#1a1a2e', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={8}>
-              <TextField fullWidth label="Search by name" sx={inputSx}
-                value={search} onChange={e => setSearch(e.target.value)} />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField select fullWidth label="Industry" sx={inputSx}
-                value={industry} onChange={e => setIndustry(e.target.value)}>
-                <MenuItem value="">All Industries</MenuItem>
-                {industries.map(i => <MenuItem key={i} value={i}>{i}</MenuItem>)}
-              </TextField>
-            </Grid>
-          </Grid>
-        </Paper>
+      {/* ── FILTERS ── */}
+      <div className="filter-bar" style={{ marginBottom: 32 }}>
+        <div className="search-box">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input
+            className="input-field"
+            type="text"
+            placeholder="Search companies by name or industry…"
+            value={search}
+            onChange={e => { setSearch(e.target.value); handleFilter(); }}
+          />
+        </div>
+        <select className="select-field" value={industry} onChange={e => { setIndustry(e.target.value); handleFilter(); }}>
+          <option value="">All Industries</option>
+          {industries.map(i => <option key={i}>{i}</option>)}
+        </select>
+      </div>
 
-        {loading ? (
-          <Box textAlign="center" py={8}><CircularProgress sx={{ color: '#e94560' }} /></Box>
-        ) : (
-          <>
-            <Grid container spacing={3}>
-              {companies.map(c => (
-                <Grid item xs={12} sm={6} md={4} key={c.id}>
-                  <CompanyCard company={c} />
-                </Grid>
-              ))}
-            </Grid>
-            {pagination.totalPages > 1 && (
-              <Box display="flex" justifyContent="center" mt={4}>
-                <Pagination count={pagination.totalPages} page={pagination.page}
-                  onChange={(_, p) => fetch(p)}
-                  sx={{ '& .MuiPaginationItem-root': { color: 'white' } }} />
-              </Box>
-            )}
-          </>
-        )}
-      </Container>
-    </Box>
+      {/* ── GRID ── */}
+      {pageItems.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>🔍</div>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, color: 'var(--text-1)', marginBottom: 8 }}>No companies found</div>
+          <div style={{ fontSize: 14, color: 'var(--text-3)' }}>Try a different search term or clear the filters</div>
+        </div>
+      ) : (
+        <div className="companies-grid">
+          {pageItems.map(c => (
+            <div key={c.name} className="company-card fade-up">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                <div className="company-card-logo" style={{ background: c.colorBg, color: c.color, marginBottom: 0 }}>
+                  {c.abbr}
+                </div>
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-3)',
+                  background: 'var(--ink-3)', padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)'
+                }}>
+                  Updated {c.updatedLabel}
+                </span>
+              </div>
+              <div className="company-card-name">{c.name}</div>
+              <div className="company-card-industry">{c.industry}</div>
+              <div className="company-card-stats">
+                <div className="cstat">
+                  <div className="cstat-val">{c.entries}</div>
+                  <div className="cstat-label">Entries</div>
+                </div>
+                <div className="cstat">
+                  <div className="cstat-val">{c.avgBase}</div>
+                  <div className="cstat-label">Avg Base</div>
+                </div>
+                <div className="cstat">
+                  <div className="cstat-val">{c.avgTC}</div>
+                  <div className="cstat-label">Avg TC</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── PAGINATION ── */}
+      {totalPages > 1 && (
+        <div className="pagination">
+          <span className="page-info">
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} companies
+          </span>
+          <div className="page-btns">
+            <button className="page-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>←</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+              <button key={p} className={`page-btn${p === page ? ' active' : ''}`} onClick={() => setPage(p)}>{p}</button>
+            ))}
+            <button className="page-btn" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>→</button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

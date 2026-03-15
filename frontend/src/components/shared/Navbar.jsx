@@ -1,75 +1,54 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import {
-  AppBar, Toolbar, Typography, Button, Box, Chip, Avatar
-} from '@mui/material';
-import { MonetizationOn, Dashboard } from '@mui/icons-material';
+import { Link, useLocation } from 'react-router-dom';
+import { useContext } from 'react';
+import { AuthContext } from '../../context/AuthContext';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const location  = useLocation();
+  const { user, logout } = useContext(AuthContext);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
+  const isActive = (path) => location.pathname === path ? 'active' : '';
 
   return (
-    <AppBar position="sticky" sx={{ bgcolor: '#1a1a2e' }}>
-      <Toolbar>
-        <MonetizationOn sx={{ mr: 1, color: '#e94560' }} />
-        <Typography
-          variant="h6"
-          component={Link}
-          to="/"
-          sx={{ flexGrow: 0, color: 'white', textDecoration: 'none', fontWeight: 700, mr: 4 }}
-        >
-          Salary Insights
-        </Typography>
+    <nav className="navbar">
+      {/* ── LOGO ── */}
+      <Link to="/" className="nav-logo">
+        <div className="logo-mark">360</div>
+        <span className="logo-text">
+          <span className="w-salary">Salary</span>
+          <span className="w-insights">Insights</span>
+          <em className="brand-360">360</em>
+        </span>
+      </Link>
 
-        <Box sx={{ flexGrow: 1, display: 'flex', gap: 1 }}>
-          <Button color="inherit" component={Link} to="/salaries">Salaries</Button>
-          <Button color="inherit" component={Link} to="/companies">Companies</Button>
-          <Button color="inherit" component={Link} to="/dashboard">Analytics</Button>
-          {user && <Button color="inherit" component={Link} to="/submit">Submit Salary</Button>}
-          {user?.role === 'ADMIN' && (
-            <Button
-              color="inherit"
-              component={Link}
-              to="/admin"
-              startIcon={<Dashboard />}
-              sx={{ color: '#e94560' }}
-            >
-              Admin
-            </Button>
-          )}
-        </Box>
+      {/* ── NAV LINKS ── */}
+      <ul className="nav-links">
+        <li><Link to="/"           className={isActive('/')}>Home</Link></li>
+        <li><Link to="/salaries"   className={isActive('/salaries')}>Salaries</Link></li>
+        <li><Link to="/companies"  className={isActive('/companies')}>Companies</Link></li>
+        <li><Link to="/dashboard"  className={isActive('/dashboard')}>Analytics</Link></li>
+        {user?.role === 'ADMIN' && (
+          <li><Link to="/admin" className={isActive('/admin')}>Admin</Link></li>
+        )}
+      </ul>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          {user ? (
-            <>
-              <Chip
-                avatar={<Avatar>{user.firstName?.[0]}</Avatar>}
-                label={`${user.firstName} ${user.lastName}`}
-                sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)', border: '1px solid' }}
-              />
-              <Button color="inherit" onClick={handleLogout}>Logout</Button>
-            </>
-          ) : (
-            <>
-              <Button color="inherit" component={Link} to="/login">Login</Button>
-              <Button
-                variant="contained"
-                sx={{ bgcolor: '#e94560', '&:hover': { bgcolor: '#c73652' } }}
-                component={Link}
-                to="/register"
-              >
-                Register
-              </Button>
-            </>
-          )}
-        </Box>
-      </Toolbar>
-    </AppBar>
+      {/* ── ACTIONS ── */}
+      <div className="nav-actions">
+        {user ? (
+          <>
+            <button className="btn-ghost" onClick={logout}>Sign out</button>
+            <Link to="/submit" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+              Submit Salary
+            </Link>
+          </>
+        ) : (
+          <>
+            <Link to="/login" className="btn-ghost" style={{ textDecoration: 'none' }}>Sign in</Link>
+            <Link to="/submit" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+              Submit Salary
+            </Link>
+          </>
+        )}
+      </div>
+    </nav>
   );
 }
