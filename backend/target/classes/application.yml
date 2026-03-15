@@ -3,7 +3,7 @@ spring:
     name: salary-insights-portal
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/salary_insights_db
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/salary_insights_db}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -12,6 +12,7 @@ spring:
       minimum-idle: 5
       connection-timeout: 30000
 
+  # Moved JPA and Flyway out of the 'app' block back to 'spring' level
   jpa:
     hibernate:
       ddl-auto: validate
@@ -29,81 +30,24 @@ spring:
     locations: classpath:db/migration
 
 server:
-  port: 8080
+  port: ${PORT:8080}
+  address: 0.0.0.0
+  forward-headers-strategy: framework
   servlet:
     context-path: /api
 
-app:
-  jwt:
-    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-    expiration: 86400000  # 24 hours
-    refresh-expiration: 604800000  # 7 days
-
-  cors:
-    allowed-origins:
-      - http://localhost:3000
-      - http://localhost:5173
-
-  # OAuth2 Social Login Providers
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENT_ID:your-google-client-id}
-            client-secret: ${GOOGLE_CLIENT_SECRET:your-google-client-secret}
-            scope: email, profile
-            redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}"
-
-          facebook:
-            client-id: ${FACEBOOK_CLIENT_ID:your-facebook-app-id}
-            client-secret: ${FACEBOOK_CLIENT_SECRET:your-facebook-app-secret}
-            scope: email, public_profile
-            redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}"
-            authorization-grant-type: authorization_code
-
-          linkedin:
-            client-id: ${LINKEDIN_CLIENT_ID:your-linkedin-client-id}
-            client-secret: ${LINKEDIN_CLIENT_SECRET:your-linkedin-client-secret}
-            scope: r_liteprofile, r_emailaddress
-            redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}"
-            authorization-grant-type: authorization_code
-            client-name: LinkedIn
-            client-authentication-method: client_secret_post
-
-        provider:
-          facebook:
-            authorization-uri: https://www.facebook.com/v18.0/dialog/oauth
-            token-uri: https://graph.facebook.com/v18.0/oauth/access_token
-            user-info-uri: https://graph.facebook.com/v18.0/me?fields=id,name,email,picture
-            user-name-attribute: id
-
-          linkedin:
-            authorization-uri: https://www.linkedin.com/oauth/v2/authorization
-            token-uri: https://www.linkedin.com/oauth/v2/accessToken
-            user-info-uri: https://api.linkedin.com/v2/userinfo
-            user-name-attribute: sub
-
+# Unified 'app' block (merged line 16 and line 42)
 app:
   ai:
-    anthropic-api-key: ${ANTHROPIC_API_KEY:}   # Set this env var to enable AI refresh
+    anthropic-api-key: ${ANTHROPIC_API_KEY:}
     enabled: ${AI_REFRESH_ENABLED:true}
   oauth2:
     redirect-uri: ${APP_OAUTH2_REDIRECT_URI:http://localhost:3000/oauth2/redirect}
-
-logging:
-  level:
-    com.salaryinsights: DEBUG
-    org.springframework.security: INFO
-    org.hibernate.SQL: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics
-  endpoint:
-    health:
-      show-details: when-authorized
+  jwt:
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    expiration: 86400000
+    refresh-expiration: 604800000
+  cors:
+    allowed-origins:
+      - http://localhost:3000
+      - http

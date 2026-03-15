@@ -1,5 +1,6 @@
 /Users/deepak.sharma/Downloads/salary-insights-portal/backend/src/main/java/com/salaryinsights/SalaryInsightsApplication.java
 /Users/deepak.sharma/Downloads/salary-insights-portal/backend/src/main/java/com/salaryinsights/config/AppConfig.java
+/Users/deepak.sharma/Downloads/salary-insights-portal/backend/src/main/java/com/salaryinsights/config/BeansConfig.java
 /Users/deepak.sharma/Downloads/salary-insights-portal/backend/src/main/java/com/salaryinsights/config/SecurityConfig.java
 /Users/deepak.sharma/Downloads/salary-insights-portal/backend/src/main/java/com/salaryinsights/controller/AdminAiController.java
 /Users/deepak.sharma/Downloads/salary-insights-portal/backend/src/main/java/com/salaryinsights/controller/AdminCompanyController.java
