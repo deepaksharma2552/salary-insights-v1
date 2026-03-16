@@ -25,8 +25,8 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const response = await api.post('/auth/login', { email, password });
     // Backend wraps response in ApiResponse<T>, real data is at response.data.data
-    const { token, ...userData } = response.data.data;
-    localStorage.setItem('token', token);
+    const { accessToken, ...userData } = response.data.data;
+    localStorage.setItem('token', accessToken);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
     return userData;
@@ -35,8 +35,8 @@ export function AuthProvider({ children }) {
   const register = useCallback(async (name, email, password) => {
     const response = await api.post('/auth/register', { name, email, password });
     // Backend wraps response in ApiResponse<T>, real data is at response.data.data
-    const { token, ...userData } = response.data.data;
-    localStorage.setItem('token', token);
+    const { accessToken, ...userData } = response.data.data;
+    localStorage.setItem('token', accessToken);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
     return userData;

@@ -9,15 +9,22 @@ export default function AdminPendingSalaries() {
   const [rejectId, setRejectId] = useState(null);
   const [reason,   setReason]   = useState('');
 
+  const [fetchError, setFetchError] = useState(null);
+
   const load = useCallback(() => {
     setLoading(true);
+    setFetchError(null);
     api.get('/admin/salaries/pending', { params: { page, size: 10 } })
       .then(r => {
         const paged = r.data?.data;
+        console.log('Pending salaries response:', r.data);
         setEntries(paged?.content ?? []);
         setTotal(paged?.totalElements ?? 0);
       })
-      .catch(console.error)
+      .catch(err => {
+        console.error('Pending salaries error:', err.response?.status, err.response?.data);
+        setFetchError(`Error ${err.response?.status ?? 'network'}: ${err.response?.data?.error ?? err.message}`);
+      })
       .finally(() => setLoading(false));
   }, [page]);
 
@@ -48,6 +55,11 @@ export default function AdminPendingSalaries() {
 
       {loading ? (
         <div style={{ color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>Loading…</div>
+      ) : fetchError ? (
+        <div style={{ padding: '16px 20px', background: 'var(--rose-dim)', border: '1px solid rgba(224,92,122,0.2)', borderRadius: 12, color: 'var(--rose)', fontSize: 13, marginBottom: 20 }}>
+          {fetchError}
+          <button onClick={load} style={{ marginLeft: 16, padding: '4px 12px', fontSize: 12, cursor: 'pointer', borderRadius: 6, border: '1px solid var(--rose)', background: 'transparent', color: 'var(--rose)' }}>Retry</button>
+        </div>
       ) : entries.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)' }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>✓</div>
