@@ -19,6 +19,7 @@ export default function SubmitSalaryPage() {
 
   const [form, setForm] = useState({
     companyId: '',
+    companyName: '',
     jobTitle: '',
     companyInternalLevel: '',
     location: '',
@@ -54,7 +55,7 @@ export default function SubmitSalaryPage() {
     const val = e.target.value;
     setCompanyQuery(val);
     setCompanySelected(null);
-    setForm(f => ({ ...f, companyId: '' }));
+    setForm(f => ({ ...f, companyId: '', companyName: '' }));
     clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => searchCompanies(val), 300);
   }
@@ -62,7 +63,17 @@ export default function SubmitSalaryPage() {
   function selectCompany(company) {
     setCompanySelected(company);
     setCompanyQuery(company.name);
-    setForm(f => ({ ...f, companyId: company.id }));
+    setForm(f => ({ ...f, companyId: company.id, companyName: company.name }));
+    setShowSuggestions(false);
+    setSuggestions([]);
+  }
+
+  // Called when user wants to proceed with a new (auto-create) company
+  function useNewCompany() {
+    const name = companyQuery.trim();
+    if (!name) return;
+    setCompanySelected({ id: null, name, isNew: true });
+    setForm(f => ({ ...f, companyId: '', companyName: name }));
     setShowSuggestions(false);
     setSuggestions([]);
   }
@@ -85,9 +96,9 @@ export default function SubmitSalaryPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    // Validate company was selected from autocomplete
-    if (!form.companyId) {
-      setError('Please select a company from the suggestions.');
+    // Validate company — either selected from list or typed for auto-create
+    if (!form.companyId && !form.companyName) {
+      setError('Please enter or select a company name.');
       return;
     }
     if (!form.experienceLevel) {
@@ -98,7 +109,8 @@ export default function SubmitSalaryPage() {
     setError('');
     try {
       const res = await api.post('/salaries/submit', {
-        companyId:          form.companyId,
+        ...(form.companyId  ? { companyId: form.companyId }   : {}),
+        ...(form.companyName ? { companyName: form.companyName } : {}),
         jobTitle:           form.jobTitle,
         companyInternalLevel: form.companyInternalLevel || null,
         location:           form.location,
@@ -192,8 +204,11 @@ export default function SubmitSalaryPage() {
                   </div>
                 )}
                 {companySelected && (
-                  <div style={{ fontSize: 11, color: 'var(--teal)', marginTop: 4, fontFamily: "'JetBrains Mono',monospace" }}>
-                    ✓ Company selected
+                  <div style={{ fontSize: 11, marginTop: 4, fontFamily: "'JetBrains Mono',monospace",
+                    color: companySelected.isNew ? 'var(--gold)' : 'var(--teal)' }}>
+                    {companySelected.isNew
+                      ? '✦ New company — will be created on submit'
+                      : '✓ Company selected'}
                   </div>
                 )}
 
@@ -240,22 +255,38 @@ export default function SubmitSalaryPage() {
                       color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace",
                       borderTop: '1px solid var(--border)', background: 'var(--ink-2)'
                     }}>
-                      {suggestions.length} result{suggestions.length !== 1 ? 's' : ''} · Contact admin to add a missing company
+                      {suggestions.length} result{suggestions.length !== 1 ? 's' : ''} found
                     </div>
                   </div>
                 )}
 
                 {/* No results state */}
-                {showSuggestions && !searchLoading && suggestions.length === 0 && companyQuery.length >= 3 && (
+                {showSuggestions && !searchLoading && suggestions.length === 0 && companyQuery.length >= 3 && !companySelected && (
                   <div style={{
                     position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
                     background: 'var(--panel)', border: '1px solid var(--border)',
                     borderRadius: 12, marginTop: 4, padding: '16px',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.3)', textAlign: 'center'
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
                   }}>
-                    <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 4 }}>No companies found for "{companyQuery}"</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace" }}>
-                      Ask your admin to add this company via the Admin panel
+                    <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 12 }}>
+                      No match found for <strong>"{companyQuery}"</strong>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={useNewCompany}
+                      style={{
+                        width: '100%', padding: '9px 16px', cursor: 'pointer',
+                        background: 'var(--teal-dim)', color: 'var(--teal)',
+                        border: '1px solid rgba(62,207,176,0.3)', borderRadius: 8,
+                        fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans',sans-serif",
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      }}
+                    >
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                      Add "{companyQuery}" as new company
+                    </button>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 8, textAlign: 'center', fontFamily: "'JetBrains Mono',monospace" }}>
+                      It will be auto-created when you submit
                     </div>
                   </div>
                 )}
