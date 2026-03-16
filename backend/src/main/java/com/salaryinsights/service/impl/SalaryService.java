@@ -61,13 +61,35 @@ public class SalaryService {
         }
 
         Page<SalaryEntry> page = salaryEntryRepository.findAll(spec, pageable);
-        return PagedResponse.of(page.map(salaryMapper::toResponse));
+        // Force mapping inside the transaction so lazy fields can be accessed
+        List<SalaryResponse> mapped = page.getContent().stream()
+                .map(salaryMapper::toResponse)
+                .collect(java.util.stream.Collectors.toList());
+        return PagedResponse.<SalaryResponse>builder()
+                .content(mapped)
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
     }
 
     @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getPendingSalaries(Pageable pageable) {
         Page<SalaryEntry> page = salaryEntryRepository.findByReviewStatus(ReviewStatus.PENDING, pageable);
-        return PagedResponse.of(page.map(salaryMapper::toResponse));
+        // Force mapping inside the transaction so lazy fields (company, submittedBy) can be accessed
+        List<SalaryResponse> mapped = page.getContent().stream()
+                .map(salaryMapper::toResponse)
+                .collect(java.util.stream.Collectors.toList());
+        return PagedResponse.<SalaryResponse>builder()
+                .content(mapped)
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
     }
 
     @Transactional(readOnly = true)
