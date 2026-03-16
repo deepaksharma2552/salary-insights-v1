@@ -77,7 +77,6 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
-          </div>
 
           {/* ── TOP COMPANIES TABLE ── */}
           <div className="chart-card" style={{ marginTop: 20 }}>
