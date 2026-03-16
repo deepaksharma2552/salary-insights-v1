@@ -3,7 +3,9 @@ package com.salaryinsights.controller;
 import com.salaryinsights.dto.response.ApiResponse;
 import com.salaryinsights.dto.response.CompanyResponse;
 import com.salaryinsights.dto.response.PagedResponse;
+import com.salaryinsights.dto.response.SalaryResponse;
 import com.salaryinsights.service.impl.CompanyService;
+import com.salaryinsights.service.impl.SalaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -19,6 +21,7 @@ import java.util.UUID;
 public class PublicCompanyController {
 
     private final CompanyService companyService;
+    private final SalaryService salaryService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<CompanyResponse>>> getCompanies(
@@ -41,5 +44,18 @@ public class PublicCompanyController {
     @GetMapping("/industries")
     public ResponseEntity<ApiResponse<List<String>>> getIndustries() {
         return ResponseEntity.ok(ApiResponse.success(companyService.getIndustries()));
+    }
+
+    @GetMapping("/{id}/salaries")
+    public ResponseEntity<ApiResponse<PagedResponse<SalaryResponse>>> getCompanySalaries(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        org.springframework.data.domain.PageRequest pageable =
+            org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by("createdAt").descending());
+        return ResponseEntity.ok(ApiResponse.success(
+                salaryService.getApprovedSalaries(id, null, null, null, pageable)));
     }
 }

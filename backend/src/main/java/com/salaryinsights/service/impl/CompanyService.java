@@ -8,6 +8,7 @@ import com.salaryinsights.enums.CompanyStatus;
 import com.salaryinsights.exception.BadRequestException;
 import com.salaryinsights.exception.ResourceNotFoundException;
 import com.salaryinsights.mapper.CompanyMapper;
+import com.salaryinsights.repository.SalaryEntryRepository;
 import com.salaryinsights.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,11 +27,30 @@ public class CompanyService {
 
     private final CompanyRepository companyRepository;
     private final CompanyMapper companyMapper;
+    private final SalaryEntryRepository salaryEntryRepository;
     private final AuditLogService auditLogService;
 
     public PagedResponse<CompanyResponse> getAllCompanies(String name, String industry, String location, Pageable pageable) {
         Page<Company> page = companyRepository.searchCompanies(CompanyStatus.ACTIVE, name, industry, location, pageable);
-        return PagedResponse.of(page.map(companyMapper::toResponse));
+        List<com.salaryinsights.dto.response.CompanyResponse> enriched = page.getContent().stream()
+                .map(c -> enrichWithStats(companyMapper.toResponse(c), c.getId()))
+                .collect(java.util.stream.Collectors.toList());
+        return com.salaryinsights.dto.response.PagedResponse.<com.salaryinsights.dto.response.CompanyResponse>builder()
+                .content(enriched)
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
+    }
+
+    private com.salaryinsights.dto.response.CompanyResponse enrichWithStats(
+            com.salaryinsights.dto.response.CompanyResponse response, java.util.UUID companyId) {
+        response.setEntryCount(salaryEntryRepository.countApprovedByCompany(companyId));
+        response.setAvgBaseSalary(salaryEntryRepository.avgBaseSalaryByCompany(companyId));
+        response.setAvgTotalCompensation(salaryEntryRepository.avgTotalCompByCompany(companyId));
+        return response;
     }
 
     public PagedResponse<CompanyResponse> getAllCompaniesAdmin(Pageable pageable) {
@@ -39,7 +59,8 @@ public class CompanyService {
     }
 
     public CompanyResponse getCompanyById(UUID id) {
-        return companyMapper.toResponse(findCompanyById(id));
+        Company c = findCompanyById(id);
+        return enrichWithStats(companyMapper.toResponse(c), c.getId());
     }
 
     @Transactional

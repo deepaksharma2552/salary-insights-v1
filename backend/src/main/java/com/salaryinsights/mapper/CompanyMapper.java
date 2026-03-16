@@ -8,6 +8,9 @@ import org.mapstruct.*;
 @Mapper(componentModel = "spring")
 public interface CompanyMapper {
 
+    @Mapping(target = "entryCount", ignore = true)
+    @Mapping(target = "avgBaseSalary", ignore = true)
+    @Mapping(target = "avgTotalCompensation", ignore = true)
     CompanyResponse toResponse(Company company);
 
     @Mapping(target = "id", ignore = true)

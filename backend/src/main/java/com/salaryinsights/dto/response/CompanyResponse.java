@@ -20,4 +20,9 @@ public class CompanyResponse {
     private CompanyStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // Aggregated salary stats — populated when fetching for public display
+    private Long entryCount;
+    private Double avgBaseSalary;
+    private Double avgTotalCompensation;
 }
