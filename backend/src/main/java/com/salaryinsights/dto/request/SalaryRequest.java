@@ -29,6 +29,9 @@ public class SalaryRequest {
     @Size(max = 200)
     private String location;
 
+    @Min(0) @Max(60)
+    private Integer yearsOfExperience;
+
     @NotNull @DecimalMin("0.0")
     private BigDecimal baseSalary;
 

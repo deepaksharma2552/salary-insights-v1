@@ -20,6 +20,7 @@ public class SalaryResponse {
     private String companyInternalLevel;
     private String standardizedLevelName;
     private String location;
+    private Integer yearsOfExperience;
     private BigDecimal baseSalary;
     private BigDecimal bonus;
     private BigDecimal equity;

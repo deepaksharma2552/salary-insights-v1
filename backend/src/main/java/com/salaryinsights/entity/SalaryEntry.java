@@ -48,6 +48,9 @@ public class SalaryEntry extends BaseEntity {
     @Column(name = "location", length = 200)
     private String location;
 
+    @Column(name = "years_of_experience")
+    private Integer yearsOfExperience;
+
     @Column(name = "base_salary", nullable = false, precision = 15, scale = 2)
     private BigDecimal baseSalary;
 
