@@ -77,11 +77,22 @@ public class SalaryService {
 
     @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getPendingSalaries(Pageable pageable) {
+        long totalPending = salaryEntryRepository.countByReviewStatus(ReviewStatus.PENDING);
+        log.info("getPendingSalaries called — total PENDING in DB: {}, page: {}", totalPending, pageable);
         Page<SalaryEntry> page = salaryEntryRepository.findByReviewStatus(ReviewStatus.PENDING, pageable);
+        log.info("findByReviewStatus returned {} entries on this page", page.getNumberOfElements());
         // Force mapping inside the transaction so lazy fields (company, submittedBy) can be accessed
         List<SalaryResponse> mapped = page.getContent().stream()
-                .map(salaryMapper::toResponse)
+                .map(entry -> {
+                    try {
+                        return salaryMapper.toResponse(entry);
+                    } catch (Exception e) {
+                        log.error("Failed to map SalaryEntry id={}: {}", entry.getId(), e.getMessage(), e);
+                        throw e;
+                    }
+                })
                 .collect(java.util.stream.Collectors.toList());
+        log.info("Mapped {} entries successfully", mapped.size());
         return PagedResponse.<SalaryResponse>builder()
                 .content(mapped)
                 .page(page.getNumber())
@@ -120,8 +131,8 @@ public class SalaryService {
         entry.setReviewStatus(ReviewStatus.PENDING);
 
         entry = salaryEntryRepository.save(entry);
-
-        log.info("Salary submitted by {} for company {}", currentUserEmail, company.getName());
+        log.info("Salary SAVED — id={}, reviewStatus={}, company={}, submittedBy={}",
+                entry.getId(), entry.getReviewStatus(), company.getName(), currentUserEmail);
         auditLogService.log("SalaryEntry", entry.getId().toString(), "SUBMITTED",
                 "Submitted salary for " + company.getName());
 
