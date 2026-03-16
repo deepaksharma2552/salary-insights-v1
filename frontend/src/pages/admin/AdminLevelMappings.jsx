@@ -14,8 +14,8 @@ export default function AdminLevelMappings() {
       api.get('/admin/levels/standardized'),
       api.get('/admin/companies'),
     ]).then(([std, cos]) => {
-      setStdLevels(std.data?.content ?? std.data ?? []);
-      setCompanies(cos.data?.content ?? cos.data ?? []);
+      setStdLevels(std.data?.data ?? []);
+      setCompanies(cos.data?.data?.content ?? []);
     }).catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -23,7 +23,7 @@ export default function AdminLevelMappings() {
   useEffect(() => {
     if (!selectedCo) return;
     api.get(`/admin/levels/company/${selectedCo}`)
-      .then(r => setCoLevels(r.data ?? []))
+      .then(r => setCoLevels(r.data?.data ?? []))
       .catch(console.error);
   }, [selectedCo]);
 
@@ -31,14 +31,14 @@ export default function AdminLevelMappings() {
     await api.post('/admin/levels/mappings', { companyLevelId, standardizedLevelId });
     // reload
     if (selectedCo) {
-      api.get(`/admin/levels/company/${selectedCo}`).then(r => setCoLevels(r.data ?? []));
+      api.get(`/admin/levels/company/${selectedCo}`).then(r => setCoLevels(r.data?.data ?? []));
     }
   }
 
   async function removeMapping(companyLevelId) {
     await api.delete(`/admin/levels/mappings/company-level/${companyLevelId}`);
     if (selectedCo) {
-      api.get(`/admin/levels/company/${selectedCo}`).then(r => setCoLevels(r.data ?? []));
+      api.get(`/admin/levels/company/${selectedCo}`).then(r => setCoLevels(r.data?.data ?? []));
     }
   }
 

@@ -7,7 +7,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     api.get('/admin/salaries/dashboard')
-      .then(r => setStats(r.data))
+      .then(r => setStats(r.data?.data))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);

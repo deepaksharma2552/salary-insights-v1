@@ -14,7 +14,7 @@ export default function AdminCompanies() {
   const load = useCallback(() => {
     setLoading(true);
     api.get('/admin/companies')
-      .then(r => setCompanies(r.data?.content ?? r.data ?? []))
+      .then(r => setCompanies(r.data?.data?.content ?? []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);

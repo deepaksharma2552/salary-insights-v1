@@ -26,7 +26,7 @@ export default function SubmitSalaryPage() {
   // Load companies for the dropdown
   useEffect(() => {
     api.get('/public/companies')
-      .then(r => setCompanies(r.data?.content ?? r.data ?? []))
+      .then(r => setCompanies(r.data?.data?.content ?? []))
       .catch(console.error);
   }, []);
 
@@ -50,7 +50,7 @@ export default function SubmitSalaryPage() {
       setSuccess(true);
       setTimeout(() => navigate('/salaries'), 2000);
     } catch (err) {
-      setError(err.response?.data?.message ?? 'Submission failed. Please try again.');
+      setError(err.response?.data?.error ?? err.response?.data?.message ?? 'Submission failed. Please try again.');
     } finally {
       setSubmitting(false);
     }

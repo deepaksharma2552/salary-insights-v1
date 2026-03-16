@@ -13,9 +13,10 @@ export default function DashboardPage() {
       api.get('/public/salaries/analytics/by-location'),
       api.get('/public/salaries/analytics/by-company'),
     ]).then(([lvl, loc, co]) => {
-      setByLevel(lvl.data    ?? []);
-      setByLocation(loc.data ?? []);
-      setByCompany(co.data   ?? []);
+      // Backend wraps in ApiResponse<T>, real data is at response.data.data
+      setByLevel(lvl.data?.data    ?? []);
+      setByLocation(loc.data?.data ?? []);
+      setByCompany(co.data?.data   ?? []);
     }).catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -76,10 +77,10 @@ export default function DashboardPage() {
                 <div className="level-bars">
                   {byLevel.map(row => {
                     const pct = Math.round((row.avgBaseSalary / maxSalary) * 100);
-                    const color = LEVEL_COLORS[row.level] ?? 'linear-gradient(90deg,var(--gold),var(--gold-light))';
-                    const label = row.level.charAt(0) + row.level.slice(1).toLowerCase().replace('_', ' ');
+                    const color = LEVEL_COLORS[row.groupKey] ?? 'linear-gradient(90deg,var(--gold),var(--gold-light))';
+                    const label = row.groupKey.charAt(0) + row.groupKey.slice(1).toLowerCase().replace('_', ' ');
                     return (
-                      <div key={row.level} className="level-bar-row">
+                      <div key={row.groupKey} className="level-bar-row">
                         <span className="level-bar-label">{label}</span>
                         <div className="level-bar-track">
                           <div className="level-bar-fill" style={{ width: `${pct}%`, background: color }} />
@@ -113,8 +114,8 @@ export default function DashboardPage() {
                       'linear-gradient(90deg,var(--rose),#f08fa8)',
                     ];
                     return (
-                      <div key={row.location} className="level-bar-row">
-                        <span className="level-bar-label" style={{ width: 100 }}>{row.location}</span>
+                      <div key={row.groupKey} className="level-bar-row">
+                        <span className="level-bar-label" style={{ width: 100 }}>{row.groupKey}</span>
                         <div className="level-bar-track">
                           <div className="level-bar-fill" style={{ width: `${pct}%`, background: colors[i % colors.length] }} />
                         </div>
@@ -151,9 +152,9 @@ export default function DashboardPage() {
                   </thead>
                   <tbody>
                     {byCompany.slice(0, 10).map((row, i) => (
-                      <tr key={row.company}>
+                      <tr key={row.groupKey}>
                         <td style={{ color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace" }}>{i + 1}</td>
-                        <td><div className="company-name">{row.company}</div></td>
+                        <td><div className="company-name">{row.groupKey}</div></td>
                         <td><div className="salary-amount" style={{ fontSize: 16 }}>{fmt(row.avgBaseSalary)}</div></td>
                         <td><div className="salary-amount" style={{ fontSize: 16 }}>{fmt(row.avgTotalCompensation)}</div></td>
                         <td><span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: 'var(--text-2)' }}>{row.count ?? '—'}</span></td>

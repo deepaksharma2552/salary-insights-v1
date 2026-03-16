@@ -13,8 +13,9 @@ export default function AdminPendingSalaries() {
     setLoading(true);
     api.get('/admin/salaries/pending', { params: { page, size: 10 } })
       .then(r => {
-        setEntries(r.data?.content ?? r.data ?? []);
-        setTotal(r.data?.totalElements ?? 0);
+        const paged = r.data?.data;
+        setEntries(paged?.content ?? []);
+        setTotal(paged?.totalElements ?? 0);
       })
       .catch(console.error)
       .finally(() => setLoading(false));

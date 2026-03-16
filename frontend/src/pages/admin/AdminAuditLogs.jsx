@@ -11,8 +11,9 @@ export default function AdminAuditLogs() {
     setLoading(true);
     api.get('/admin/levels/audit-logs', { params: { page, size: 20 } })
       .then(r => {
-        setLogs(r.data?.content ?? r.data ?? []);
-        setTotal(r.data?.totalElements ?? 0);
+        const paged = r.data?.data;
+        setLogs(paged?.content ?? []);
+        setTotal(paged?.totalElements ?? 0);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
