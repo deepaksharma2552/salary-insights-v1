@@ -37,14 +37,36 @@ public class SalaryService {
             UUID companyId, String jobTitle, String location,
             ExperienceLevel experienceLevel, Pageable pageable) {
 
-        Page<SalaryEntry> page = salaryEntryRepository.findApprovedWithFilters(
-                companyId, jobTitle, location, experienceLevel, pageable);
+        // Build a Specification dynamically — avoids brittle JPQL parameter handling
+        org.springframework.data.jpa.domain.Specification<SalaryEntry> spec =
+            org.springframework.data.jpa.domain.Specification.where(
+                (root, query, cb) -> cb.equal(root.get("reviewStatus"), com.salaryinsights.enums.ReviewStatus.APPROVED)
+            );
+
+        if (companyId != null) {
+            spec = spec.and((root, query, cb) ->
+                cb.equal(root.get("company").get("id"), companyId));
+        }
+        if (jobTitle != null && !jobTitle.isBlank()) {
+            spec = spec.and((root, query, cb) ->
+                cb.like(cb.lower(root.get("jobTitle")), "%" + jobTitle.toLowerCase() + "%"));
+        }
+        if (location != null && !location.isBlank()) {
+            spec = spec.and((root, query, cb) ->
+                cb.like(cb.lower(root.get("location")), "%" + location.toLowerCase() + "%"));
+        }
+        if (experienceLevel != null) {
+            spec = spec.and((root, query, cb) ->
+                cb.equal(root.get("experienceLevel"), experienceLevel));
+        }
+
+        Page<SalaryEntry> page = salaryEntryRepository.findAll(spec, pageable);
         return PagedResponse.of(page.map(salaryMapper::toResponse));
     }
 
     @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getPendingSalaries(Pageable pageable) {
-        Page<SalaryEntry> page = salaryEntryRepository.findByReviewStatusWithDetails(ReviewStatus.PENDING, pageable);
+        Page<SalaryEntry> page = salaryEntryRepository.findByReviewStatus(ReviewStatus.PENDING, pageable);
         return PagedResponse.of(page.map(salaryMapper::toResponse));
     }
 
