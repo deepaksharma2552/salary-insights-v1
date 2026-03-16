@@ -85,15 +85,29 @@ export default function SubmitSalaryPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    // Validate company was selected from autocomplete
+    if (!form.companyId) {
+      setError('Please select a company from the suggestions.');
+      return;
+    }
+    if (!form.experienceLevel) {
+      setError('Please select an experience level.');
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
       await api.post('/salaries/submit', {
-        ...form,
+        companyId:          form.companyId,
+        jobTitle:           form.jobTitle,
+        companyInternalLevel: form.companyInternalLevel || null,
+        location:           form.location,
+        experienceLevel:    form.experienceLevel,
+        employmentType:     form.employmentType,
         baseSalary:         Number(form.baseSalary)         || 0,
-        bonus:              Number(form.bonus)              || 0,
-        equity:             Number(form.equity)             || 0,
-        yearsOfExperience:  Number(form.yearsOfExperience)  || 0,
+        bonus:              Number(form.bonus)              || null,
+        equity:             Number(form.equity)             || null,
+        yearsOfExperience:  form.yearsOfExperience ? Number(form.yearsOfExperience) : null,
       });
       setSuccess(true);
       setTimeout(() => navigate('/salaries'), 2000);
