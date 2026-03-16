@@ -1,21 +1,86 @@
-import { useEffect } from 'react';
-import { SALARIES, LEVEL_BADGE_CLASS, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../data/salaryData';
+import { useEffect, useState } from 'react';
+import { LEVEL_BADGE_CLASS, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../data/salaryData';
+import api from '../../services/api';
 
 /**
  * SalaryDetailDrawer
  *
  * Props:
- *   open     {boolean}  - controls visibility
- *   salaryId {number}   - id of the salary entry to display
- *   onClose  {function} - called when user dismisses the drawer
- *
- * NOTE: In production replace the SALARIES lookup with a real API call:
- *   GET /api/public/salaries/:salaryId
+ *   open      {boolean}   - controls visibility
+ *   salary    {object}    - the already-mapped salary row object from the table
+ *   salaryId  {string}    - UUID to fetch full details from API
+ *   onClose   {function}  - called when user dismisses the drawer
  */
-export default function SalaryDetailDrawer({ open, salaryId, onClose }) {
-  const salary = SALARIES.find(s => s.id === salaryId) ?? null;
+export default function SalaryDetailDrawer({ open, salary: rowSalary, salaryId, onClose }) {
+  const [salary,  setSalary]  = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // Lock body scroll while drawer is open
+  // Fetch full details from API when drawer opens
+  useEffect(() => {
+    if (!open || !salaryId) return;
+    // Use the row data immediately so drawer opens instantly
+    if (rowSalary) setSalary(rowSalary);
+    // Then fetch full details (includes notes, etc.)
+    setLoading(true);
+    api.get(`/public/salaries/${salaryId}`)
+      .then(res => {
+        const s = res.data?.data;
+        if (!s) return;
+        const colors = ['#3ecfb0','#d4a853','#e05c7a','#a08ff0','#c07df0','#e89050'];
+        const colorIdx = s.companyName ? s.companyName.charCodeAt(0) % colors.length : 0;
+        const color = colors[colorIdx];
+        const levelMap = {
+          INTERN:'junior', ENTRY:'junior', MID:'mid',
+          SENIOR:'senior', LEAD:'lead', MANAGER:'lead',
+          DIRECTOR:'lead', VP:'lead', C_LEVEL:'lead',
+        };
+        const fmt = (val) => {
+          if (!val && val !== 0) return '—';
+          const l = Number(val) / 100000;
+          return l >= 100 ? `₹${(l/100).toFixed(1)}Cr` : `₹${l.toFixed(1)}L`;
+        };
+        const formatDate = (iso) => {
+          if (!iso) return '—';
+          const d = new Date(iso);
+          if (isNaN(d.getTime())) return '—';
+          return d.toLocaleString('en-IN', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit',
+          });
+        };
+        setSalary({
+          id:             s.id,
+          company:        s.companyName ?? '—',
+          compAbbr:       s.companyName ? s.companyName.slice(0,2).toUpperCase() : '?',
+          compColor:      color,
+          compBg:         `${color}26`,
+          role:           s.jobTitle ?? '—',
+          internalLevel:  s.companyInternalLevel ?? '—',
+          standardized:   s.standardizedLevelName ?? '—',
+          level:          levelMap[s.experienceLevel] ?? 'mid',
+          location:       s.location ?? '—',
+          exp:            s.yearsOfExperience != null ? `${s.yearsOfExperience} yr` : '—',
+          yoe:            s.yearsOfExperience != null ? `${s.yearsOfExperience} year${s.yearsOfExperience !== 1 ? 's' : ''}` : '—',
+          empType:        s.employmentType ?? '—',
+          base:           fmt(s.baseSalary),
+          bonus:          fmt(s.bonus),
+          equity:         fmt(s.equity),
+          tc:             fmt(s.totalCompensation),
+          status:         (s.reviewStatus ?? 'APPROVED').toLowerCase(),
+          recordedAt:     formatDate(s.createdAt),
+          notes:          '',
+        });
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [open, salaryId]);
+
+  // Clear salary when drawer closes
+  useEffect(() => {
+    if (!open) setSalary(null);
+  }, [open]);
+
+  // Lock body scroll while open
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
@@ -28,12 +93,12 @@ export default function SalaryDetailDrawer({ open, salaryId, onClose }) {
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  if (!salary) return null;
-
-  const lvlClass = LEVEL_BADGE_CLASS[salary.level] ?? 'badge';
-  const stClass  = STATUS_BADGE_CLASS[salary.status] ?? 'status-badge';
-  const stLabel  = STATUS_LABEL[salary.status] ?? salary.status;
-  const capLevel = salary.level.charAt(0).toUpperCase() + salary.level.slice(1);
+  const lvlClass = LEVEL_BADGE_CLASS[salary?.level] ?? 'badge';
+  const stClass  = STATUS_BADGE_CLASS[salary?.status] ?? 'status-badge';
+  const stLabel  = STATUS_LABEL[salary?.status] ?? salary?.status;
+  const capLevel = salary?.level
+    ? salary.level.charAt(0).toUpperCase() + salary.level.slice(1)
+    : '—';
 
   return (
     <>
@@ -50,90 +115,97 @@ export default function SalaryDetailDrawer({ open, salaryId, onClose }) {
         <div className="drawer-header">
           <button className="drawer-close" onClick={onClose}>✕</button>
 
-          <div className="drawer-company-row">
-            <div
-              className="drawer-company-avatar"
-              style={{ background: salary.compBg, color: salary.compColor }}
-            >
-              {salary.compAbbr}
+          {salary ? (
+            <>
+              <div className="drawer-company-row">
+                <div
+                  className="drawer-company-avatar"
+                  style={{ background: salary.compBg, color: salary.compColor }}
+                >
+                  {salary.compAbbr}
+                </div>
+                <div>
+                  <div className="drawer-company-name">{salary.company}</div>
+                  <div className="drawer-role">{salary.role} · {salary.location}</div>
+                </div>
+              </div>
+              <div className="drawer-badges">
+                <span className={lvlClass}>{capLevel}</span>
+                {salary.exp && salary.exp !== '—' && (
+                  <span className="badge badge-exp">{salary.exp}</span>
+                )}
+                <span className={stClass}>{stLabel}</span>
+              </div>
+            </>
+          ) : (
+            <div style={{ color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13, padding: '20px 0' }}>
+              {loading ? 'Loading…' : 'Entry not found'}
             </div>
-            <div>
-              <div className="drawer-company-name">{salary.company}</div>
-              <div className="drawer-role">{salary.role} · {salary.location}</div>
-            </div>
-          </div>
-
-          <div className="drawer-badges">
-            <span className={lvlClass}>{capLevel}</span>
-            <span className="badge badge-exp">{salary.exp}</span>
-            <span className={stClass}>{stLabel}</span>
-          </div>
+          )}
         </div>
 
         {/* ── BODY ── */}
-        <div className="drawer-body">
+        {salary && (
+          <div className="drawer-body">
 
-          {/* Compensation breakdown */}
-          <div className="drawer-section-title">Compensation Breakdown</div>
-          <div className="comp-breakdown">
-            <div className="comp-item highlight">
-              <div className="comp-item-label">Total Compensation</div>
-              <div className="comp-item-val">{salary.tc}</div>
+            {/* Compensation breakdown */}
+            <div className="drawer-section-title">Compensation Breakdown</div>
+            <div className="comp-breakdown">
+              <div className="comp-item highlight">
+                <div className="comp-item-label">Total Compensation</div>
+                <div className="comp-item-val">{salary.tc}</div>
+              </div>
+              <div className="comp-item">
+                <div className="comp-item-label">Base Salary</div>
+                <div className="comp-item-val">{salary.base}</div>
+              </div>
+              <div className="comp-item">
+                <div className="comp-item-label">Annual Bonus</div>
+                <div className="comp-item-val">{salary.bonus}</div>
+              </div>
+              <div className="comp-item" style={{ gridColumn: 'span 2' }}>
+                <div className="comp-item-label">Equity / RSU (annualised)</div>
+                <div className="comp-item-val">{salary.equity}</div>
+              </div>
             </div>
-            <div className="comp-item">
-              <div className="comp-item-label">Base Salary</div>
-              <div className="comp-item-val">{salary.base}</div>
+
+            {/* Role & Experience */}
+            <div className="drawer-section-title">Role & Experience</div>
+            <div className="detail-grid">
+              <div className="detail-item">
+                <span className="detail-label">Job Title</span>
+                <span className="detail-val">{salary.role}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Internal Level</span>
+                <span className="detail-val">{salary.internalLevel}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Standardised Level</span>
+                <span className="detail-val">{salary.standardized}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Years of Experience</span>
+                <span className="detail-val">{salary.yoe}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Employment Type</span>
+                <span className="detail-val">{salary.empType}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Location</span>
+                <span className="detail-val">{salary.location}</span>
+              </div>
             </div>
-            <div className="comp-item">
-              <div className="comp-item-label">Annual Bonus</div>
-              <div className="comp-item-val">{salary.bonus}</div>
+
+            {/* Recorded date */}
+            <div className="drawer-recorded">
+              <div className="drawer-recorded-icon">🗓</div>
+              <div>Entry recorded on <strong>{salary.recordedAt}</strong></div>
             </div>
-            <div className="comp-item" style={{ gridColumn: 'span 2' }}>
-              <div className="comp-item-label">Equity / RSU (annualised)</div>
-              <div className="comp-item-val">{salary.equity}</div>
-            </div>
+
           </div>
-
-          {/* Role & Experience */}
-          <div className="drawer-section-title">Role & Experience</div>
-          <div className="detail-grid">
-            <div className="detail-item">
-              <span className="detail-label">Job Title</span>
-              <span className="detail-val">{salary.role}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Internal Level</span>
-              <span className="detail-val">{salary.internalLevel}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Standardised Level</span>
-              <span className="detail-val">{capLevel}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Years of Experience</span>
-              <span className="detail-val">{salary.yoe}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Employment Type</span>
-              <span className="detail-val">{salary.empType}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Location</span>
-              <span className="detail-val">{salary.location}</span>
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div className="drawer-section-title">Notes</div>
-          <div className="notes-box">{salary.notes}</div>
-
-          {/* Recorded date */}
-          <div className="drawer-recorded">
-            <div className="drawer-recorded-icon">🗓</div>
-            <div>Entry recorded on <strong>{salary.recordedAt}</strong></div>
-          </div>
-
-        </div>
+        )}
       </div>
     </>
   );
