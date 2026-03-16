@@ -198,6 +198,7 @@ public class SalaryService {
                 .approvedEntries(salaryEntryRepository.countByReviewStatus(ReviewStatus.APPROVED))
                 .rejectedEntries(salaryEntryRepository.countByReviewStatus(ReviewStatus.REJECTED))
                 .totalMappings(levelMappingService.getTotalMappings())
+                .avgBaseSalary(salaryEntryRepository.avgBaseSalaryApproved())
                 .submissionTrend(trendData)
                 .build();
     }

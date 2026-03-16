@@ -45,6 +45,9 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
 
     long countByReviewStatus(ReviewStatus status);
 
+    @Query("SELECT AVG(s.baseSalary) FROM SalaryEntry s WHERE s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED")
+    Double avgBaseSalaryApproved();
+
     @Query(value = "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as count " +
                    "FROM salary_entries WHERE created_at >= NOW() - INTERVAL '12 months' " +
                    "GROUP BY month ORDER BY month", nativeQuery = true)
