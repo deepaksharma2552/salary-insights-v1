@@ -33,7 +33,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   const register = useCallback(async (name, email, password) => {
-    const response = await api.post('/auth/register', { name, email, password });
+    // Backend expects firstName + lastName separately
+    const parts = name.trim().split(/\s+/);
+    const firstName = parts[0];
+    const lastName  = parts.slice(1).join(' ') || parts[0]; // fallback to same if single word
+    const response = await api.post('/auth/register', { firstName, lastName, email, password });
     // Backend wraps response in ApiResponse<T>, real data is at response.data.data
     const { accessToken, ...userData } = response.data.data;
     localStorage.setItem('token', accessToken);

@@ -97,7 +97,7 @@ export default function SubmitSalaryPage() {
     setSubmitting(true);
     setError('');
     try {
-      await api.post('/salaries/submit', {
+      const res = await api.post('/salaries/submit', {
         companyId:          form.companyId,
         jobTitle:           form.jobTitle,
         companyInternalLevel: form.companyInternalLevel || null,
@@ -109,10 +109,12 @@ export default function SubmitSalaryPage() {
         equity:             Number(form.equity)             || null,
         yearsOfExperience:  form.yearsOfExperience ? Number(form.yearsOfExperience) : null,
       });
+      console.log('Salary submitted successfully:', res.data);
       setSuccess(true);
       setTimeout(() => navigate('/salaries'), 2000);
     } catch (err) {
-      setError(err.response?.data?.error ?? err.response?.data?.message ?? 'Submission failed. Please try again.');
+      console.error('Submit error:', err.response?.status, err.response?.data);
+      setError(err.response?.data?.error ?? err.response?.data?.message ?? `Submission failed (${err.response?.status ?? 'network error'}). Please try again.`);
     } finally {
       setSubmitting(false);
     }

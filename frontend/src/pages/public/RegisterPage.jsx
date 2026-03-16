@@ -15,8 +15,8 @@ export default function RegisterPage() {
     try {
       await register(name, email, password);
       navigate('/');
-    } catch {
-      setError('Registration failed. Please try again.');
+    } catch (err) {
+      setError(err.response?.data?.error ?? err.response?.data?.message ?? 'Registration failed. Please try again.');
     }
   }
 
@@ -54,7 +54,7 @@ export default function RegisterPage() {
             <input
               className="form-input"
               type="text"
-              placeholder="Your name"
+              placeholder="First and last name"
               value={name}
               onChange={e => setName(e.target.value)}
               required
