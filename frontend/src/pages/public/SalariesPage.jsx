@@ -68,7 +68,7 @@ export default function SalariesPage() {
         setTotalPages(paged?.totalPages ?? 1);
         setTotalElements(paged?.totalElements ?? 0);
       })
-      .catch(err => { console.error(err); setError('Failed to load salaries. Please try again.'); })
+      .catch(err => { console.error('Salaries API error:', err.response?.status, err.response?.data); setError(`Failed to load salaries (${err.response?.status ?? 'network error'}). Check console for details.`); })
       .finally(() => setLoading(false));
   }, [page, search, level, location]);
 
