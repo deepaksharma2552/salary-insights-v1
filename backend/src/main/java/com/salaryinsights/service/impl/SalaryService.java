@@ -32,6 +32,7 @@ public class SalaryService {
     private final SalaryMapper salaryMapper;
     private final AuditLogService auditLogService;
 
+    @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getApprovedSalaries(
             UUID companyId, String jobTitle, String location,
             ExperienceLevel experienceLevel, Pageable pageable) {
@@ -41,11 +42,13 @@ public class SalaryService {
         return PagedResponse.of(page.map(salaryMapper::toResponse));
     }
 
+    @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getPendingSalaries(Pageable pageable) {
         Page<SalaryEntry> page = salaryEntryRepository.findByReviewStatusWithDetails(ReviewStatus.PENDING, pageable);
         return PagedResponse.of(page.map(salaryMapper::toResponse));
     }
 
+    @Transactional(readOnly = true)
     public SalaryResponse getSalaryById(UUID id) {
         SalaryEntry entry = salaryEntryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Salary entry not found: " + id));
@@ -107,18 +110,22 @@ public class SalaryService {
     }
 
     // Analytics
+    @Transactional(readOnly = true)
     public List<SalaryAggregationDTO> getAvgSalaryByStandardizedLevel() {
         return salaryEntryRepository.avgSalaryByStandardizedLevel();
     }
 
+    @Transactional(readOnly = true)
     public List<SalaryAggregationDTO> getAvgSalaryByLocation() {
         return salaryEntryRepository.avgSalaryByLocation();
     }
 
+    @Transactional(readOnly = true)
     public List<SalaryAggregationDTO> getAvgSalaryByCompany() {
         return salaryEntryRepository.avgSalaryByCompany();
     }
 
+    @Transactional(readOnly = true)
     public AdminDashboardResponse getAdminDashboard() {
         List<Object[]> trends = salaryEntryRepository.submissionTrendLast12Months();
         List<java.util.Map<String, Object>> trendData = trends.stream().map(row -> {
