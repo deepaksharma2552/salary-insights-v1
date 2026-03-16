@@ -11,8 +11,11 @@ import java.util.UUID;
 @Data
 public class SalaryRequest {
 
-    @NotNull
+    // Either companyId (existing) or companyName (auto-create) must be provided
     private UUID companyId;
+
+    @Size(max = 255)
+    private String companyName;
 
     @NotBlank @Size(max = 200)
     private String jobTitle;

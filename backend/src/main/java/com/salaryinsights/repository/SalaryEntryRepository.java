@@ -23,13 +23,6 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
     Page<SalaryEntry> findByReviewStatus(ReviewStatus status, Pageable pageable);
 
     @Query("SELECT new com.salaryinsights.dto.response.SalaryAggregationDTO(" +
-           "sl.name, AVG(s.baseSalary), AVG(s.totalCompensation), COUNT(s)) " +
-           "FROM SalaryEntry s JOIN s.standardizedLevel sl " +
-           "WHERE s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED " +
-           "GROUP BY sl.name, sl.hierarchyRank ORDER BY sl.hierarchyRank")
-    List<SalaryAggregationDTO> avgSalaryByStandardizedLevel();
-
-    @Query("SELECT new com.salaryinsights.dto.response.SalaryAggregationDTO(" +
            "s.location, AVG(s.baseSalary), AVG(s.totalCompensation), COUNT(s)) " +
            "FROM SalaryEntry s " +
            "WHERE s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED AND s.location IS NOT NULL " +

@@ -28,7 +28,6 @@ public class SalaryService {
     private final SalaryEntryRepository salaryEntryRepository;
     private final CompanyRepository companyRepository;
     private final UserRepository userRepository;
-    private final LevelMappingService levelMappingService;
     private final SalaryMapper salaryMapper;
     private final AuditLogService auditLogService;
 
@@ -112,17 +111,35 @@ public class SalaryService {
 
     @Transactional
     public SalaryResponse submitSalary(SalaryRequest request) {
-        Company company = companyRepository.findById(request.getCompanyId())
-                .orElseThrow(() -> new ResourceNotFoundException("Company not found: " + request.getCompanyId()));
+        Company company;
+        if (request.getCompanyId() != null) {
+            // Existing company selected from autocomplete
+            company = companyRepository.findById(request.getCompanyId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Company not found: " + request.getCompanyId()));
+        } else if (request.getCompanyName() != null && !request.getCompanyName().isBlank()) {
+            // Auto-create or find by name
+            company = companyRepository.findByNameIgnoreCase(request.getCompanyName().trim())
+                    .orElseGet(() -> {
+                        com.salaryinsights.entity.Company newCompany = com.salaryinsights.entity.Company.builder()
+                                .name(request.getCompanyName().trim())
+                                .status(com.salaryinsights.enums.CompanyStatus.ACTIVE)
+                                .build();
+                        com.salaryinsights.entity.Company saved = companyRepository.save(newCompany);
+                        log.info("Auto-created company: {}", saved.getName());
+                        auditLogService.log("Company", saved.getId().toString(), "AUTO_CREATED",
+                                "Company auto-created during salary submission: " + saved.getName());
+                        return saved;
+                    });
+        } else {
+            throw new com.salaryinsights.exception.BadRequestException("Either companyId or companyName must be provided");
+        }
 
         String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User submitter = userRepository.findByEmail(currentUserEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // Auto-resolve standardized level from company-level mapping
-        StandardizedLevel standardizedLevel = levelMappingService
-                .resolveStandardizedLevel(company.getId(), request.getCompanyInternalLevel())
-                .orElse(null);
+        // Standardized level mapping removed — always null
+        StandardizedLevel standardizedLevel = null;
 
         SalaryEntry entry = salaryMapper.toEntity(request);
         entry.setCompany(company);
@@ -166,11 +183,6 @@ public class SalaryService {
 
     // Analytics
     @Transactional(readOnly = true)
-    public List<SalaryAggregationDTO> getAvgSalaryByStandardizedLevel() {
-        return salaryEntryRepository.avgSalaryByStandardizedLevel();
-    }
-
-    @Transactional(readOnly = true)
     public List<SalaryAggregationDTO> getAvgSalaryByLocation() {
         return salaryEntryRepository.avgSalaryByLocation();
     }
@@ -197,7 +209,6 @@ public class SalaryService {
                 .totalSalaryEntries(salaryEntryRepository.count())
                 .approvedEntries(salaryEntryRepository.countByReviewStatus(ReviewStatus.APPROVED))
                 .rejectedEntries(salaryEntryRepository.countByReviewStatus(ReviewStatus.REJECTED))
-                .totalMappings(levelMappingService.getTotalMappings())
                 .avgBaseSalary(salaryEntryRepository.avgBaseSalaryApproved())
                 .submissionTrend(trendData)
                 .build();

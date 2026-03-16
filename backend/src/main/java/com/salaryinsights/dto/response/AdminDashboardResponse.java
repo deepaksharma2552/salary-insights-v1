@@ -15,7 +15,6 @@ public class AdminDashboardResponse {
     private long totalSalaryEntries;
     private long approvedEntries;
     private long rejectedEntries;
-    private long totalMappings;
     private Double avgBaseSalary;
     private List<Map<String, Object>> submissionTrend;
 }

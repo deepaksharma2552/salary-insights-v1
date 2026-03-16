@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -30,6 +31,8 @@ public interface CompanyRepository extends JpaRepository<Company, UUID> {
 );
 
     boolean existsByName(String name);
+
+    Optional<Company> findByNameIgnoreCase(String name);
 
     @Query("SELECT DISTINCT c.industry FROM Company c WHERE c.status = 'ACTIVE' ORDER BY c.industry")
     List<String> findDistinctIndustries();

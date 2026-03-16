@@ -39,11 +39,6 @@ public class PublicSalaryController {
         return ResponseEntity.ok(ApiResponse.success(salaryService.getSalaryById(id)));
     }
 
-    @GetMapping("/analytics/by-level")
-    public ResponseEntity<ApiResponse<List<SalaryAggregationDTO>>> getByLevel() {
-        return ResponseEntity.ok(ApiResponse.success(salaryService.getAvgSalaryByStandardizedLevel()));
-    }
-
     @GetMapping("/analytics/by-location")
     public ResponseEntity<ApiResponse<List<SalaryAggregationDTO>>> getByLocation() {
         return ResponseEntity.ok(ApiResponse.success(salaryService.getAvgSalaryByLocation()));
