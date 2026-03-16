@@ -138,7 +138,7 @@ export default function SubmitSalaryPage() {
                 <label className="form-label">Experience Level</label>
                 <select className="form-input" name="experienceLevel" value={form.experienceLevel} onChange={handleChange} style={{ cursor: 'pointer' }}>
                   <option value="">Select level</option>
-                  <option value="JUNIOR">Junior (0–2 yrs)</option>
+                  <option value="ENTRY">Junior / Entry (0–2 yrs)</option>
                   <option value="MID">Mid (2–5 yrs)</option>
                   <option value="SENIOR">Senior (5–8 yrs)</option>
                   <option value="LEAD">Lead (8+ yrs)</option>
