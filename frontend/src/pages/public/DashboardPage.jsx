@@ -2,19 +2,15 @@ import { useState, useEffect } from 'react';
 import api from '../../services/api';
 
 export default function DashboardPage() {
-  const [byLevel,    setByLevel]    = useState([]);
   const [byLocation, setByLocation] = useState([]);
   const [byCompany,  setByCompany]  = useState([]);
   const [loading,    setLoading]    = useState(true);
 
   useEffect(() => {
     Promise.all([
-      api.get('/public/salaries/analytics/by-level'),
       api.get('/public/salaries/analytics/by-location'),
       api.get('/public/salaries/analytics/by-company'),
-    ]).then(([lvl, loc, co]) => {
-      // Backend wraps in ApiResponse<T>, real data is at response.data.data
-      setByLevel(lvl.data?.data    ?? []);
+    ]).then(([loc, co]) => {
       setByLocation(loc.data?.data ?? []);
       setByCompany(co.data?.data   ?? []);
     }).catch(console.error)
@@ -25,20 +21,6 @@ export default function DashboardPage() {
     if (!val && val !== 0) return '—';
     const l = val / 100000;
     return l >= 100 ? `₹${(l/100).toFixed(1)}Cr` : `₹${l.toFixed(1)}L`;
-  };
-
-  const maxSalary = byLevel.length
-    ? Math.max(...byLevel.map(r => r.avgBaseSalary ?? 0))
-    : 1;
-
-  const LEVEL_COLORS = {
-    JUNIOR:    'linear-gradient(90deg,var(--teal),#6de8d0)',
-    MID:       'linear-gradient(90deg,var(--gold),var(--gold-light))',
-    SENIOR:    'linear-gradient(90deg,#a08ff0,#c8bdf8)',
-    LEAD:      'linear-gradient(90deg,var(--rose),#f08fa8)',
-    DIRECTOR:  'linear-gradient(90deg,var(--gold),var(--gold-light))',
-    VP:        'linear-gradient(90deg,#e89050,#f0b880)',
-    C_LEVEL:   'linear-gradient(90deg,#e05c7a,#f08fa8)',
   };
 
   const maxLoc = byLocation.length
@@ -62,38 +44,7 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          {/* ── LEVEL BARS + TREND ── */}
-          <div className="charts-row">
-            <div className="chart-card">
-              <div className="chart-card-header">
-                <div>
-                  <div className="chart-title">Avg Salary by Level</div>
-                  <div className="chart-subtitle">Standardized across all companies</div>
-                </div>
-              </div>
-              {byLevel.length === 0 ? (
-                <p style={{ color: 'var(--text-3)', fontSize: 14 }}>No data yet.</p>
-              ) : (
-                <div className="level-bars">
-                  {byLevel.map(row => {
-                    const pct = Math.round((row.avgBaseSalary / maxSalary) * 100);
-                    const color = LEVEL_COLORS[row.groupKey] ?? 'linear-gradient(90deg,var(--gold),var(--gold-light))';
-                    const label = row.groupKey.charAt(0) + row.groupKey.slice(1).toLowerCase().replace('_', ' ');
-                    return (
-                      <div key={row.groupKey} className="level-bar-row">
-                        <span className="level-bar-label">{label}</span>
-                        <div className="level-bar-track">
-                          <div className="level-bar-fill" style={{ width: `${pct}%`, background: color }} />
-                        </div>
-                        <span className="level-bar-val">{fmt(row.avgBaseSalary)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* ── LOCATION BREAKDOWN ── */}
+          {/* ── LOCATION BREAKDOWN ── */}
             <div className="chart-card">
               <div className="chart-card-header">
                 <div>

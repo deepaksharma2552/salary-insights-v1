@@ -4,7 +4,6 @@ const NAV = [
   { label: 'Dashboard',     path: '/admin',           icon: '📊' },
   { label: 'Pending Salaries', path: '/admin/salaries', icon: '⏳' },
   { label: 'Companies',     path: '/admin/companies',  icon: '🏢' },
-  { label: 'Level Mappings', path: '/admin/levels',    icon: '🗂' },
   { label: 'Audit Logs',    path: '/admin/audit',      icon: '📋' },
 ];
 

@@ -32,7 +32,6 @@ export default function AdminDashboard() {
     { label: 'Rejected',         value: stats.rejectedEntries    ?? '—', icon: '✕',  cls: 'kpi-icon-gold' },
     { label: 'Total Companies',  value: stats.totalCompanies     ?? '—', icon: '🏢', cls: 'kpi-icon-teal' },
     { label: 'Active Companies', value: stats.activeCompanies    ?? '—', icon: '✅', cls: 'kpi-icon-gold' },
-    { label: 'Level Mappings',   value: stats.totalMappings      ?? '—', icon: '🗂',  cls: 'kpi-icon-teal' },
     { label: 'Avg Base Salary',  value: fmt(stats.avgBaseSalary),        icon: '💰', cls: 'kpi-icon-gold' },
   ] : [];
 

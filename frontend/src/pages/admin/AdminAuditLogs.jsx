@@ -9,7 +9,7 @@ export default function AdminAuditLogs() {
 
   const load = useCallback(() => {
     setLoading(true);
-    api.get('/admin/levels/audit-logs', { params: { page, size: 20 } })
+    api.get('/admin/audit-logs', { params: { page, size: 20 } })
       .then(r => {
         const paged = r.data?.data;
         setLogs(paged?.content ?? []);

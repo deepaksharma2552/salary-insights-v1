@@ -16,7 +16,6 @@ import SubmitSalaryPage from './pages/public/SubmitSalaryPage';
 import AdminDashboard       from './pages/admin/AdminDashboard';
 import AdminCompanies       from './pages/admin/AdminCompanies';
 import AdminPendingSalaries from './pages/admin/AdminPendingSalaries';
-import AdminLevelMappings   from './pages/admin/AdminLevelMappings';
 import AdminAuditLogs       from './pages/admin/AdminAuditLogs';
 import AdminSidebar         from './components/admin/AdminSidebar';
 
@@ -68,11 +67,6 @@ export default function App() {
             <Route path="/admin/salaries" element={
               <PrivateRoute adminOnly>
                 <AdminLayout><AdminPendingSalaries /></AdminLayout>
-              </PrivateRoute>
-            }/>
-            <Route path="/admin/levels" element={
-              <PrivateRoute adminOnly>
-                <AdminLayout><AdminLevelMappings /></AdminLayout>
               </PrivateRoute>
             }/>
             <Route path="/admin/audit" element={
