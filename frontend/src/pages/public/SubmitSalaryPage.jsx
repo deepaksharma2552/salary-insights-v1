@@ -1,13 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
 export default function SubmitSalaryPage() {
   const navigate  = useNavigate();
-  const [companies, setCompanies] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [success,    setSuccess]    = useState(false);
   const [error,      setError]      = useState('');
+
+  // Company autocomplete state
+  const [companyQuery,    setCompanyQuery]    = useState('');
+  const [companySelected, setCompanySelected] = useState(null); // { id, name }
+  const [suggestions,     setSuggestions]     = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchLoading,   setSearchLoading]   = useState(false);
+  const searchTimeout = useRef(null);
+  const autocompleteRef = useRef(null);
 
   const [form, setForm] = useState({
     companyId: '',
@@ -23,11 +31,51 @@ export default function SubmitSalaryPage() {
     notes: '',
   });
 
-  // Load companies for the dropdown
+  // Search companies after 3 characters typed
+  const searchCompanies = useCallback((query) => {
+    if (query.length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    setSearchLoading(true);
+    api.get('/public/companies', { params: { name: query, size: 8, page: 0 } })
+      .then(r => {
+        const results = r.data?.data?.content ?? [];
+        setSuggestions(results);
+        setShowSuggestions(true);
+      })
+      .catch(console.error)
+      .finally(() => setSearchLoading(false));
+  }, []);
+
+  // Debounce the search
+  function handleCompanyInput(e) {
+    const val = e.target.value;
+    setCompanyQuery(val);
+    setCompanySelected(null);
+    setForm(f => ({ ...f, companyId: '' }));
+    clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => searchCompanies(val), 300);
+  }
+
+  function selectCompany(company) {
+    setCompanySelected(company);
+    setCompanyQuery(company.name);
+    setForm(f => ({ ...f, companyId: company.id }));
+    setShowSuggestions(false);
+    setSuggestions([]);
+  }
+
+  // Close suggestions when clicking outside
   useEffect(() => {
-    api.get('/public/companies')
-      .then(r => setCompanies(r.data?.data?.content ?? []))
-      .catch(console.error);
+    function handleClickOutside(e) {
+      if (autocompleteRef.current && !autocompleteRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   function handleChange(e) {
@@ -89,14 +137,115 @@ export default function SubmitSalaryPage() {
           <form onSubmit={handleSubmit}>
             <div className="form-grid">
 
-              <div className="form-group">
+              <div className="form-group" ref={autocompleteRef} style={{ position: 'relative' }}>
                 <label className="form-label">Company *</label>
-                <select className="form-input" name="companyId" value={form.companyId} onChange={handleChange} required style={{ cursor: 'pointer' }}>
-                  <option value="">Select company</option>
-                  {companies.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="form-input"
+                    type="text"
+                    placeholder="Type at least 3 characters to search…"
+                    value={companyQuery}
+                    onChange={handleCompanyInput}
+                    onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                    autoComplete="off"
+                    required={!companySelected}
+                    style={{ paddingRight: 36 }}
+                  />
+                  {/* Status icon */}
+                  <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                    {searchLoading ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                      </svg>
+                    ) : companySelected ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    ) : companyQuery.length >= 3 ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="2">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                      </svg>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Hint text */}
+                {!companySelected && companyQuery.length > 0 && companyQuery.length < 3 && (
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontFamily: "'JetBrains Mono',monospace" }}>
+                    Type {3 - companyQuery.length} more character{3 - companyQuery.length !== 1 ? 's' : ''} to search…
+                  </div>
+                )}
+                {companySelected && (
+                  <div style={{ fontSize: 11, color: 'var(--teal)', marginTop: 4, fontFamily: "'JetBrains Mono',monospace" }}>
+                    ✓ Company selected
+                  </div>
+                )}
+
+                {/* Suggestions dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                    background: 'var(--panel)', border: '1px solid var(--border)',
+                    borderRadius: 12, marginTop: 4, overflow: 'hidden',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+                  }}>
+                    {suggestions.map((c, i) => (
+                      <div
+                        key={c.id}
+                        onClick={() => selectCompany(c)}
+                        style={{
+                          padding: '10px 16px', cursor: 'pointer',
+                          borderBottom: i < suggestions.length - 1 ? '1px solid var(--border)' : 'none',
+                          display: 'flex', alignItems: 'center', gap: 12,
+                          transition: 'background 0.15s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--ink-3)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div style={{
+                          width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                          background: 'var(--ink-3)', border: '1px solid var(--border)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 11, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace",
+                          color: 'var(--gold)',
+                        }}>
+                          {c.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>{c.name}</div>
+                          {c.industry && (
+                            <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>{c.industry}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{
+                      padding: '8px 16px', fontSize: 11,
+                      color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace",
+                      borderTop: '1px solid var(--border)', background: 'var(--ink-2)'
+                    }}>
+                      {suggestions.length} result{suggestions.length !== 1 ? 's' : ''} · Contact admin to add a missing company
+                    </div>
+                  </div>
+                )}
+
+                {/* No results state */}
+                {showSuggestions && !searchLoading && suggestions.length === 0 && companyQuery.length >= 3 && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                    background: 'var(--panel)', border: '1px solid var(--border)',
+                    borderRadius: 12, marginTop: 4, padding: '16px',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.3)', textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 4 }}>No companies found for "{companyQuery}"</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace" }}>
+                      Ask your admin to add this company via the Admin panel
+                    </div>
+                  </div>
+                )}
+
+                {/* Hidden input to enforce required validation */}
+                <input type="hidden" name="companyId" value={form.companyId} required />
               </div>
 
               <div className="form-group">
