@@ -30,23 +30,23 @@ export default function Navbar() {
           <div style={{
             position: 'absolute', inset: 0, borderRadius: '50%',
             border: '2.5px solid transparent',
-            borderTopColor: '#0891b2',
-            borderRightColor: '#67e8f9',
+            borderTopColor: '#0ea5e9',
+            borderRightColor: '#7dd3fc',
             animation: 'navRingSpin 3s linear infinite',
           }} />
           {/* Inner ring */}
           <div style={{
             position: 'absolute', inset: 4, borderRadius: '50%',
             border: '1.5px solid transparent',
-            borderBottomColor: '#a5f3fc',
-            borderLeftColor: '#0e7490',
+            borderBottomColor: '#e0f2fe',
+            borderLeftColor: '#0284c7',
             animation: 'navRingSpinRev 2s linear infinite',
             opacity: 0.55,
           }} />
           {/* SI block */}
           <div style={{
             position: 'absolute', inset: 8, borderRadius: 6,
-            background: 'linear-gradient(135deg, #0e7490, #0891b2)',
+            background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
             display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center',
           }}>
@@ -58,9 +58,9 @@ export default function Navbar() {
         {/* Wordmark */}
         <span style={{ display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 1 }}>
           <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif' }}>
-            Salary<span style={{ color: '#0891b2' }}>Insights</span>
+            Salary<span style={{ color: '#0ea5e9' }}>Insights</span>
           </span>
-          <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.06em', color: '#0891b2', fontFamily: "'IBM Plex Mono',monospace", opacity: 0.8 }}>
+          <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.06em', color: '#0ea5e9', fontFamily: "'IBM Plex Mono',monospace", opacity: 0.8 }}>
             360° COMPENSATION
           </span>
         </span>
