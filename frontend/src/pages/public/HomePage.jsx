@@ -15,10 +15,10 @@ function mapSalary(s) {
 
 export default function HomePage() {
   const [recentSalaries, setRecentSalaries] = useState([]);
-  const [stats, setStats] = useState({ avgBase: null, totalEntries: null, totalCompanies: null });
+  const [stats, setStats] = useState({ topCompany: null, totalEntries: null, totalCompanies: null });
 
   useEffect(() => {
-    // Load recent salaries
+    // Recent salaries + entry count
     api.get('/public/salaries', { params: { page: 0, size: 10 } })
       .then(res => {
         const paged = res.data?.data;
@@ -27,20 +27,17 @@ export default function HomePage() {
       })
       .catch(console.error);
 
-    // Load avg base salary from analytics
+    // Top paying company (first result is ranked highest by avg base)
     api.get('/public/salaries/analytics/by-company')
       .then(res => {
         const rows = res.data?.data ?? [];
         if (rows.length > 0) {
-          const avg = rows.reduce((sum, r) => sum + (r.avgBaseSalary ?? 0), 0) / rows.length;
-          const l = avg / 100000;
-          const formatted = l >= 100 ? `₹${(l/100).toFixed(1)}Cr` : `₹${l.toFixed(1)}L`;
-          setStats(s => ({ ...s, avgBase: formatted }));
+          setStats(s => ({ ...s, topCompany: rows[0].groupKey }));
         }
       })
       .catch(console.error);
 
-    // Load company count
+    // Company count
     api.get('/public/companies', { params: { page: 0, size: 1 } })
       .then(res => setStats(s => ({ ...s, totalCompanies: res.data?.data?.totalElements ?? null })))
       .catch(console.error);
@@ -87,12 +84,6 @@ export default function HomePage() {
           <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 12, minWidth: 200 }}>
             {[
               {
-                label: 'Avg. Base Salary',
-                value: stats.avgBase ?? '—',
-                delta: 'across all companies',
-                icon: '💰',
-              },
-              {
                 label: 'Salary Entries',
                 value: stats.totalEntries != null ? fmt(stats.totalEntries) : '—',
                 delta: 'approved & verified',
@@ -101,8 +92,14 @@ export default function HomePage() {
               {
                 label: 'Companies Tracked',
                 value: stats.totalCompanies != null ? fmt(stats.totalCompanies) : '—',
-                delta: 'and growing',
+                delta: 'across all industries',
                 icon: '🏢',
+              },
+              {
+                label: 'Top Paying Company',
+                value: stats.topCompany ?? '—',
+                delta: 'by avg. base salary',
+                icon: '🏆',
               },
             ].map((stat, i) => (
               <div key={stat.label} className="stat-card-float fade-up" style={{ animationDelay: `${i * 0.1}s` }}>
