@@ -5,7 +5,7 @@ import { AuthContext } from '../../context/AuthContext';
 export default function Navbar() {
   const location         = useLocation();
   const { user, logout } = useContext(AuthContext);
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
 
   // Apply theme to <html> element
   useEffect(() => {
