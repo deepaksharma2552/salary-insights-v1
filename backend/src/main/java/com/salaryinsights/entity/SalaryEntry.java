@@ -38,8 +38,9 @@ public class SalaryEntry extends BaseEntity {
     @Column(name = "experience_level", nullable = false)
     private ExperienceLevel experienceLevel;
 
-    @Column(name = "company_internal_level", length = 100)
-    private String companyInternalLevel;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "company_internal_level", length = 50)
+    private com.salaryinsights.enums.InternalLevel companyInternalLevel;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "standardized_level_id")

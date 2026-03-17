@@ -17,7 +17,7 @@ public class SalaryResponse {
     private String jobTitle;
     private String department;
     private ExperienceLevel experienceLevel;
-    private String companyInternalLevel;
+    private com.salaryinsights.enums.InternalLevel companyInternalLevel;
     private String standardizedLevelName;
     private String location;
     private Integer yearsOfExperience;

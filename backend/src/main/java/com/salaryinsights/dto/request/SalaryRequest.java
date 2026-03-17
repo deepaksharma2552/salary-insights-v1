@@ -26,8 +26,7 @@ public class SalaryRequest {
     @NotNull
     private ExperienceLevel experienceLevel;
 
-    @Size(max = 100)
-    private String companyInternalLevel;
+    private com.salaryinsights.enums.InternalLevel companyInternalLevel;
 
     @Size(max = 200)
     private String location;
