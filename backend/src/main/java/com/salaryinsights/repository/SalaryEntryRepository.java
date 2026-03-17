@@ -22,6 +22,13 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
     // Simple approved lookup — filtering done via Specification in SalaryService
     Page<SalaryEntry> findByReviewStatus(ReviewStatus status, Pageable pageable);
 
+    @Query("SELECT s FROM SalaryEntry s " +
+           "LEFT JOIN FETCH s.company " +
+           "LEFT JOIN FETCH s.standardizedLevel " +
+           "LEFT JOIN FETCH s.submittedBy " +
+           "WHERE s.id = :id")
+    java.util.Optional<SalaryEntry> findByIdWithDetails(@Param("id") UUID id);
+
     @Query("SELECT new com.salaryinsights.dto.response.SalaryAggregationDTO(" +
            "s.location, AVG(s.baseSalary), AVG(s.totalCompensation), COUNT(s)) " +
            "FROM SalaryEntry s " +

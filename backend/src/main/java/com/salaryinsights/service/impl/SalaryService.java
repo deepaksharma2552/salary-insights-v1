@@ -11,6 +11,7 @@ import com.salaryinsights.mapper.SalaryMapper;
 import com.salaryinsights.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,9 +38,19 @@ public class SalaryService {
             ExperienceLevel experienceLevel, Pageable pageable) {
 
         // Build a Specification dynamically — avoids brittle JPQL parameter handling
+        // The first clause also does LEFT JOIN FETCH on company and standardizedLevel
+        // so they are loaded eagerly in the same query (open-in-view is false)
         org.springframework.data.jpa.domain.Specification<SalaryEntry> spec =
             org.springframework.data.jpa.domain.Specification.where(
-                (root, query, cb) -> cb.equal(root.get("reviewStatus"), com.salaryinsights.enums.ReviewStatus.APPROVED)
+                (root, query, cb) -> {
+                    // Only fetch-join on the main SELECT query, not the COUNT query
+                    if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+                        root.fetch("company", javax.persistence.criteria.JoinType.LEFT);
+                        root.fetch("standardizedLevel", javax.persistence.criteria.JoinType.LEFT);
+                        query.distinct(true);
+                    }
+                    return cb.equal(root.get("reviewStatus"), com.salaryinsights.enums.ReviewStatus.APPROVED);
+                }
             );
 
         if (companyId != null) {
@@ -104,7 +115,7 @@ public class SalaryService {
 
     @Transactional(readOnly = true)
     public SalaryResponse getSalaryById(UUID id) {
-        SalaryEntry entry = salaryEntryRepository.findById(id)
+        SalaryEntry entry = salaryEntryRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Salary entry not found: " + id));
         return salaryMapper.toResponse(entry);
     }
