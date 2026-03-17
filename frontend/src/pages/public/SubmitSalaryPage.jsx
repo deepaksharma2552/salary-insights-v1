@@ -105,6 +105,10 @@ export default function SubmitSalaryPage() {
       setError('Please select an experience level.');
       return;
     }
+    if (!form.companyInternalLevel) {
+      setError('Please select an internal level.');
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
@@ -301,8 +305,8 @@ export default function SubmitSalaryPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Internal Level</label>
-                <select className="form-input" name="companyInternalLevel" value={form.companyInternalLevel} onChange={handleChange} style={{ cursor: 'pointer' }}>
+                <label className="form-label">Internal Level *</label>
+                <select className="form-input" name="companyInternalLevel" required value={form.companyInternalLevel} onChange={handleChange} style={{ cursor: 'pointer' }}>
                   <option value="">Select internal level</option>
                   <option value="SDE_1">SDE 1</option>
                   <option value="SDE_2">SDE 2</option>
