@@ -83,6 +83,7 @@ export default function SalariesPage() {
       ...(location && { location }),
       ...(level    && { experienceLevel: LEVEL_MAP[level] }),
       ...(search   && { jobTitle: search }),
+      ...(search   && { companyName: search }),
     };
     api.get('/public/salaries', { params })
       .then(res => {
@@ -141,7 +142,7 @@ export default function SalariesPage() {
           <input
             className="input-field"
             type="text"
-            placeholder="Search roles, companies..."
+            placeholder="Search by company or role..."
             value={search}
             onChange={handleSearchChange}
           />
