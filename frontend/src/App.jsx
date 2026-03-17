@@ -30,7 +30,7 @@ function AdminLayout({ children }) {
   return (
     <div style={{ display: 'flex' }}>
       <AdminSidebar />
-      <div style={{ flex: 1, marginLeft: 240 }}>{children}</div>
+      <div style={{ flex: 1, marginLeft: 220 }}>{children}</div>
     </div>
   );
 }
@@ -40,7 +40,7 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Navbar />
-        <div style={{ paddingTop: 68 }}>
+        <div style={{ paddingTop: 56 }}>
           <Routes>
             {/* Public */}
             <Route path="/"          element={<HomePage />} />
