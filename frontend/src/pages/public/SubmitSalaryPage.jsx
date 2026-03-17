@@ -302,7 +302,20 @@ export default function SubmitSalaryPage() {
 
               <div className="form-group">
                 <label className="form-label">Internal Level</label>
-                <input className="form-input" name="companyInternalLevel" placeholder="e.g. SDE-II, L5, IC3" value={form.companyInternalLevel} onChange={handleChange} />
+                <select className="form-input" name="companyInternalLevel" value={form.companyInternalLevel} onChange={handleChange} style={{ cursor: 'pointer' }}>
+                  <option value="">Select internal level</option>
+                  <option value="SDE_1">SDE 1</option>
+                  <option value="SDE_2">SDE 2</option>
+                  <option value="SDE_3">SDE 3</option>
+                  <option value="STAFF_ENGINEER">Staff Engineer</option>
+                  <option value="PRINCIPAL_ENGINEER">Principal Engineer</option>
+                  <option value="ARCHITECT">Architect</option>
+                  <option value="ENGINEERING_MANAGER">Engineering Manager</option>
+                  <option value="SR_ENGINEERING_MANAGER">Sr. Engineering Manager</option>
+                  <option value="DIRECTOR">Director</option>
+                  <option value="SR_DIRECTOR">Sr. Director</option>
+                  <option value="VP">VP</option>
+                </select>
               </div>
 
               <div className="form-group">
