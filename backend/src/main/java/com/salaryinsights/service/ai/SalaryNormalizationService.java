@@ -69,7 +69,7 @@ public class SalaryNormalizationService {
                         .jobTitle(sanitize(raw.getJobTitle(), "Unknown Role"))
                         .department(sanitize(raw.getDepartment(), null))
                         .experienceLevel(coerceExperience(raw.getExperienceLevel()))
-                        .companyInternalLevel(raw.getInternalLevel())
+                        .companyInternalLevel(parseInternalLevel(raw.getInternalLevel()))
                         .standardizedLevel(standardizedLevel)
                         .location(data.getLocation())
                         .baseSalary(nonNegative(raw.getBaseSalary()))
@@ -139,5 +139,14 @@ public class SalaryNormalizationService {
 
     private String sanitize(String val, String fallback) {
         return (val == null || val.isBlank()) ? fallback : val.trim();
+    }
+
+    private static com.salaryinsights.enums.InternalLevel parseInternalLevel(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return com.salaryinsights.enums.InternalLevel.fromValue(value.trim());
+        } catch (IllegalArgumentException e) {
+            return null; // Unknown AI-generated value — store as null
+        }
     }
 }
