@@ -26,6 +26,7 @@ public class SalaryRequest {
     @NotNull
     private ExperienceLevel experienceLevel;
 
+    @NotNull
     private com.salaryinsights.enums.InternalLevel companyInternalLevel;
 
     @Size(max = 200)
