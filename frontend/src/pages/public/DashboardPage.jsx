@@ -148,53 +148,6 @@ export default function DashboardPage() {
                 );
               })()}
             </div>
-
-          {/* ── FULL WIDTH — Company table ── */}
-          <div className="chart-card">
-            <div className="chart-card-header">
-              <div className="chart-title">Company Compensation Summary</div>
-              <div className="chart-subtitle">All companies with salary data · ranked by average base</div>
-            </div>
-            {byCompany.length === 0 ? <EmptyState /> : (
-              <div className="salary-table-wrap" style={{ border:'none', borderRadius:0 }}>
-                <table className="salary-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Company</th>
-                      <th>Avg Base</th>
-                      <th>Avg Total Comp</th>
-                      <th>Premium</th>
-                      <th>Entries</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {byCompany.map((row, i) => {
-                      const base = row.avgBaseSalary ?? 0;
-                      const tc   = row.avgTotalCompensation ?? base;
-                      const premium = base > 0 ? Math.round(((tc - base) / base) * 100) : 0;
-                      return (
-                        <tr key={row.groupKey}>
-                          <td style={{ color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", width:40 }}>{i + 1}</td>
-                          <td><div className="company-name">{row.groupKey}</div></td>
-                          <td><div className="salary-amount">{fmt(base)}</div></td>
-                          <td><div className="salary-amount">{fmt(tc)}</div></td>
-                          <td>
-                            {premium > 0 && (
-                              <span style={{ fontSize:12, fontWeight:600, color:'var(--green)', fontFamily:"'IBM Plex Mono',monospace" }}>
-                                +{premium}%
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:13, color:'var(--text-2)' }}>{row.count ?? '—'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
         </>
       )}
     </section>

@@ -157,11 +157,14 @@ export default function SalariesPage() {
 
         <select className="select-field" value={location} onChange={handleFilterChange(setLocation)}>
           <option value="">All Locations</option>
-          <option>Bengaluru</option>
-          <option>Hyderabad</option>
-          <option>Mumbai</option>
-          <option>Pune</option>
-          <option>Delhi NCR</option>
+          <option value="BENGALURU">Bengaluru</option>
+          <option value="HYDERABAD">Hyderabad</option>
+          <option value="PUNE">Pune</option>
+          <option value="DELHI_NCR">Delhi-NCR</option>
+          <option value="KOCHI">Kochi</option>
+          <option value="COIMBATORE">Coimbatore</option>
+          <option value="MYSORE">Mysore</option>
+          <option value="MANGALURU">Mangaluru</option>
         </select>
 
         <select className="select-field" value={empType} onChange={handleFilterChange(setEmpType)}>

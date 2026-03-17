@@ -109,6 +109,10 @@ export default function SubmitSalaryPage() {
       setError('Please select an internal level.');
       return;
     }
+    if (!form.location) {
+      setError('Please select a location.');
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
@@ -324,7 +328,17 @@ export default function SubmitSalaryPage() {
 
               <div className="form-group">
                 <label className="form-label">Location *</label>
-                <input className="form-input" name="location" placeholder="e.g. Bengaluru" value={form.location} onChange={handleChange} required />
+                <select className="form-input" name="location" value={form.location} onChange={handleChange} required style={{ cursor: 'pointer' }}>
+                  <option value="">Select location</option>
+                  <option value="BENGALURU">Bengaluru</option>
+                  <option value="HYDERABAD">Hyderabad</option>
+                  <option value="PUNE">Pune</option>
+                  <option value="DELHI_NCR">Delhi-NCR</option>
+                  <option value="KOCHI">Kochi</option>
+                  <option value="COIMBATORE">Coimbatore</option>
+                  <option value="MYSORE">Mysore</option>
+                  <option value="MANGALURU">Mangaluru</option>
+                </select>
               </div>
 
               <div className="form-group">
