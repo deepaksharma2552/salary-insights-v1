@@ -77,7 +77,14 @@ export default function SalaryTable({ rows }) {
                     </div>
                   </td>
                   <td>{s.role}</td>
-                  <td><span className={lvlClass}>{capLevel}</span></td>
+                  <td>
+                    <span className={lvlClass}>{capLevel}</span>
+                    {s.internalLevel && s.internalLevel !== '—' && (
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3, fontFamily: "'JetBrains Mono',monospace" }}>
+                        {s.internalLevel}
+                      </div>
+                    )}
+                  </td>
                   <td>{s.location}</td>
                   <td>
                     {s.exp && s.exp !== '—'
