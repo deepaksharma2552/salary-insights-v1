@@ -2,17 +2,20 @@ import { useState, useEffect } from 'react';
 import api from '../../services/api';
 
 export default function DashboardPage() {
-  const [byLocation, setByLocation] = useState([]);
-  const [byCompany,  setByCompany]  = useState([]);
+  const [byLocation,      setByLocation]      = useState([]);
+  const [byCompany,       setByCompany]       = useState([]);
+  const [byCompanyLevel,  setByCompanyLevel]  = useState([]);
   const [loading,    setLoading]    = useState(true);
 
   useEffect(() => {
     Promise.all([
       api.get('/public/salaries/analytics/by-location'),
       api.get('/public/salaries/analytics/by-company'),
-    ]).then(([loc, co]) => {
+      api.get('/public/salaries/analytics/by-company-level'),
+    ]).then(([loc, co, cl]) => {
       setByLocation(loc.data?.data ?? []);
       setByCompany(co.data?.data   ?? []);
+      setByCompanyLevel(cl.data?.data ?? []);
     }).catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -92,28 +95,58 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Chart 2 — Avg Salary by Company (bar chart) */}
+            {/* Chart 2 — Avg Base Salary by Company + Internal Level */}
             <div className="chart-card">
               <div className="chart-card-header">
-                <div className="chart-title">Avg Base Salary by Company</div>
-                <div className="chart-subtitle">Top 10 companies · ranked by base</div>
+                <div className="chart-title">Avg Base Salary by Company &amp; Level</div>
+                <div className="chart-subtitle">Breakdown by internal level per company</div>
               </div>
-              {byCompany.length === 0 ? <EmptyState /> : (
-                <div className="level-bars">
-                  {byCompany.slice(0, 10).map((row, i) => {
-                    const pct = Math.round((row.avgBaseSalary / maxCo) * 100);
-                    return (
-                      <div key={row.groupKey} className="level-bar-row">
-                        <span className="level-bar-label" style={{ minWidth: 110 }}>{row.groupKey}</span>
-                        <div className="level-bar-track">
-                          <div className="level-bar-fill" style={{ width:`${pct}%`, background: BAR_COLORS[i % BAR_COLORS.length] }} />
+              {byCompanyLevel.length === 0 ? <EmptyState /> : (() => {
+                // Group by company
+                const grouped = byCompanyLevel.reduce((acc, row) => {
+                  if (!acc[row.companyName]) acc[row.companyName] = [];
+                  acc[row.companyName].push(row);
+                  return acc;
+                }, {});
+                const companies = Object.keys(grouped).slice(0, 6);
+                const maxVal = Math.max(...byCompanyLevel.map(r => r.avgBaseSalary ?? 0), 1);
+                const LEVEL_COLORS = {
+                  'SDE 1': '#0ea5e9', 'SDE 2': '#6366f1', 'SDE 3': '#8b5cf6',
+                  'Staff Engineer': '#10b981', 'Principal Engineer': '#059669',
+                  'Architect': '#f59e0b', 'Engineering Manager': '#f97316',
+                  'Sr. Engineering Manager': '#ef4444', 'Director': '#dc2626',
+                  'Sr. Director': '#b91c1c', 'VP': '#7f1d1d',
+                };
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {companies.map((company, ci) => (
+                      <div key={company}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 20, height: 20, borderRadius: 4, background: `${BAR_COLORS[ci % BAR_COLORS.length]}22`, border: `1px solid ${BAR_COLORS[ci % BAR_COLORS.length]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: BAR_COLORS[ci % BAR_COLORS.length], fontFamily: "'IBM Plex Mono',monospace" }}>
+                            {company.slice(0,2).toUpperCase()}
+                          </div>
+                          {company}
                         </div>
-                        <span className="level-bar-val">{fmt(row.avgBaseSalary)}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {grouped[company].map(row => {
+                            const pct = Math.round(((row.avgBaseSalary ?? 0) / maxVal) * 100);
+                            const color = LEVEL_COLORS[row.internalLevel] ?? BAR_COLORS[ci % BAR_COLORS.length];
+                            return (
+                              <div key={row.internalLevel} className="level-bar-row">
+                                <span style={{ fontSize: 11, color: 'var(--text-3)', minWidth: 130, fontFamily: "'IBM Plex Mono',monospace" }}>{row.internalLevel}</span>
+                                <div className="level-bar-track">
+                                  <div className="level-bar-fill" style={{ width:`${pct}%`, background: color }} />
+                                </div>
+                                <span className="level-bar-val">{fmt(row.avgBaseSalary)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Chart 3 — Total Comp vs Base by Company (comparison) */}
