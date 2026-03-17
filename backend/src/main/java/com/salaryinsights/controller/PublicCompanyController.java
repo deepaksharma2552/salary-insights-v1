@@ -56,6 +56,6 @@ public class PublicCompanyController {
             org.springframework.data.domain.PageRequest.of(page, size,
                 org.springframework.data.domain.Sort.by("createdAt").descending());
         return ResponseEntity.ok(ApiResponse.success(
-                salaryService.getApprovedSalaries(id, null, null, null, pageable)));
+                salaryService.getApprovedSalaries(id, null, null, null, null, pageable)));
     }
 }

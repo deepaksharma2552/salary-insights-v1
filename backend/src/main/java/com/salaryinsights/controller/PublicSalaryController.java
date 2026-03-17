@@ -22,6 +22,7 @@ public class PublicSalaryController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<SalaryResponse>>> getSalaries(
             @RequestParam(required = false) UUID companyId,
+            @RequestParam(required = false) String companyName,
             @RequestParam(required = false) String jobTitle,
             @RequestParam(required = false) String location,
             @RequestParam(required = false) ExperienceLevel experienceLevel,
@@ -30,7 +31,7 @@ public class PublicSalaryController {
 
         PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         PagedResponse<SalaryResponse> data = salaryService.getApprovedSalaries(
-                companyId, jobTitle, location, experienceLevel, pageable);
+                companyId, companyName, jobTitle, location, experienceLevel, pageable);
         return ResponseEntity.ok(ApiResponse.success(data));
     }
 

@@ -33,7 +33,7 @@ public class SalaryService {
 
     @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getApprovedSalaries(
-            UUID companyId, String jobTitle, String location,
+            UUID companyId, String companyName, String jobTitle, String location,
             ExperienceLevel experienceLevel, Pageable pageable) {
 
         // Build a Specification dynamically — avoids brittle JPQL parameter handling
@@ -55,6 +55,10 @@ public class SalaryService {
         if (companyId != null) {
             spec = spec.and((root, query, cb) ->
                 cb.equal(root.get("company").get("id"), companyId));
+        }
+        if (companyName != null && !companyName.isBlank()) {
+            spec = spec.and((root, query, cb) ->
+                cb.like(cb.lower(root.get("company").get("name")), "%" + companyName.toLowerCase() + "%"));
         }
         if (jobTitle != null && !jobTitle.isBlank()) {
             spec = spec.and((root, query, cb) ->
