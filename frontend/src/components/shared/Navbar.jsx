@@ -7,7 +7,6 @@ export default function Navbar() {
   const { user, logout } = useContext(AuthContext);
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
 
-  // Apply theme to <html> element
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
@@ -16,20 +15,54 @@ export default function Navbar() {
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
   const isActive    = (path) => location.pathname === path ? 'active' : '';
 
-  // Build display name from firstName/lastName or fall back to email
   const displayName = user
     ? (user.firstName ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}` : user.email)
     : null;
 
   return (
     <nav className="navbar">
+
       {/* ── LOGO ── */}
-      <Link to="/" className="nav-logo">
-        <div className="logo-mark">360</div>
-        <span className="logo-text">
-          <span className="w-salary">Salary</span>
-          <span className="w-insights">Insights</span>
-          <em className="brand-360">360</em>
+      <Link to="/" className="nav-logo" style={{ textDecoration: 'none' }}>
+        {/* Spinning rings icon */}
+        <div style={{ position: 'relative', width: 36, height: 36, flexShrink: 0 }}>
+          {/* Outer ring */}
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: '50%',
+            border: '2.5px solid transparent',
+            borderTopColor: '#0891b2',
+            borderRightColor: '#67e8f9',
+            animation: 'navRingSpin 3s linear infinite',
+          }} />
+          {/* Inner ring */}
+          <div style={{
+            position: 'absolute', inset: 4, borderRadius: '50%',
+            border: '1.5px solid transparent',
+            borderBottomColor: '#a5f3fc',
+            borderLeftColor: '#0e7490',
+            animation: 'navRingSpinRev 2s linear infinite',
+            opacity: 0.55,
+          }} />
+          {/* SI block */}
+          <div style={{
+            position: 'absolute', inset: 8, borderRadius: 6,
+            background: 'linear-gradient(135deg, #0e7490, #0891b2)',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: 'white', letterSpacing: '-0.02em', lineHeight: 1, fontFamily: 'Inter,sans-serif' }}>SI</span>
+            <span style={{ fontSize: 5.5, fontWeight: 600, color: 'rgba(255,255,255,0.85)', letterSpacing: '0.05em', fontFamily: "'IBM Plex Mono',monospace", marginTop: 1 }}>360°</span>
+          </div>
+        </div>
+
+        {/* Wordmark */}
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 1 }}>
+          <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif' }}>
+            Salary<span style={{ color: '#0891b2' }}>Insights</span>
+          </span>
+          <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.06em', color: '#0891b2', fontFamily: "'IBM Plex Mono',monospace", opacity: 0.8 }}>
+            360° COMPENSATION
+          </span>
         </span>
       </Link>
 
@@ -48,28 +81,20 @@ export default function Navbar() {
       <div className="nav-actions">
 
         {/* Theme toggle */}
-        <button
-          className="theme-toggle"
-          onClick={toggleTheme}
+        <button className="theme-toggle" onClick={toggleTheme}
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           aria-label="Toggle theme"
         >
           {theme === 'dark' ? (
-            /* Sun icon */
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="5"/>
-              <line x1="12" y1="1"  x2="12" y2="3"/>
-              <line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22"   x2="5.64" y2="5.64"/>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1"  y1="12" x2="3"  y2="12"/>
-              <line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78"  x2="5.64" y2="18.36"/>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
             </svg>
           ) : (
-            /* Moon icon */
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
             </svg>
           )}
@@ -77,10 +102,7 @@ export default function Navbar() {
 
         {user ? (
           <>
-            {/* Welcome message */}
-            <span className="nav-welcome">
-              👋 {displayName}
-            </span>
+            <span className="nav-welcome">👋 {displayName}</span>
             <button className="btn-ghost" onClick={logout}>Sign out</button>
             <Link to="/submit" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
               Submit Salary
@@ -88,8 +110,8 @@ export default function Navbar() {
           </>
         ) : (
           <>
-            <Link to="/login"  className="btn-ghost"   style={{ textDecoration: 'none' }}>Sign in</Link>
-            <Link to="/submit" className="btn-primary"  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+            <Link to="/login"  className="btn-ghost"  style={{ textDecoration: 'none' }}>Sign in</Link>
+            <Link to="/submit" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
               Submit Salary
             </Link>
           </>
