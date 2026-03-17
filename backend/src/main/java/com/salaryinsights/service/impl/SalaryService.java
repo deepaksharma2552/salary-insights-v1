@@ -36,42 +36,55 @@ public class SalaryService {
             UUID companyId, String companyName, String jobTitle, String location,
             ExperienceLevel experienceLevel, Pageable pageable) {
 
-        // Build a Specification dynamically — avoids brittle JPQL parameter handling
-        // The first clause also does LEFT JOIN FETCH on company and standardizedLevel
-        // so they are loaded eagerly in the same query (open-in-view is false)
-        org.springframework.data.jpa.domain.Specification<SalaryEntry> spec =
-            org.springframework.data.jpa.domain.Specification.where(
-                (root, query, cb) -> {
-                    // Only fetch-join on the main SELECT query, not the COUNT query
-                    if (query.getResultType() != Long.class && query.getResultType() != long.class) {
-                        root.fetch("company", jakarta.persistence.criteria.JoinType.LEFT);
-                        root.fetch("standardizedLevel", jakarta.persistence.criteria.JoinType.LEFT);
-                        query.distinct(true);
-                    }
-                    return cb.equal(root.get("reviewStatus"), com.salaryinsights.enums.ReviewStatus.APPROVED);
-                }
-            );
+        // Build a single Specification that handles all filters in ONE lambda.
+        // This avoids the dual-join problem: fetch("company") in one lambda + get("company")
+        // in another creates two separate joins on the same association, breaking filters.
+        final String companyNameFilter  = (companyName  != null && !companyName.isBlank())  ? companyName.toLowerCase()  : null;
+        final String jobTitleFilter     = (jobTitle     != null && !jobTitle.isBlank())      ? jobTitle.toLowerCase()     : null;
+        final String locationFilter     = (location     != null && !location.isBlank())      ? location.toLowerCase()     : null;
+        final UUID   companyIdFilter    = companyId;
+        final ExperienceLevel levelFilter = experienceLevel;
 
-        if (companyId != null) {
-            spec = spec.and((root, query, cb) ->
-                cb.equal(root.get("company").get("id"), companyId));
-        }
-        if (companyName != null && !companyName.isBlank()) {
-            spec = spec.and((root, query, cb) ->
-                cb.like(cb.lower(root.get("company").get("name")), "%" + companyName.toLowerCase() + "%"));
-        }
-        if (jobTitle != null && !jobTitle.isBlank()) {
-            spec = spec.and((root, query, cb) ->
-                cb.like(cb.lower(root.get("jobTitle")), "%" + jobTitle.toLowerCase() + "%"));
-        }
-        if (location != null && !location.isBlank()) {
-            spec = spec.and((root, query, cb) ->
-                cb.like(cb.lower(root.get("location")), "%" + location.toLowerCase() + "%"));
-        }
-        if (experienceLevel != null) {
-            spec = spec.and((root, query, cb) ->
-                cb.equal(root.get("experienceLevel"), experienceLevel));
-        }
+        org.springframework.data.jpa.domain.Specification<SalaryEntry> spec =
+            (root, query, cb) -> {
+                boolean isCountQuery = query.getResultType() == Long.class || query.getResultType() == long.class;
+
+                // Always use a plain join for filtering — safe and reliable
+                jakarta.persistence.criteria.Join<Object, Object> companyJoin =
+                    root.join("company", jakarta.persistence.criteria.JoinType.LEFT);
+
+                // Only add fetch joins on the main SELECT query, not the COUNT query
+                if (!isCountQuery) {
+                    root.fetch("company", jakarta.persistence.criteria.JoinType.LEFT);
+                    root.fetch("standardizedLevel", jakarta.persistence.criteria.JoinType.LEFT);
+                    query.distinct(true);
+                }
+
+                java.util.List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+                predicates.add(cb.equal(root.get("reviewStatus"), com.salaryinsights.enums.ReviewStatus.APPROVED));
+
+                if (companyIdFilter != null) {
+                    predicates.add(cb.equal(companyJoin.get("id"), companyIdFilter));
+                }
+                // companyName and jobTitle come from the same search box —
+                // use OR so typing "Google" matches entries where company name OR job title contains it
+                if (companyNameFilter != null || jobTitleFilter != null) {
+                    String searchTerm = companyNameFilter != null ? companyNameFilter : jobTitleFilter;
+                    jakarta.persistence.criteria.Predicate byCompany =
+                        cb.like(cb.lower(companyJoin.get("name")), "%" + searchTerm + "%");
+                    jakarta.persistence.criteria.Predicate byTitle =
+                        cb.like(cb.lower(root.get("jobTitle")), "%" + searchTerm + "%");
+                    predicates.add(cb.or(byCompany, byTitle));
+                }
+                if (locationFilter != null) {
+                    predicates.add(cb.like(cb.lower(root.get("location")), "%" + locationFilter + "%"));
+                }
+                if (levelFilter != null) {
+                    predicates.add(cb.equal(root.get("experienceLevel"), levelFilter));
+                }
+
+                return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            };
 
         Page<SalaryEntry> page = salaryEntryRepository.findAll(spec, pageable);
         // Force mapping inside the transaction so lazy fields can be accessed
@@ -204,6 +217,11 @@ public class SalaryService {
     @Transactional(readOnly = true)
     public List<SalaryAggregationDTO> getAvgSalaryByCompany() {
         return salaryEntryRepository.avgSalaryByCompany();
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevel() {
+        return salaryEntryRepository.avgSalaryByCompanyAndLevel();
     }
 
     @Transactional(readOnly = true)

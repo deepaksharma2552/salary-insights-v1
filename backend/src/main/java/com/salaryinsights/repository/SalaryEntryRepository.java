@@ -43,6 +43,29 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
            "GROUP BY c.name ORDER BY AVG(s.baseSalary) DESC")
     List<SalaryAggregationDTO> avgSalaryByCompany();
 
+    @Query("SELECT new com.salaryinsights.dto.response.CompanyLevelSalaryDTO(" +
+           "c.name, " +
+           "CASE s.companyInternalLevel " +
+           "WHEN com.salaryinsights.enums.InternalLevel.SDE_1 THEN 'SDE 1' " +
+           "WHEN com.salaryinsights.enums.InternalLevel.SDE_2 THEN 'SDE 2' " +
+           "WHEN com.salaryinsights.enums.InternalLevel.SDE_3 THEN 'SDE 3' " +
+           "WHEN com.salaryinsights.enums.InternalLevel.STAFF_ENGINEER THEN 'Staff Engineer' " +
+           "WHEN com.salaryinsights.enums.InternalLevel.PRINCIPAL_ENGINEER THEN 'Principal Engineer' " +
+           "WHEN com.salaryinsights.enums.InternalLevel.ARCHITECT THEN 'Architect' " +
+           "WHEN com.salaryinsights.enums.InternalLevel.ENGINEERING_MANAGER THEN 'Engineering Manager' " +
+           "WHEN com.salaryinsights.enums.InternalLevel.SR_ENGINEERING_MANAGER THEN 'Sr. Engineering Manager' " +
+           "WHEN com.salaryinsights.enums.InternalLevel.DIRECTOR THEN 'Director' " +
+           "WHEN com.salaryinsights.enums.InternalLevel.SR_DIRECTOR THEN 'Sr. Director' " +
+           "WHEN com.salaryinsights.enums.InternalLevel.VP THEN 'VP' " +
+           "ELSE 'Unknown' END, " +
+           "AVG(s.baseSalary), COUNT(s)) " +
+           "FROM SalaryEntry s JOIN s.company c " +
+           "WHERE s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED " +
+           "AND s.companyInternalLevel IS NOT NULL " +
+           "GROUP BY c.name, s.companyInternalLevel " +
+           "ORDER BY c.name, AVG(s.baseSalary) DESC")
+    List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> avgSalaryByCompanyAndLevel();
+
     long countByReviewStatus(ReviewStatus status);
 
     @Query("SELECT AVG(s.baseSalary) FROM SalaryEntry s WHERE s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED")
