@@ -19,7 +19,7 @@ public class SalaryResponse {
     private ExperienceLevel experienceLevel;
     private com.salaryinsights.enums.InternalLevel companyInternalLevel;
     private String standardizedLevelName;
-    private String location;
+    private com.salaryinsights.enums.Location location;
     private Integer yearsOfExperience;
     private BigDecimal baseSalary;
     private BigDecimal bonus;

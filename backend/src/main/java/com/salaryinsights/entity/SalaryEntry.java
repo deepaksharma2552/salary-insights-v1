@@ -46,8 +46,9 @@ public class SalaryEntry extends BaseEntity {
     @JoinColumn(name = "standardized_level_id")
     private StandardizedLevel standardizedLevel;
 
-    @Column(name = "location", length = 200)
-    private String location;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "location", length = 50)
+    private com.salaryinsights.enums.Location location;
 
     @Column(name = "years_of_experience")
     private Integer yearsOfExperience;
