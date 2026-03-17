@@ -11,7 +11,6 @@ import com.salaryinsights.mapper.SalaryMapper;
 import com.salaryinsights.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -45,8 +44,8 @@ public class SalaryService {
                 (root, query, cb) -> {
                     // Only fetch-join on the main SELECT query, not the COUNT query
                     if (query.getResultType() != Long.class && query.getResultType() != long.class) {
-                        root.fetch("company", javax.persistence.criteria.JoinType.LEFT);
-                        root.fetch("standardizedLevel", javax.persistence.criteria.JoinType.LEFT);
+                        root.fetch("company", jakarta.persistence.criteria.JoinType.LEFT);
+                        root.fetch("standardizedLevel", jakarta.persistence.criteria.JoinType.LEFT);
                         query.distinct(true);
                     }
                     return cb.equal(root.get("reviewStatus"), com.salaryinsights.enums.ReviewStatus.APPROVED);
