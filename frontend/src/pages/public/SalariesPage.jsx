@@ -82,8 +82,7 @@ export default function SalariesPage() {
       sort: 'createdAt,desc',          // always newest first
       ...(location && { location }),
       ...(level    && { experienceLevel: LEVEL_MAP[level] }),
-      ...(search   && { jobTitle: search }),
-      ...(search   && { companyName: search }),
+      ...(search   && { companyName: search, jobTitle: search }),
     };
     api.get('/public/salaries', { params })
       .then(res => {
