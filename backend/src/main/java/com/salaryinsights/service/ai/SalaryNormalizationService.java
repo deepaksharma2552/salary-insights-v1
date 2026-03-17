@@ -71,7 +71,7 @@ public class SalaryNormalizationService {
                         .experienceLevel(coerceExperience(raw.getExperienceLevel()))
                         .companyInternalLevel(parseInternalLevel(raw.getInternalLevel()))
                         .standardizedLevel(standardizedLevel)
-                        .location(data.getLocation())
+                        .location(com.salaryinsights.enums.Location.fromValue(data.getLocation()))
                         .baseSalary(nonNegative(raw.getBaseSalary()))
                         .bonus(nonNegative(raw.getBonus()))
                         .equity(nonNegative(raw.getEquity()))
