@@ -152,8 +152,8 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  JOIN companies c ON s.company_id = c.id " +
         "  WHERE s.review_status = 'APPROVED' " +
         "  GROUP BY c.id, c.name, c.logo_url, c.website " +
-        "  ORDER BY weighted_score DESC " +
-        "  LIMIT 10 " +
+        "  ORDER BY most_recent_entry DESC " +
+        "  LIMIT 5 " +
         "), " +
         "level_agg AS ( " +
         "  SELECT tc.company_name, " +
@@ -193,12 +193,23 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         nativeQuery = true)
     List<Object[]> avgSalaryByCompanyAndLevelRaw();
 
-    // Avg base/bonus/equity per location × internal level — used for the location drilldown chart
+    // Avg base/bonus/equity per location × internal level.
+    // loc_recency CTE ranks the 5 most recently updated locations.
+    // loc_lvl aggregates salary data only for those 5 locations.
     @Query(value =
-        "WITH loc_lvl AS ( " +
+        "WITH loc_recency AS ( " +
+        "  SELECT location, MAX(created_at) AS most_recent_entry " +
+        "  FROM salary_entries " +
+        "  WHERE review_status = 'APPROVED' AND location IS NOT NULL " +
+        "  GROUP BY location " +
+        "  ORDER BY most_recent_entry DESC " +
+        "  LIMIT 5 " +
+        "), " +
+        "loc_lvl AS ( " +
         "  SELECT " +
-        "    location, " +
-        "    CASE company_internal_level " +
+        "    s.location, " +
+        "    lr.most_recent_entry, " +
+        "    CASE s.company_internal_level " +
         "      WHEN 'SDE_1'                 THEN 'SDE 1' " +
         "      WHEN 'SDE_2'                 THEN 'SDE 2' " +
         "      WHEN 'SDE_3'                 THEN 'SDE 3' " +
@@ -212,20 +223,20 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "      WHEN 'VP'                    THEN 'VP' " +
         "      ELSE 'Unknown' " +
         "    END AS internalLevel, " +
-        "    AVG(base_salary)        AS avgBaseSalary, " +
-        "    AVG(bonus)              AS avgBonus, " +
-        "    AVG(equity)             AS avgEquity, " +
-        "    AVG(total_compensation) AS avgTotalCompensation, " +
-        "    COUNT(*)                AS cnt " +
-        "  FROM salary_entries " +
-        "  WHERE review_status = 'APPROVED' " +
-        "    AND location IS NOT NULL " +
-        "    AND company_internal_level IS NOT NULL " +
-        "  GROUP BY location, company_internal_level " +
+        "    AVG(s.base_salary)        AS avgBaseSalary, " +
+        "    AVG(s.bonus)              AS avgBonus, " +
+        "    AVG(s.equity)             AS avgEquity, " +
+        "    AVG(s.total_compensation) AS avgTotalCompensation, " +
+        "    COUNT(*)                  AS cnt " +
+        "  FROM salary_entries s " +
+        "  JOIN loc_recency lr ON s.location = lr.location " +
+        "  WHERE s.review_status = 'APPROVED' " +
+        "    AND s.company_internal_level IS NOT NULL " +
+        "  GROUP BY s.location, lr.most_recent_entry, s.company_internal_level " +
         ") " +
         "SELECT location, internalLevel, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt " +
         "FROM loc_lvl " +
-        "ORDER BY location, avgBaseSalary DESC",
+        "ORDER BY most_recent_entry DESC, avgBaseSalary DESC",
         nativeQuery = true)
     List<Object[]> avgSalaryByLocationAndLevelRaw();
 
