@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import api from '../../services/api';
 
-// ── Shared stacked bar row ──────────────────────────────────────────────────
-function StackedBarRow({ label, row, maxVal, labelWidth = 90, tooltipLeft }) {
+// ── Shared stacked bar row ────────────────────────────────────────────────────
+function StackedBarRow({ label, row, maxVal, labelWidth = 90 }) {
   const base   = row.avgBaseSalary ?? 0;
   const bonus  = row.avgBonus      ?? 0;
   const equity = row.avgEquity     ?? 0;
@@ -28,7 +28,7 @@ function StackedBarRow({ label, row, maxVal, labelWidth = 90, tooltipLeft }) {
       <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, color: 'var(--text-1)', width: 52, minWidth: 52, textAlign: 'right' }}>
         {fmt(total)}
       </span>
-      <div className="sb-tip" style={{ display: 'none', position: 'absolute', left: tooltipLeft ?? (labelWidth + 8), bottom: 'calc(100% + 6px)', zIndex: 200, pointerEvents: 'none', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', boxShadow: '0 4px 16px rgba(0,0,0,0.14)', minWidth: 170, whiteSpace: 'nowrap' }}>
+      <div className="sb-tip" style={{ display: 'none', position: 'absolute', left: labelWidth + 8, bottom: 'calc(100% + 6px)', zIndex: 200, pointerEvents: 'none', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', boxShadow: '0 4px 16px rgba(0,0,0,0.14)', minWidth: 170, whiteSpace: 'nowrap' }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-1)', marginBottom: 6 }}>{label}</div>
         {[['Base salary', base, '#2563eb'], ['Bonus', bonus, '#10b981'], ['Equity', equity, '#f59e0b']].map(([l, v, c]) => (
           <div key={l} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 3 }}>
@@ -48,106 +48,12 @@ function StackedBarRow({ label, row, maxVal, labelWidth = 90, tooltipLeft }) {
   );
 }
 
-const LEGEND = [{ label: 'Base', color: '#2563eb' }, { label: 'Bonus', color: '#10b981' }, { label: 'Equity', color: '#f59e0b' }];
-const BAR_COLORS = ['#2563eb', '#0891b2', '#7c3aed', '#16a34a', '#ea580c', '#e11d48', '#d97706', '#0284c7'];
-
-// ── Main component ──────────────────────────────────────────────────────────
-export default function DashboardPage() {
-  const [byLocation,      setByLocation]      = useState([]);
-  const [byCompanyLevel,  setByCompanyLevel]  = useState([]);
-  const [byInternalLevel, setByInternalLevel] = useState([]);
-  const [loading,         setLoading]         = useState(true);
-
-  // Merged chart state
-  const [activeTab,          setActiveTab]          = useState('location'); // 'location' | 'level'
-  const [selectedLocations,  setSelectedLocations]  = useState([]);
-  const [selectedLevels,     setSelectedLevels]     = useState([]);
-  const [locFilterOpen,      setLocFilterOpen]      = useState(false);
-  const [lvlFilterOpen,      setLvlFilterOpen]      = useState(false);
-  const [locSearch,          setLocSearch]          = useState('');
-  const [lvlSearch,          setLvlSearch]          = useState('');
-  const locRef = useRef(null);
-  const lvlRef = useRef(null);
-
-  // Company chart state
-  const [selectedCompanies, setSelectedCompanies] = useState([]);
-  const [coFilterOpen,      setCoFilterOpen]      = useState(false);
-  const [coSearch,          setCoSearch]          = useState('');
-  const coRef = useRef(null);
-
-  useEffect(() => {
-    Promise.all([
-      api.get('/public/salaries/analytics/by-location'),
-      api.get('/public/salaries/analytics/by-company-level'),
-      api.get('/public/salaries/analytics/by-internal-level'),
-    ]).then(([loc, cl, il]) => {
-      setByLocation(loc.data?.data     ?? []);
-      setByCompanyLevel(cl.data?.data  ?? []);
-      setByInternalLevel(il.data?.data ?? []);
-    }).catch(console.error).finally(() => setLoading(false));
-  }, []);
-
-  // Close dropdowns on outside click
-  useEffect(() => {
-    const handler = (e) => {
-      if (locRef.current && !locRef.current.contains(e.target)) { setLocFilterOpen(false); setLocSearch(''); }
-      if (lvlRef.current && !lvlRef.current.contains(e.target)) { setLvlFilterOpen(false); setLvlSearch(''); }
-      if (coRef.current  && !coRef.current.contains(e.target))  { setCoFilterOpen(false);  setCoSearch('');  }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const fmt = (v) => { if (!v && v !== 0) return '—'; const l = v / 100000; return l >= 100 ? `₹${(l/100).toFixed(1)}Cr` : `₹${l.toFixed(1)}L`; };
-
-  // ── Location tab ──────────────────────────────────────────────────────────
-  const allLocations   = useMemo(() => byLocation.map(r => r.groupKey).filter(Boolean), [byLocation]);
-  const filteredLocOpts = useMemo(() => allLocations.filter(l => l.toLowerCase().includes(locSearch.toLowerCase())), [allLocations, locSearch]);
-  const visibleLoc     = useMemo(() => {
-    const rows = selectedLocations.length > 0 ? byLocation.filter(r => selectedLocations.includes(r.groupKey)) : byLocation;
-    return rows.slice(0, 8);
-  }, [byLocation, selectedLocations]);
-  const maxLoc = useMemo(() => visibleLoc.length ? Math.max(...visibleLoc.map(r => (r.avgBaseSalary ?? 0) + (r.avgBonus ?? 0) + (r.avgEquity ?? 0)), 1) : 1, [visibleLoc]);
-
-  // ── Internal level tab ────────────────────────────────────────────────────
-  const allLevels      = useMemo(() => byInternalLevel.map(r => r.groupKey).filter(Boolean), [byInternalLevel]);
-  const filteredLvlOpts = useMemo(() => allLevels.filter(l => l.toLowerCase().includes(lvlSearch.toLowerCase())), [allLevels, lvlSearch]);
-  const visibleLvl     = useMemo(() => {
-    return selectedLevels.length > 0 ? byInternalLevel.filter(r => selectedLevels.includes(r.groupKey)) : byInternalLevel;
-  }, [byInternalLevel, selectedLevels]);
-  const maxLevel = useMemo(() => visibleLvl.length ? Math.max(...visibleLvl.map(r => (r.avgBaseSalary ?? 0) + (r.avgBonus ?? 0) + (r.avgEquity ?? 0)), 1) : 1, [visibleLvl]);
-
-  // ── Company chart ─────────────────────────────────────────────────────────
-  const groupedByCompany = useMemo(() => {
-    const map = new Map();
-    for (const row of byCompanyLevel) {
-      if (!map.has(row.companyName)) map.set(row.companyName, []);
-      map.get(row.companyName).push(row);
-    }
-    return map;
-  }, [byCompanyLevel]);
-  const allCompanies     = useMemo(() => Array.from(groupedByCompany.keys()), [groupedByCompany]);
-  const filteredCoOpts   = useMemo(() => allCompanies.filter(c => c.toLowerCase().includes(coSearch.toLowerCase())), [allCompanies, coSearch]);
-  const displayedCompanies = useMemo(() =>
-    selectedCompanies.length > 0 ? selectedCompanies.filter(c => groupedByCompany.has(c)) : allCompanies.slice(0, 5),
-    [selectedCompanies, allCompanies, groupedByCompany]
-  );
-  const maxCompLevel = useMemo(() => {
-    if (!displayedCompanies.length) return 1;
-    return Math.max(...displayedCompanies.flatMap(c => (groupedByCompany.get(c) ?? []).map(r => (r.avgBaseSalary ?? 0) + (r.avgBonus ?? 0) + (r.avgEquity ?? 0))), 1);
-  }, [displayedCompanies, groupedByCompany]);
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  const toggle = (setter, value, max = 99) => setter(prev =>
-    prev.includes(value) ? prev.filter(x => x !== value) : prev.length >= max ? prev : [...prev, value]
-  );
-
-  const EmptyState = () => <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-3)', fontSize: 13 }}>No data available yet.</div>;
-
-  const FilterDropdown = ({ refEl, open, setOpen, search, setSearch, options, selected, onToggle, onClear, placeholder, max = 99 }) => (
+// ── Reusable multiselect dropdown ─────────────────────────────────────────────
+function FilterDropdown({ refEl, open, setOpen, search, setSearch, options, selected, onToggle, onClear, placeholder, max = 99 }) {
+  return (
     <div ref={refEl} style={{ position: 'relative', flexShrink: 0 }}>
       <button onClick={() => { setOpen(o => !o); setSearch(''); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 6, fontSize: 12, border: '1px solid var(--border)', background: selected.length ? 'var(--blue)' : 'var(--panel)', color: selected.length ? '#fff' : 'var(--text-2)', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}>
-        {selected.length > 0 ? `${selected.length} selected` : 'Filter'} <span style={{ fontSize: 10, opacity: 0.7 }}>▾</span>
+        {selected.length > 0 ? `${selected.length} selected` : 'Filter by location'} <span style={{ fontSize: 10, opacity: 0.7 }}>▾</span>
       </button>
       {open && (
         <div style={{ position: 'absolute', right: 0, top: '110%', zIndex: 100, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', width: 210, padding: 8 }}>
@@ -179,15 +85,133 @@ export default function DashboardPage() {
             }
           </div>
           <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{selected.length}/{max === 99 ? options.length : max} selected</span>
+            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{selected.length} selected</span>
             {selected.length > 0 && <span onClick={onClear} style={{ fontSize: 11, color: 'var(--blue)', cursor: 'pointer', fontWeight: 500 }}>Clear all</span>}
           </div>
         </div>
       )}
     </div>
   );
+}
 
-  // ── Render ────────────────────────────────────────────────────────────────
+const LEGEND    = [{ label: 'Base', color: '#2563eb' }, { label: 'Bonus', color: '#10b981' }, { label: 'Equity', color: '#f59e0b' }];
+const BAR_COLORS = ['#2563eb', '#0891b2', '#7c3aed', '#16a34a', '#ea580c', '#e11d48', '#d97706', '#0284c7'];
+
+// ── Main component ────────────────────────────────────────────────────────────
+export default function DashboardPage() {
+  const [byLocation,      setByLocation]      = useState([]);
+  const [byCompanyLevel,  setByCompanyLevel]  = useState([]);
+  const [byInternalLevel, setByInternalLevel] = useState([]);
+  const [lvlLoading,      setLvlLoading]      = useState(false);
+  const [loading,         setLoading]         = useState(true);
+
+  // Location filter for the internal-level chart
+  const [selectedLocations, setSelectedLocations] = useState([]);
+  const [locFilterOpen,     setLocFilterOpen]     = useState(false);
+  const [locSearch,         setLocSearch]         = useState('');
+  const locRef = useRef(null);
+
+  // Company chart filter
+  const [selectedCompanies, setSelectedCompanies] = useState([]);
+  const [coFilterOpen,      setCoFilterOpen]      = useState(false);
+  const [coSearch,          setCoSearch]          = useState('');
+  const coRef = useRef(null);
+
+  const fmt = (v) => { if (!v && v !== 0) return '—'; const l = v / 100000; return l >= 100 ? `₹${(l/100).toFixed(1)}Cr` : `₹${l.toFixed(1)}L`; };
+
+  // Initial load
+  useEffect(() => {
+    Promise.all([
+      api.get('/public/salaries/analytics/by-location'),
+      api.get('/public/salaries/analytics/by-company-level'),
+      api.get('/public/salaries/analytics/by-internal-level'),
+    ]).then(([loc, cl, il]) => {
+      setByLocation(loc.data?.data     ?? []);
+      setByCompanyLevel(cl.data?.data  ?? []);
+      setByInternalLevel(il.data?.data ?? []);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
+  // Re-fetch internal level whenever location filter changes
+  const fetchInternalLevel = useCallback((locations) => {
+    setLvlLoading(true);
+    const params = locations.length > 0
+      ? '?' + locations.map(l => `locations=${encodeURIComponent(l)}`).join('&')
+      : '';
+    api.get(`/public/salaries/analytics/by-internal-level${params}`)
+      .then(res => setByInternalLevel(res.data?.data ?? []))
+      .catch(console.error)
+      .finally(() => setLvlLoading(false));
+  }, []);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (locRef.current && !locRef.current.contains(e.target)) { setLocFilterOpen(false); setLocSearch(''); }
+      if (coRef.current  && !coRef.current.contains(e.target))  { setCoFilterOpen(false);  setCoSearch('');  }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // All available location names from the location data
+  const allLocations    = useMemo(() => byLocation.map(r => r.groupKey).filter(Boolean), [byLocation]);
+  const filteredLocOpts = useMemo(() => allLocations.filter(l => l.toLowerCase().includes(locSearch.toLowerCase())), [allLocations, locSearch]);
+
+  const toggleLocation = (loc) => {
+    const next = selectedLocations.includes(loc)
+      ? selectedLocations.filter(l => l !== loc)
+      : [...selectedLocations, loc];
+    setSelectedLocations(next);
+    fetchInternalLevel(next);
+  };
+
+  const clearLocations = () => {
+    setSelectedLocations([]);
+    setLocFilterOpen(false);
+    fetchInternalLevel([]);
+  };
+
+  // Internal level chart max
+  const maxLevel = useMemo(() =>
+    byInternalLevel.length ? Math.max(...byInternalLevel.map(r => (r.avgBaseSalary ?? 0) + (r.avgBonus ?? 0) + (r.avgEquity ?? 0)), 1) : 1,
+    [byInternalLevel]
+  );
+
+  // Company chart derived state
+  const groupedByCompany = useMemo(() => {
+    const map = new Map();
+    for (const row of byCompanyLevel) {
+      if (!map.has(row.companyName)) map.set(row.companyName, []);
+      map.get(row.companyName).push(row);
+    }
+    return map;
+  }, [byCompanyLevel]);
+  const allCompanies     = useMemo(() => Array.from(groupedByCompany.keys()), [groupedByCompany]);
+  const filteredCoOpts   = useMemo(() => allCompanies.filter(c => c.toLowerCase().includes(coSearch.toLowerCase())), [allCompanies, coSearch]);
+  const displayedCompanies = useMemo(() =>
+    selectedCompanies.length > 0 ? selectedCompanies.filter(c => groupedByCompany.has(c)) : allCompanies.slice(0, 5),
+    [selectedCompanies, allCompanies, groupedByCompany]
+  );
+  const maxCompLevel = useMemo(() => {
+    if (!displayedCompanies.length) return 1;
+    return Math.max(...displayedCompanies.flatMap(c => (groupedByCompany.get(c) ?? []).map(r => (r.avgBaseSalary ?? 0) + (r.avgBonus ?? 0) + (r.avgEquity ?? 0))), 1);
+  }, [displayedCompanies, groupedByCompany]);
+
+  const toggleCompany = (c) => setSelectedCompanies(prev => prev.includes(c) ? prev.filter(x => x !== c) : prev.length >= 5 ? prev : [...prev, c]);
+
+  const EmptyState = () => <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-3)', fontSize: 13 }}>No data available yet.</div>;
+  const Legend     = () => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 12 }}>
+      {LEGEND.map(({ label, color }) => (
+        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />
+          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <section className="section">
       <div className="section-header">
@@ -199,57 +223,47 @@ export default function DashboardPage() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 13 }}>Loading analytics…</div>
       ) : (
-        <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 12, alignItems: 'start' }}>
-          {/* ── Chart 1: Merged Location + Internal Level ── */}
-          <div className="chart-card">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 12, alignItems: 'start' }}>
 
-            {/* Card header */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 14 }}>
+          {/* ── Chart 1: Internal Level (filtered by location) ── */}
+          <div className="chart-card">
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
               <div>
                 <div className="chart-title">Avg Salary by Location &amp; Internal Level</div>
-                <div className="chart-subtitle">Base · Bonus · Equity · hover for breakdown</div>
+                <div className="chart-subtitle">Across all companies · filter by location</div>
               </div>
-              {/* Active filter button */}
-              {activeTab === 'location'
-                ? <FilterDropdown refEl={locRef} open={locFilterOpen} setOpen={setLocFilterOpen} search={locSearch} setSearch={setLocSearch} options={filteredLocOpts} selected={selectedLocations} onToggle={v => toggle(setSelectedLocations, v)} onClear={() => { setSelectedLocations([]); setLocFilterOpen(false); }} placeholder="Search location…" />
-                : <FilterDropdown refEl={lvlRef} open={lvlFilterOpen} setOpen={setLvlFilterOpen} search={lvlSearch} setSearch={setLvlSearch} options={filteredLvlOpts} selected={selectedLevels}    onToggle={v => toggle(setSelectedLevels, v)}    onClear={() => { setSelectedLevels([]);    setLvlFilterOpen(false); }} placeholder="Search level…" />
-              }
+              <FilterDropdown
+                refEl={locRef} open={locFilterOpen} setOpen={setLocFilterOpen}
+                search={locSearch} setSearch={setLocSearch}
+                options={filteredLocOpts} selected={selectedLocations}
+                onToggle={toggleLocation} onClear={clearLocations}
+                placeholder="Search location…"
+              />
             </div>
 
-            {/* Tabs */}
-            <div style={{ display: 'flex', gap: 4, marginBottom: 14, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
-              {[['location', 'By Location'], ['level', 'By Internal Level']].map(([key, label]) => (
-                <button key={key} onClick={() => setActiveTab(key)} style={{ padding: '6px 14px', fontSize: 12, fontWeight: 500, border: 'none', background: 'transparent', cursor: 'pointer', borderBottom: `2px solid ${activeTab === key ? 'var(--blue)' : 'transparent'}`, color: activeTab === key ? 'var(--blue)' : 'var(--text-3)', marginBottom: -1, borderRadius: 0 }}>
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {/* Legend */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 12 }}>
-              {LEGEND.map(({ label, color }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{label}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Tab content */}
-            {activeTab === 'location' && (
-              visibleLoc.length === 0 ? <EmptyState /> : (
-                <div className="level-bars">
-                  {visibleLoc.map(row => <StackedBarRow key={row.groupKey} label={row.groupKey} row={row} maxVal={maxLoc} labelWidth={90} />)}
-                </div>
-              )
+            {/* Active location chips */}
+            {selectedLocations.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
+                {selectedLocations.map(loc => (
+                  <span key={loc} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 100, fontSize: 11, background: 'color-mix(in srgb, var(--blue) 12%, transparent)', color: 'var(--blue)', border: '1px solid color-mix(in srgb, var(--blue) 30%, transparent)', fontWeight: 500 }}>
+                    {loc}
+                    <span onClick={() => toggleLocation(loc)} style={{ cursor: 'pointer', fontSize: 10, opacity: 0.7 }}>✕</span>
+                  </span>
+                ))}
+              </div>
             )}
-            {activeTab === 'level' && (
-              visibleLvl.length === 0 ? <EmptyState /> : (
-                <div className="level-bars">
-                  {visibleLvl.map(row => <StackedBarRow key={row.groupKey} label={row.groupKey} row={row} maxVal={maxLevel} labelWidth={130} />)}
-                </div>
-              )
+
+            <Legend />
+
+            {lvlLoading ? (
+              <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-3)', fontSize: 12 }}>Updating…</div>
+            ) : byInternalLevel.length === 0 ? <EmptyState /> : (
+              <div className="level-bars">
+                {byInternalLevel.map(row => (
+                  <StackedBarRow key={row.groupKey} label={row.groupKey} row={row} maxVal={maxLevel} labelWidth={130} />
+                ))}
+              </div>
             )}
           </div>
 
@@ -260,18 +274,42 @@ export default function DashboardPage() {
                 <div className="chart-title">Avg Salary by Company &amp; Level</div>
                 <div className="chart-subtitle">{selectedCompanies.length > 0 ? `Showing ${selectedCompanies.length} of 10 · up to 5 selectable` : 'Top 5 by latest data · up to 10 available'}</div>
               </div>
-              <FilterDropdown refEl={coRef} open={coFilterOpen} setOpen={setCoFilterOpen} search={coSearch} setSearch={setCoSearch} options={filteredCoOpts} selected={selectedCompanies} onToggle={v => toggle(setSelectedCompanies, v, 5)} onClear={() => { setSelectedCompanies([]); setCoFilterOpen(false); }} placeholder="Search company…" max={5} />
+              <div ref={coRef} style={{ position: 'relative', flexShrink: 0 }}>
+                <button onClick={() => { setCoFilterOpen(o => !o); setCoSearch(''); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 6, fontSize: 12, border: '1px solid var(--border)', background: selectedCompanies.length ? 'var(--blue)' : 'var(--panel)', color: selectedCompanies.length ? '#fff' : 'var(--text-2)', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                  {selectedCompanies.length > 0 ? `${selectedCompanies.length} selected` : 'Filter'} <span style={{ fontSize: 10, opacity: 0.7 }}>▾</span>
+                </button>
+                {coFilterOpen && (
+                  <div style={{ position: 'absolute', right: 0, top: '110%', zIndex: 100, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', width: 210, padding: 8 }}>
+                    <input autoFocus value={coSearch} onChange={e => setCoSearch(e.target.value)} placeholder="Search company…" style={{ width: '100%', boxSizing: 'border-box', padding: '6px 8px', borderRadius: 6, fontSize: 12, border: '1px solid var(--border)', background: 'var(--bg-2)', color: 'var(--text-1)', marginBottom: 6, outline: 'none' }} />
+                    {selectedCompanies.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+                        {selectedCompanies.map(v => <span key={v} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 100, fontSize: 11, background: 'var(--blue)', color: '#fff', fontWeight: 500 }}>{v} <span onClick={() => toggleCompany(v)} style={{ cursor: 'pointer', opacity: 0.8, fontSize: 10 }}>✕</span></span>)}
+                      </div>
+                    )}
+                    <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+                      {filteredCoOpts.map(v => {
+                        const isSel = selectedCompanies.includes(v);
+                        const isDis = !isSel && selectedCompanies.length >= 5;
+                        return (
+                          <div key={v} onClick={() => !isDis && toggleCompany(v)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, fontSize: 12, cursor: isDis ? 'not-allowed' : 'pointer', opacity: isDis ? 0.4 : 1, background: isSel ? 'color-mix(in srgb, var(--blue) 10%, transparent)' : 'transparent', color: 'var(--text-1)' }}>
+                            <span style={{ width: 14, height: 14, borderRadius: 3, flexShrink: 0, border: `1.5px solid ${isSel ? 'var(--blue)' : 'var(--border)'}`, background: isSel ? 'var(--blue)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {isSel && <span style={{ color: '#fff', fontSize: 9 }}>✓</span>}
+                            </span>
+                            {v}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{selectedCompanies.length}/5 selected</span>
+                      {selectedCompanies.length > 0 && <span onClick={() => { setSelectedCompanies([]); setCoFilterOpen(false); }} style={{ fontSize: 11, color: 'var(--blue)', cursor: 'pointer', fontWeight: 500 }}>Clear all</span>}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Legend */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 16 }}>
-              {LEGEND.map(({ label, color }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{label}</span>
-                </div>
-              ))}
-            </div>
+            <Legend />
 
             {byCompanyLevel.length === 0 ? <EmptyState /> : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -287,10 +325,10 @@ export default function DashboardPage() {
                       {(groupedByCompany.get(company) ?? []).map(row => {
                         const base = row.avgBaseSalary ?? 0, bonus = row.avgBonus ?? 0, equity = row.avgEquity ?? 0;
                         const total = base + bonus + equity;
-                        const trackPct = maxCompLevel > 0 ? (total / maxCompLevel) * 100 : 0;
-                        const bonusPct = total > 0 ? (bonus / total) * trackPct : 0;
+                        const trackPct  = maxCompLevel > 0 ? (total / maxCompLevel) * 100 : 0;
+                        const bonusPct  = total > 0 ? (bonus  / total) * trackPct : 0;
                         const equityPct = total > 0 ? (equity / total) * trackPct : 0;
-                        const basePct = trackPct - bonusPct - equityPct;
+                        const basePct   = trackPct - bonusPct - equityPct;
                         return (
                           <div key={row.internalLevel} style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}
                             onMouseEnter={e => { const t = e.currentTarget.querySelector('.co-tip'); if (t) t.style.display = 'block'; }}
@@ -329,8 +367,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          </div> {/* end grid */}
-        </>
+        </div>
       )}
     </section>
   );
