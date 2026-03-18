@@ -29,42 +29,81 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
            "WHERE s.id = :id")
     java.util.Optional<SalaryEntry> findByIdWithDetails(@Param("id") UUID id);
 
+    // CTE pre-computes AVG once; ORDER BY references the alias — no double aggregation
     @Query(value =
-        "SELECT location AS groupKey, AVG(base_salary) AS avgBaseSalary, AVG(total_compensation) AS avgTotalCompensation, COUNT(*) AS count " +
-        "FROM salary_entries " +
-        "WHERE review_status = 'APPROVED' AND location IS NOT NULL " +
-        "GROUP BY location ORDER BY AVG(base_salary) DESC",
+        "WITH loc_agg AS ( " +
+        "  SELECT location AS groupKey, " +
+        "         AVG(base_salary)         AS avgBaseSalary, " +
+        "         AVG(total_compensation)  AS avgTotalCompensation, " +
+        "         COUNT(*)                 AS cnt " +
+        "  FROM salary_entries " +
+        "  WHERE review_status = 'APPROVED' AND location IS NOT NULL " +
+        "  GROUP BY location " +
+        ") " +
+        "SELECT groupKey, avgBaseSalary, avgTotalCompensation, cnt FROM loc_agg " +
+        "ORDER BY avgBaseSalary DESC",
         nativeQuery = true)
     List<Object[]> avgSalaryByLocationRaw();
 
+    // CTE pre-computes AVG once; ORDER BY references the alias — no double aggregation
     @Query(value =
-        "SELECT c.name AS groupKey, AVG(s.base_salary) AS avgBaseSalary, AVG(s.total_compensation) AS avgTotalCompensation, COUNT(*) AS count " +
-        "FROM salary_entries s JOIN companies c ON s.company_id = c.id " +
-        "WHERE s.review_status = 'APPROVED' " +
-        "GROUP BY c.name ORDER BY AVG(s.base_salary) DESC",
+        "WITH co_agg AS ( " +
+        "  SELECT c.name                   AS groupKey, " +
+        "         AVG(s.base_salary)        AS avgBaseSalary, " +
+        "         AVG(s.total_compensation) AS avgTotalCompensation, " +
+        "         COUNT(*)                  AS cnt " +
+        "  FROM salary_entries s " +
+        "  JOIN companies c ON s.company_id = c.id " +
+        "  WHERE s.review_status = 'APPROVED' " +
+        "  GROUP BY c.name " +
+        ") " +
+        "SELECT groupKey, avgBaseSalary, avgTotalCompensation, cnt FROM co_agg " +
+        "ORDER BY avgBaseSalary DESC",
         nativeQuery = true)
     List<Object[]> avgSalaryByCompanyRaw();
 
+    // CTE 1: rank the 10 most-recently-active companies (COALESCE guards NULL updated_at)
+    // CTE 2: aggregate levels only for those 10 companies
+    // Final SELECT references pre-computed aliases — zero re-aggregation
     @Query(value =
-        "SELECT c.name AS companyName, " +
-        "CASE s.company_internal_level " +
-        "WHEN 'SDE_1' THEN 'SDE 1' " +
-        "WHEN 'SDE_2' THEN 'SDE 2' " +
-        "WHEN 'SDE_3' THEN 'SDE 3' " +
-        "WHEN 'STAFF_ENGINEER' THEN 'Staff Engineer' " +
-        "WHEN 'PRINCIPAL_ENGINEER' THEN 'Principal Engineer' " +
-        "WHEN 'ARCHITECT' THEN 'Architect' " +
-        "WHEN 'ENGINEERING_MANAGER' THEN 'Engineering Manager' " +
-        "WHEN 'SR_ENGINEERING_MANAGER' THEN 'Sr. Engineering Manager' " +
-        "WHEN 'DIRECTOR' THEN 'Director' " +
-        "WHEN 'SR_DIRECTOR' THEN 'Sr. Director' " +
-        "WHEN 'VP' THEN 'VP' " +
-        "ELSE 'Unknown' END AS internalLevel, " +
-        "AVG(s.base_salary) AS avgBaseSalary, COUNT(*) AS count " +
-        "FROM salary_entries s JOIN companies c ON s.company_id = c.id " +
-        "WHERE s.review_status = 'APPROVED' AND s.company_internal_level IS NOT NULL " +
-        "GROUP BY c.name, s.company_internal_level " +
-        "ORDER BY c.name, AVG(s.base_salary) DESC",
+        "WITH top_companies AS ( " +
+        "  SELECT c.id AS company_id, " +
+        "         c.name AS company_name, " +
+        "         MAX(COALESCE(s.updated_at, s.created_at)) AS last_activity " +
+        "  FROM salary_entries s " +
+        "  JOIN companies c ON s.company_id = c.id " +
+        "  WHERE s.review_status = 'APPROVED' " +
+        "  GROUP BY c.id, c.name " +
+        "  ORDER BY last_activity DESC " +
+        "  LIMIT 10 " +
+        "), " +
+        "level_agg AS ( " +
+        "  SELECT tc.company_name, " +
+        "         tc.last_activity, " +
+        "         CASE s.company_internal_level " +
+        "           WHEN 'SDE_1'                THEN 'SDE 1' " +
+        "           WHEN 'SDE_2'                THEN 'SDE 2' " +
+        "           WHEN 'SDE_3'                THEN 'SDE 3' " +
+        "           WHEN 'STAFF_ENGINEER'        THEN 'Staff Engineer' " +
+        "           WHEN 'PRINCIPAL_ENGINEER'    THEN 'Principal Engineer' " +
+        "           WHEN 'ARCHITECT'             THEN 'Architect' " +
+        "           WHEN 'ENGINEERING_MANAGER'   THEN 'Engineering Manager' " +
+        "           WHEN 'SR_ENGINEERING_MANAGER' THEN 'Sr. Engineering Manager' " +
+        "           WHEN 'DIRECTOR'              THEN 'Director' " +
+        "           WHEN 'SR_DIRECTOR'           THEN 'Sr. Director' " +
+        "           WHEN 'VP'                    THEN 'VP' " +
+        "           ELSE 'Unknown' " +
+        "         END AS internalLevel, " +
+        "         AVG(s.base_salary) AS avgBaseSalary, " +
+        "         COUNT(*)           AS cnt " +
+        "  FROM salary_entries s " +
+        "  JOIN top_companies tc ON s.company_id = tc.company_id " +
+        "  WHERE s.review_status = 'APPROVED' AND s.company_internal_level IS NOT NULL " +
+        "  GROUP BY tc.company_name, tc.last_activity, s.company_internal_level " +
+        ") " +
+        "SELECT company_name, internalLevel, avgBaseSalary, cnt " +
+        "FROM level_agg " +
+        "ORDER BY last_activity DESC, avgBaseSalary DESC",
         nativeQuery = true)
     List<Object[]> avgSalaryByCompanyAndLevelRaw();
 
