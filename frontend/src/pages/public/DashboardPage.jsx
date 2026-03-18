@@ -230,7 +230,7 @@ export default function DashboardPage() {
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
               <div>
-                <div className="chart-title">Avg Salary by Location &amp; Internal Level</div>
+                <div className="chart-title">Avg Salary by Location &amp; Job Level</div>
                 <div className="chart-subtitle">Across all companies · filter by location</div>
               </div>
               <FilterDropdown
@@ -271,7 +271,7 @@ export default function DashboardPage() {
           <div className="chart-card">
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
               <div>
-                <div className="chart-title">Avg Salary by Company &amp; Level</div>
+                <div className="chart-title">Avg Salary by Company &amp; Job Level</div>
                 <div className="chart-subtitle">{selectedCompanies.length > 0 ? `Showing ${selectedCompanies.length} of 10 · up to 5 selectable` : 'Top 5 by latest data · up to 10 available'}</div>
               </div>
               <div ref={coRef} style={{ position: 'relative', flexShrink: 0 }}>
