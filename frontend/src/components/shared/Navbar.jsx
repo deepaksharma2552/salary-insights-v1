@@ -72,6 +72,7 @@ export default function Navbar() {
         <li><Link to="/salaries"   className={isActive('/salaries')}>Salaries</Link></li>
         <li><Link to="/companies"  className={isActive('/companies')}>Companies</Link></li>
         <li><Link to="/dashboard"  className={isActive('/dashboard')}>Analytics</Link></li>
+        <li><Link to="/referrals"  className={isActive('/referrals')}>View Referrals</Link></li>
         {user?.role === 'ADMIN' && (
           <li><Link to="/admin" className={isActive('/admin')}>Admin</Link></li>
         )}
@@ -103,19 +104,19 @@ export default function Navbar() {
         {user ? (
           <>
             <span className="nav-welcome">👋 {displayName}</span>
-            <Link to="/my-referrals" className={`btn-ghost ${isActive('/my-referrals')}`} style={{ textDecoration: 'none' }}>
-              My Referrals
+            <Link to="/my-referral-links" className={`btn-ghost ${isActive('/my-referral-links')}`} style={{ textDecoration: 'none' }}>
+              My Referral Links
             </Link>
             <button className="btn-ghost" onClick={logout}>Sign out</button>
             <Link to="/refer" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-              Refer Someone
+              Add a Referral
             </Link>
           </>
         ) : (
           <>
-            <Link to="/login"  className="btn-ghost"  style={{ textDecoration: 'none' }}>Sign in</Link>
-            <Link to="/submit" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-              Submit Salary
+            <Link to="/login" className="btn-ghost" style={{ textDecoration: 'none' }}>Sign in</Link>
+            <Link to="/register" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+              Sign up
             </Link>
           </>
         )}

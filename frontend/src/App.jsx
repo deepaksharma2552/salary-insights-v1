@@ -11,8 +11,9 @@ import DashboardPage    from './pages/public/DashboardPage';
 import LoginPage        from './pages/public/LoginPage';
 import RegisterPage     from './pages/public/RegisterPage';
 import SubmitSalaryPage from './pages/public/SubmitSalaryPage';
-import SubmitReferralPage from './pages/public/SubmitReferralPage';
-import MyReferralsPage    from './pages/public/MyReferralsPage';
+import SubmitReferralPage  from './pages/public/SubmitReferralPage';
+import MyReferralLinksPage from './pages/public/MyReferralLinksPage';
+import ViewReferralsPage   from './pages/public/ViewReferralsPage';
 
 // Admin pages
 import AdminDashboard       from './pages/admin/AdminDashboard';
@@ -55,11 +56,12 @@ export default function App() {
             <Route path="/submit"    element={
               <PrivateRoute><SubmitSalaryPage /></PrivateRoute>
             }/>
+            <Route path="/referrals"        element={<ViewReferralsPage />} />
             <Route path="/refer" element={
               <PrivateRoute><SubmitReferralPage /></PrivateRoute>
             }/>
-            <Route path="/my-referrals" element={
-              <PrivateRoute><MyReferralsPage /></PrivateRoute>
+            <Route path="/my-referral-links" element={
+              <PrivateRoute><MyReferralLinksPage /></PrivateRoute>
             }/>
 
             {/* Admin */}
