@@ -16,4 +16,8 @@ public class CompanyLevelSalaryDTO {
     private Double avgEquity;
     private Long count;
     private Long companyTotalEntries;  // total approved entries across all levels — used for confidence
+    // Company logo fields
+    private String companyId;
+    private String logoUrl;
+    private String website;
 }

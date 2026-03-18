@@ -314,14 +314,21 @@ public class SalaryService {
     @Transactional(readOnly = true)
     public List<SalaryAggregationDTO> getAvgSalaryByCompany() {
         return salaryEntryRepository.avgSalaryByCompanyRaw().stream().map(row -> {
-            String name      = row[0] != null ? row[0].toString() : null;
-            Double avgBase   = row[1] != null ? ((Number) row[1]).doubleValue() : null;
-            Double avgBonus  = row[2] != null ? ((Number) row[2]).doubleValue() : null;
-            Double avgEquity = row[3] != null ? ((Number) row[3]).doubleValue() : null;
-            Double avgTotal  = row[4] != null ? ((Number) row[4]).doubleValue() : null;
-            Long   count     = row[5] != null ? ((Number) row[5]).longValue()   : 0L;
+            // col order: groupKey, companyId, logoUrl, website, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt
+            String name       = row[0] != null ? row[0].toString() : null;
+            String companyId  = row[1] != null ? row[1].toString() : null;
+            String logoUrl    = row[2] != null ? row[2].toString() : null;
+            String website    = row[3] != null ? row[3].toString() : null;
+            Double avgBase    = row[4] != null ? ((Number) row[4]).doubleValue() : null;
+            Double avgBonus   = row[5] != null ? ((Number) row[5]).doubleValue() : null;
+            Double avgEquity  = row[6] != null ? ((Number) row[6]).doubleValue() : null;
+            Double avgTotal   = row[7] != null ? ((Number) row[7]).doubleValue() : null;
+            Long   count      = row[8] != null ? ((Number) row[8]).longValue()   : 0L;
             SalaryAggregationDTO dto = new SalaryAggregationDTO();
             dto.setGroupKey(name);
+            dto.setCompanyId(companyId);
+            dto.setLogoUrl(logoUrl);
+            dto.setWebsite(website);
             dto.setAvgBaseSalary(avgBase);
             dto.setAvgBonus(avgBonus);
             dto.setAvgEquity(avgEquity);
@@ -334,16 +341,24 @@ public class SalaryService {
     @Transactional(readOnly = true)
     public List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevel() {
         return salaryEntryRepository.avgSalaryByCompanyAndLevelRaw().stream().map(row -> {
+            // col order: company_name[0], company_id_str[1], logo_url[2], website[3],
+            //            internalLevel[4], avgBaseSalary[5], avgBonus[6], avgEquity[7], cnt[8], company_total_entries[9]
             String companyName         = row[0] != null ? row[0].toString() : null;
-            String internalLevel       = row[1] != null ? row[1].toString() : null;
-            Double avgBase             = row[2] != null ? ((Number) row[2]).doubleValue() : null;
-            Double avgBonus            = row[3] != null ? ((Number) row[3]).doubleValue() : null;
-            Double avgEquity           = row[4] != null ? ((Number) row[4]).doubleValue() : null;
-            Long   count               = row[5] != null ? ((Number) row[5]).longValue()   : 0L;
-            Long   companyTotalEntries = row[6] != null ? ((Number) row[6]).longValue()   : 0L;
+            String companyId           = row[1] != null ? row[1].toString() : null;
+            String logoUrl             = row[2] != null ? row[2].toString() : null;
+            String website             = row[3] != null ? row[3].toString() : null;
+            String internalLevel       = row[4] != null ? row[4].toString() : null;
+            Double avgBase             = row[5] != null ? ((Number) row[5]).doubleValue() : null;
+            Double avgBonus            = row[6] != null ? ((Number) row[6]).doubleValue() : null;
+            Double avgEquity           = row[7] != null ? ((Number) row[7]).doubleValue() : null;
+            Long   count               = row[8] != null ? ((Number) row[8]).longValue()   : 0L;
+            Long   companyTotalEntries = row[9] != null ? ((Number) row[9]).longValue()   : 0L;
             com.salaryinsights.dto.response.CompanyLevelSalaryDTO dto =
                 new com.salaryinsights.dto.response.CompanyLevelSalaryDTO();
             dto.setCompanyName(companyName);
+            dto.setCompanyId(companyId);
+            dto.setLogoUrl(logoUrl);
+            dto.setWebsite(website);
             dto.setInternalLevel(internalLevel);
             dto.setAvgBaseSalary(avgBase);
             dto.setAvgBonus(avgBonus);

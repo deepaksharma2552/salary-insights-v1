@@ -115,6 +115,9 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
     @Query(value =
         "WITH co_agg AS ( " +
         "  SELECT c.name                   AS groupKey, " +
+        "         CAST(c.id AS VARCHAR)     AS companyId, " +
+        "         c.logo_url               AS logoUrl, " +
+        "         c.website                AS website, " +
         "         AVG(s.base_salary)        AS avgBaseSalary, " +
         "         AVG(s.bonus)              AS avgBonus, " +
         "         AVG(s.equity)             AS avgEquity, " +
@@ -123,9 +126,9 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  FROM salary_entries s " +
         "  JOIN companies c ON s.company_id = c.id " +
         "  WHERE s.review_status = 'APPROVED' " +
-        "  GROUP BY c.name " +
+        "  GROUP BY c.id, c.name, c.logo_url, c.website " +
         ") " +
-        "SELECT groupKey, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt FROM co_agg " +
+        "SELECT groupKey, companyId, logoUrl, website, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt FROM co_agg " +
         "ORDER BY avgTotalCompensation DESC",
         nativeQuery = true)
     List<Object[]> avgSalaryByCompanyRaw();
@@ -139,17 +142,22 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "WITH top_companies AS ( " +
         "  SELECT c.id AS company_id, " +
         "         c.name AS company_name, " +
+        "         c.logo_url AS logo_url, " +
+        "         c.website AS website, " +
         "         COUNT(*) AS total_entries, " +
         "         AVG(s.total_compensation) * LN(COUNT(*) + 1) AS weighted_score " +
         "  FROM salary_entries s " +
         "  JOIN companies c ON s.company_id = c.id " +
         "  WHERE s.review_status = 'APPROVED' " +
-        "  GROUP BY c.id, c.name " +
+        "  GROUP BY c.id, c.name, c.logo_url, c.website " +
         "  ORDER BY weighted_score DESC " +
         "  LIMIT 10 " +
         "), " +
         "level_agg AS ( " +
         "  SELECT tc.company_name, " +
+        "         CAST(tc.company_id AS VARCHAR) AS company_id_str, " +
+        "         tc.logo_url, " +
+        "         tc.website, " +
         "         tc.total_entries AS company_total_entries, " +
         "         tc.weighted_score, " +
         "         CASE s.company_internal_level " +
@@ -173,9 +181,9 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  FROM salary_entries s " +
         "  JOIN top_companies tc ON s.company_id = tc.company_id " +
         "  WHERE s.review_status = 'APPROVED' AND s.company_internal_level IS NOT NULL " +
-        "  GROUP BY tc.company_name, tc.total_entries, tc.weighted_score, s.company_internal_level " +
+        "  GROUP BY tc.company_name, tc.company_id, tc.logo_url, tc.website, tc.total_entries, tc.weighted_score, s.company_internal_level " +
         ") " +
-        "SELECT company_name, internalLevel, avgBaseSalary, avgBonus, avgEquity, cnt, company_total_entries " +
+        "SELECT company_name, company_id_str, logo_url, website, internalLevel, avgBaseSalary, avgBonus, avgEquity, cnt, company_total_entries " +
         "FROM level_agg " +
         "ORDER BY weighted_score DESC, avgBaseSalary DESC",
         nativeQuery = true)
