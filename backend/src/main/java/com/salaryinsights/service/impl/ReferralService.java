@@ -148,7 +148,9 @@ public class ReferralService {
 
         return ReferralResponse.builder()
                 .id(r.getId())
+                .companyId(r.getCompany() != null ? r.getCompany().getId() : null)
                 .companyName(companyName)
+                .website(r.getCompany() != null ? r.getCompany().getWebsite() : null)
                 .referralLink(r.getReferralLink())
                 .status(r.getStatus())
                 .adminNote(r.getAdminNote())

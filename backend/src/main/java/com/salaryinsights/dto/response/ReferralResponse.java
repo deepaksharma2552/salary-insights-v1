@@ -12,7 +12,9 @@ import java.util.UUID;
 public class ReferralResponse {
 
     private UUID   id;
-    private String companyName;    // resolved: FK company name or companyNameRaw
+    private UUID   companyId;     // for logo resolution
+    private String companyName;
+    private String website;       // for logo resolution
     private String referralLink;
     private ReferralStatus status;
     private String adminNote;      // shown to the submitter on rejection
