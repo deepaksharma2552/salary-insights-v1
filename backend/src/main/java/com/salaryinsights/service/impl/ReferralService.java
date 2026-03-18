@@ -74,6 +74,15 @@ public class ReferralService {
         return PagedResponse.of(page.map(this::toResponse));
     }
 
+    // ── Public-facing ──────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public PagedResponse<ReferralResponse> getAcceptedReferrals(Pageable pageable) {
+        return PagedResponse.of(
+                referralRepository.findByStatusOrderByCreatedAtDesc(ReferralStatus.ACCEPTED, pageable)
+                        .map(this::toResponse));
+    }
+
     // ── Admin-facing ───────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
