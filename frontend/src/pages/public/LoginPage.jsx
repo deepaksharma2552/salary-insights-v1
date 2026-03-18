@@ -11,14 +11,18 @@ export default function LoginPage() {
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(searchParams.get('oauthError') ?? searchParams.get('error') ?? '');
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setLoading(true);
+    setError('');
     try {
       await login(email, password);
       navigate('/');
     } catch {
       setError('Invalid email or password. Please try again.');
+      setLoading(false);
     }
   }
 
@@ -33,6 +37,13 @@ export default function LoginPage() {
       <style>{`
         @keyframes navRingSpin    { to { transform: rotate(360deg);  } }
         @keyframes navRingSpinRev { to { transform: rotate(-360deg); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes progressBar {
+          0%   { width: 0%; }
+          60%  { width: 75%; }
+          80%  { width: 85%; }
+          100% { width: 90%; }
+        }
       `}</style>
       <div className="auth-card">
 
@@ -139,7 +150,39 @@ export default function LoginPage() {
               required
             />
           </div>
-          <button type="submit" className="btn-auth">Sign In</button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <button
+              type="submit"
+              className="btn-auth"
+              disabled={loading}
+              style={{
+                opacity: loading ? 0.65 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              {loading ? (
+                <>
+                  <div style={{
+                    width: 15, height: 15, borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.35)',
+                    borderTopColor: 'white',
+                    animation: 'spin 0.7s linear infinite',
+                    flexShrink: 0,
+                  }} />
+                  Signing in…
+                </>
+              ) : 'Sign In'}
+            </button>
+            {loading && (
+              <div style={{ width: '100%', height: 3, background: 'rgba(14,165,233,0.2)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', background: '#0ea5e9', borderRadius: 2,
+                  animation: 'progressBar 2.5s cubic-bezier(0.1,0.4,0.8,1) forwards',
+                }} />
+              </div>
+            )}
+          </div>
           <div className="auth-divider">or</div>
           <Link
             to="/register"

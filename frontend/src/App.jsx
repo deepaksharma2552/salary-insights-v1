@@ -11,7 +11,6 @@ import DashboardPage    from './pages/public/DashboardPage';
 import LoginPage        from './pages/public/LoginPage';
 import RegisterPage     from './pages/public/RegisterPage';
 import SubmitSalaryPage from './pages/public/SubmitSalaryPage';
-import OAuth2RedirectPage from './pages/public/OAuth2RedirectPage';
 
 // Admin pages
 import AdminDashboard       from './pages/admin/AdminDashboard';
@@ -50,7 +49,6 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/login"     element={<LoginPage />} />
             <Route path="/register"  element={<RegisterPage />} />
-            <Route path="/oauth2/redirect" element={<OAuth2RedirectPage />} />
             <Route path="/submit"    element={
               <PrivateRoute><SubmitSalaryPage /></PrivateRoute>
             }/>

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import SalaryDetailDrawer from './SalaryDetailDrawer';
-import CompanyLogo from './CompanyLogo';
-import { STATUS_BADGE_CLASS, STATUS_LABEL } from '../../data/salaryData';
+import { LEVEL_BADGE_CLASS, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../data/salaryData';
 
 /**
  * SalaryTable
@@ -50,8 +49,12 @@ export default function SalaryTable({ rows }) {
           </thead>
           <tbody>
             {rows.map(s => {
+              const lvlClass = LEVEL_BADGE_CLASS[s.level] ?? 'badge';
               const stClass  = STATUS_BADGE_CLASS[s.status] ?? 'status-badge';
               const stLabel  = STATUS_LABEL[s.status] ?? s.status;
+              const capLevel = s.level
+                ? s.level.charAt(0).toUpperCase() + s.level.slice(1)
+                : '—';
 
               return (
                 <tr
@@ -61,12 +64,12 @@ export default function SalaryTable({ rows }) {
                 >
                   <td>
                     <div className="company-cell">
-                      <CompanyLogo
-                        name={s.company} website={s.compWebsite} logoUrl={s.compLogoUrl}
-                        size={32} borderRadius={6}
-                        color={s.compColor} colorBg={s.compBg} abbr={s.compAbbr}
-                        fontSize={10}
-                      />
+                      <div
+                        className="company-avatar"
+                        style={{ background: s.compBg, color: s.compColor }}
+                      >
+                        {s.compAbbr}
+                      </div>
                       <div>
                         <div className="company-name">{s.company}</div>
                         <div className="company-industry">{s.compInd}</div>
@@ -75,9 +78,12 @@ export default function SalaryTable({ rows }) {
                   </td>
                   <td>{s.role}</td>
                   <td>
-                    <span style={{ fontSize: 12, fontFamily: "'JetBrains Mono',monospace", color: 'var(--text-2)' }}>
-                      {s.internalLevel && s.internalLevel !== '—' ? s.internalLevel : '—'}
-                    </span>
+                    <span className={lvlClass}>{capLevel}</span>
+                    {s.internalLevel && s.internalLevel !== '—' && (
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3, fontFamily: "'JetBrains Mono',monospace" }}>
+                        {s.internalLevel}
+                      </div>
+                    )}
                   </td>
                   <td>{s.location}</td>
                   <td>

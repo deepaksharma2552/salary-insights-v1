@@ -1,153 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 
-const PAGE_SIZE  = 10;
-const DEBOUNCE_MS = 300;
-const MIN_CHARS   = 2;
+const PAGE_SIZE = 10;
 
-// ── Domain derivation ─────────────────────────────────────────────────────────
-// Known overrides for companies whose domain doesn't match their name
-const DOMAIN_OVERRIDES = {
-  'tcs': 'tcs.com',
-  'tata consultancy services': 'tcs.com',
-  'hcl': 'hcltech.com',
-  'hcl technologies': 'hcltech.com',
-  'wipro': 'wipro.com',
-  'infosys': 'infosys.com',
-  'cognizant': 'cognizant.com',
-  'tech mahindra': 'techmahindra.com',
-  'l&t technology': 'ltts.com',
-  'mphasis': 'mphasis.com',
-  'zepto': 'zeptonow.com',
-  'zomato': 'zomato.com',
-  'swiggy': 'swiggy.com',
-  'flipkart': 'flipkart.com',
-  'meesho': 'meesho.com',
-  'phonepe': 'phonepe.com',
-  'paytm': 'paytm.com',
-  'razorpay': 'razorpay.com',
-  'cred': 'cred.club',
-  'groww': 'groww.in',
-  'zerodha': 'zerodha.com',
-  'freshworks': 'freshworks.com',
-  'zoho': 'zoho.com',
-  'byju\'s': 'byjus.com',
-  'byjus': 'byjus.com',
-  'unacademy': 'unacademy.com',
-  'upgrad': 'upgrad.com',
-  'ola': 'olacabs.com',
-  'rapido': 'rapido.bike',
-  'nykaa': 'nykaa.com',
-  'myntra': 'myntra.com',
-  'bigbasket': 'bigbasket.com',
-  'dunzo': 'dunzo.com',
-  'dream11': 'dream11.com',
-  'mpl': 'mpl.live',
-  'sharechat': 'sharechat.com',
-  'dailyhunt': 'dailyhunt.in',
-  'inmobi': 'inmobi.com',
-  'mu sigma': 'mu-sigma.com',
-};
-
-function deriveDomain(name, website) {
-  // 1 — use stored website if available
-  if (website) {
-    try {
-      const url = website.startsWith('http') ? website : `https://${website}`;
-      return new URL(url).hostname.replace(/^www\./, '');
-    } catch { /* fall through */ }
-  }
-
-  if (!name) return null;
-  const key = name.toLowerCase().trim();
-
-  // 2 — check known overrides
-  if (DOMAIN_OVERRIDES[key]) return DOMAIN_OVERRIDES[key];
-
-  // 3 — partial match on overrides (handles "Google India" → google.com)
-  for (const [k, v] of Object.entries(DOMAIN_OVERRIDES)) {
-    if (key.includes(k) || k.includes(key)) return v;
-  }
-
-  // 4 — best-effort: lowercase, remove spaces/special chars, append .com
-  const slug = key.replace(/[^a-z0-9]/g, '');
-  return slug ? `${slug}.com` : null;
-}
-
-// ── CompanyLogo ───────────────────────────────────────────────────────────────
-// Priority: logoUrl (DB) → Clearbit → Google favicon → initials
-// Module-level cache persists across remounts within the session
-const logoCache = new Map(); // key → 'clearbit' | 'favicon' | 'initials'
-
-function CompanyLogo({ name, website, logoUrl, size = 48, borderRadius = 12, color, colorBg, abbr, fontSize = 14 }) {
-  const domain   = logoUrl ? null : deriveDomain(name, website);
-  const cacheKey = logoUrl ?? domain ?? name ?? '';
-
-  const resolve = () => {
-    if (logoUrl)  return { src: logoUrl,                                                          stage: 'logoUrl'  };
-    if (!domain)  return { src: null,                                                             stage: 'initials' };
-    const hit = logoCache.get(cacheKey);
-    if (hit === 'clearbit') return { src: `https://logo.clearbit.com/${domain}`,                              stage: 'clearbit' };
-    if (hit === 'favicon')  return { src: `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,        stage: 'favicon'  };
-    if (hit === 'initials') return { src: null,                                                               stage: 'initials' };
-    return { src: `https://logo.clearbit.com/${domain}`, stage: 'clearbit' }; // fresh — start with Clearbit
-  };
-
-  const init = resolve();
-  const [src,   setSrc]   = useState(init.src);
-  const [stage, setStage] = useState(init.stage);
-
-  useEffect(() => {
-    const r = resolve();
-    setSrc(r.src);
-    setStage(r.stage);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, website, logoUrl]);
-
-  const handleError = () => {
-    if (stage === 'clearbit' && domain) {
-      logoCache.set(cacheKey, 'favicon');
-      setSrc(`https://www.google.com/s2/favicons?domain=${domain}&sz=64`);
-      setStage('favicon');
-    } else {
-      logoCache.set(cacheKey, 'initials');
-      setSrc(null);
-      setStage('initials');
-    }
-  };
-
-  const handleLoad = () => {
-    if (stage === 'clearbit') logoCache.set(cacheKey, 'clearbit');
-    if (stage === 'favicon')  logoCache.set(cacheKey, 'favicon');
-  };
-
-  const containerStyle = {
-    width: size, height: size, borderRadius, flexShrink: 0,
-    overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: colorBg, color,
-  };
-
-  if (src && stage !== 'initials') {
-    const isFavicon = stage === 'favicon';
-    return (
-      <div style={containerStyle}>
-        <img
-          src={src} alt={name}
-          onError={handleError} onLoad={handleLoad}
-          style={{ width: isFavicon ? '60%' : '100%', height: isFavicon ? '60%' : '100%', objectFit: 'contain', padding: isFavicon ? 0 : 4 }}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ ...containerStyle, fontSize, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace" }}>
-      {abbr ?? (name ? name.slice(0, 2).toUpperCase() : '?')}
-    </div>
-  );
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtSalary(val) {
   if (!val && val !== 0) return '—';
   const l = Number(val) / 100000;
@@ -171,25 +26,29 @@ function fmtDate(iso) {
 }
 
 function mapSalary(s) {
+  const colors = ['#3ecfb0','#d4a853','#e05c7a','#a08ff0','#c07df0','#e89050'];
+  const color = colors[s.companyName ? s.companyName.charCodeAt(0) % colors.length : 0];
+  const levelMap = { INTERN:'junior',ENTRY:'junior',MID:'mid',SENIOR:'senior',LEAD:'lead',MANAGER:'lead',DIRECTOR:'lead',VP:'lead',C_LEVEL:'lead' };
   const fmt = (v) => { if (!v && v !== 0) return '—'; const l = Number(v)/100000; return l>=100?`₹${(l/100).toFixed(1)}Cr`:`₹${l.toFixed(1)}L`; };
   return {
     id: s.id, role: s.jobTitle ?? '—',
-    internalLevel: s.companyInternalLevel ?? s.standardizedLevelName ?? '—',
+    level: levelMap[s.experienceLevel] ?? 'mid',
     location: s.location ?? '—',
     base: fmt(s.baseSalary), bonus: fmt(s.bonus),
     equity: fmt(s.equity), tc: fmt(s.totalCompensation),
     empType: s.employmentType ?? '—',
     yoe: s.yearsOfExperience != null ? `${s.yearsOfExperience} yr` : '—',
+    status: (s.reviewStatus ?? 'APPROVED').toLowerCase(),
     recordedAt: s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—',
   };
 }
 
 // ── Company Detail Modal ──────────────────────────────────────────────────────
 function CompanyModal({ company, onClose }) {
-  const [salaries,      setSalaries]      = useState([]);
-  const [loading,       setLoading]       = useState(true);
-  const [page,          setPage]          = useState(0);
-  const [totalPages,    setTotalPages]    = useState(1);
+  const [salaries, setSalaries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
 
   useEffect(() => {
@@ -216,19 +75,27 @@ function CompanyModal({ company, onClose }) {
       .finally(() => setLoading(false));
   }, [company.id, page]);
 
+  const LEVEL_COLORS = { junior: '#3ecfb0', mid: '#d4a853', senior: '#a08ff0', lead: '#e05c7a' };
+
   return (
     <>
       <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(6px)', zIndex:300 }} />
-      <div style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', zIndex:301, width:'min(900px, 94vw)', maxHeight:'85vh', background:'var(--panel)', border:'1px solid var(--border)', borderRadius:20, overflow:'hidden', display:'flex', flexDirection:'column' }}>
-
+      <div style={{
+        position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)',
+        zIndex:301, width:'min(900px, 94vw)', maxHeight:'85vh',
+        background:'var(--panel)', border:'1px solid var(--border)',
+        borderRadius:20, overflow:'hidden', display:'flex', flexDirection:'column',
+      }}>
         {/* Header */}
         <div style={{ padding:'28px 32px 20px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
             <div style={{ display:'flex', gap:16, alignItems:'center' }}>
-              <CompanyLogo
-                name={company.name} website={company.website} logoUrl={company.logoUrl}
-                size={52} borderRadius={12} color={company.color} colorBg={company.colorBg} abbr={company.abbr}
-              />
+              <div style={{
+                width:48, height:48, borderRadius:12, flexShrink:0,
+                background:company.colorBg, color:company.color,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:14, fontWeight:700, fontFamily:"'JetBrains Mono',monospace",
+              }}>{company.abbr}</div>
               <div>
                 <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, color:'var(--text-1)', fontWeight:700 }}>{company.name}</div>
                 <div style={{ fontSize:13, color:'var(--text-3)', marginTop:2 }}>{company.industry}</div>
@@ -237,6 +104,7 @@ function CompanyModal({ company, onClose }) {
             <button onClick={onClose} style={{ background:'var(--ink-3)', border:'1px solid var(--border)', borderRadius:8, width:32, height:32, cursor:'pointer', color:'var(--text-2)', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>✕</button>
           </div>
 
+          {/* Stats row */}
           <div style={{ display:'flex', gap:24, marginTop:20, flexWrap:'wrap' }}>
             {[
               { label:'Salary Entries', value: company.entries !== '—' ? company.entries : totalElements },
@@ -258,7 +126,9 @@ function CompanyModal({ company, onClose }) {
           </div>
 
           {!loading && salaries.length === 0 && (
-            <div style={{ textAlign:'center', padding:'40px 0', color:'var(--text-3)', fontSize:14 }}>No approved salary entries for this company yet.</div>
+            <div style={{ textAlign:'center', padding:'40px 0', color:'var(--text-3)', fontSize:14 }}>
+              No approved salary entries for this company yet.
+            </div>
           )}
 
           {!loading && salaries.length > 0 && (
@@ -267,16 +137,28 @@ function CompanyModal({ company, onClose }) {
                 <table className="salary-table">
                   <thead>
                     <tr>
-                      <th>Role</th><th>Job Level</th><th>Location</th>
-                      <th>Exp</th><th>Base</th><th>Bonus</th><th>Equity</th>
-                      <th>Total Comp</th><th>Date</th>
+                      <th>Role</th>
+                      <th>Level</th>
+                      <th>Location</th>
+                      <th>Exp</th>
+                      <th>Base</th>
+                      <th>Bonus</th>
+                      <th>Equity</th>
+                      <th>Total Comp</th>
+                      <th>Date</th>
                     </tr>
                   </thead>
                   <tbody>
                     {salaries.map(s => (
                       <tr key={s.id}>
                         <td><div className="company-name" style={{ fontSize:13 }}>{s.role}</div></td>
-                        <td><span style={{ fontSize:11, fontFamily:"'JetBrains Mono',monospace", color:'var(--text-2)' }}>{s.internalLevel}</span></td>
+                        <td>
+                          <span style={{
+                            fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:6,
+                            background:`${LEVEL_COLORS[s.level]}22`, color:LEVEL_COLORS[s.level],
+                            fontFamily:"'JetBrains Mono',monospace", textTransform:'capitalize',
+                          }}>{s.level}</span>
+                        </td>
                         <td style={{ fontSize:12, color:'var(--text-2)' }}>{s.location}</td>
                         <td style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'JetBrains Mono',monospace" }}>{s.yoe}</td>
                         <td><div className="salary-amount" style={{ fontSize:14 }}>{s.base}</div></td>
@@ -316,14 +198,12 @@ export default function CompaniesPage() {
   const [industries,    setIndustries]    = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState(null);
-  const [searchInput,   setSearchInput]   = useState('');   // display — updates instantly
-  const [search,        setSearch]        = useState('');   // committed — drives API
+  const [search,        setSearch]        = useState('');
   const [industry,      setIndustry]      = useState('');
   const [page,          setPage]          = useState(0);
   const [totalPages,    setTotalPages]    = useState(1);
   const [totalElements, setTotalElements] = useState(0);
-  const [selected,      setSelected]      = useState(null);
-  const debounceTimer = useRef(null);
+  const [selected,      setSelected]      = useState(null); // company card for modal
 
   useEffect(() => {
     api.get('/public/companies/industries')
@@ -342,9 +222,7 @@ export default function CompaniesPage() {
           id:           c.id,
           name:         c.name ?? '—',
           industry:     c.industry ?? '—',
-          website:      c.website  ?? null,
-          logoUrl:      c.logoUrl  ?? null,
-          abbr:         c.name ? c.name.slice(0, 2).toUpperCase() : '?',
+          abbr:         c.name ? c.name.slice(0,2).toUpperCase() : '?',
           color:        colors[c.name ? c.name.charCodeAt(0) % colors.length : 0],
           colorBg:      `${colors[c.name ? c.name.charCodeAt(0) % colors.length : 0]}26`,
           updatedLabel: fmtDate(c.updatedAt ?? c.createdAt),
@@ -358,27 +236,6 @@ export default function CompaniesPage() {
       .catch(err => setError(`Failed to load companies (${err.response?.status ?? 'network error'})`))
       .finally(() => setLoading(false));
   }, [page, search, industry]);
-
-  useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
-
-  // Search — debounce 300ms, min 2 chars (empty string always allowed to reset)
-  function handleSearchChange(e) {
-    const val = e.target.value;
-    setSearchInput(val);
-    clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => {
-      if (val === '' || val.length >= MIN_CHARS) {
-        setSearch(val);
-        setPage(0);
-      }
-    }, DEBOUNCE_MS);
-  }
-
-  // Industry — select dropdown, fires immediately (no typing involved)
-  function handleIndustryChange(e) {
-    setIndustry(e.target.value);
-    setPage(0);
-  }
 
   useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
 
@@ -397,10 +254,10 @@ export default function CompaniesPage() {
       <div className="filter-bar" style={{ marginBottom:32 }}>
         <div className="search-box">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input className="input-field" type="text" placeholder="Search companies…" value={searchInput}
-            onChange={handleSearchChange} />
+          <input className="input-field" type="text" placeholder="Search companies…" value={search}
+            onChange={e => { setSearch(e.target.value); setPage(0); }} />
         </div>
-        <select className="select-field" value={industry} onChange={handleIndustryChange}>
+        <select className="select-field" value={industry} onChange={e => { setIndustry(e.target.value); setPage(0); }}>
           <option value="">All Industries</option>
           {industries.map(i => <option key={i}>{i}</option>)}
         </select>
@@ -427,10 +284,7 @@ export default function CompaniesPage() {
                 onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=''; }}
               >
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
-                  <CompanyLogo
-                    name={c.name} website={c.website} logoUrl={c.logoUrl}
-                    size={44} borderRadius={10} color={c.color} colorBg={c.colorBg} abbr={c.abbr}
-                  />
+                  <div className="company-card-logo" style={{ background:c.colorBg, color:c.color, marginBottom:0 }}>{c.abbr}</div>
                   <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:'var(--text-3)', background:'var(--ink-3)', padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)' }}>
                     Updated {c.updatedLabel}
                   </span>

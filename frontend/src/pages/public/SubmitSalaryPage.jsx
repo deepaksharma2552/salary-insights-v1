@@ -27,7 +27,7 @@ export default function SubmitSalaryPage() {
     bonus: '',
     equity: '',
     yearsOfExperience: '',
-    derivedExperienceLevel: '',
+    experienceLevel: '',
     employmentType: 'FULL_TIME',
     notes: '',
   });
@@ -89,29 +89,9 @@ export default function SubmitSalaryPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Derive experience level from years of experience
-  function deriveExperienceLevelFromYoe(yoe) {
-    const y = Number(yoe);
-    if (isNaN(y) || yoe === '') return '';
-    if (y <= 1)  return 'INTERN';
-    if (y <= 2)  return 'ENTRY';
-    if (y <= 5)  return 'MID';
-    if (y <= 8)  return 'SENIOR';
-    if (y <= 12) return 'LEAD';
-    if (y <= 16) return 'MANAGER';
-    if (y <= 20) return 'DIRECTOR';
-    return 'VP';
-  }
-
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm(f => {
-      const updated = { ...f, [name]: value };
-      if (name === 'yearsOfExperience') {
-        updated.derivedExperienceLevel = deriveExperienceLevelFromYoe(value);
-      }
-      return updated;
-    });
+    setForm(f => ({ ...f, [name]: value }));
   }
 
   async function handleSubmit(e) {
@@ -121,39 +101,33 @@ export default function SubmitSalaryPage() {
       setError('Please enter or select a company name.');
       return;
     }
+    if (!form.experienceLevel) {
+      setError('Please select an experience level.');
+      return;
+    }
     if (!form.companyInternalLevel) {
-      setError('Please select a job level.');
+      setError('Please select an internal level.');
       return;
     }
     if (!form.location) {
       setError('Please select a location.');
       return;
     }
-    // Derive experienceLevel from YOE if available, else fall back to companyInternalLevel mapping
-    const LEVEL_DERIVE = {
-      SDE_1: 'ENTRY', SDE_2: 'MID', SDE_3: 'SENIOR',
-      STAFF_ENGINEER: 'LEAD', PRINCIPAL_ENGINEER: 'LEAD', ARCHITECT: 'LEAD',
-      ENGINEERING_MANAGER: 'MANAGER', SR_ENGINEERING_MANAGER: 'MANAGER',
-      DIRECTOR: 'DIRECTOR', SR_DIRECTOR: 'DIRECTOR', VP: 'VP',
-    };
-    const derivedExperienceLevel = form.derivedExperienceLevel
-      || LEVEL_DERIVE[form.companyInternalLevel]
-      || 'MID';
     setSubmitting(true);
     setError('');
     try {
       const res = await api.post('/salaries/submit', {
-        ...(form.companyId   ? { companyId: form.companyId }     : {}),
+        ...(form.companyId  ? { companyId: form.companyId }   : {}),
         ...(form.companyName ? { companyName: form.companyName } : {}),
-        jobTitle:              form.jobTitle,
-        companyInternalLevel:  form.companyInternalLevel || null,
-        location:              form.location,
-        experienceLevel:       derivedExperienceLevel,
-        employmentType:        form.employmentType,
-        baseSalary:            Number(form.baseSalary)        || 0,
-        bonus:                 Number(form.bonus)             || null,
-        equity:                Number(form.equity)            || null,
-        yearsOfExperience:     form.yearsOfExperience ? Number(form.yearsOfExperience) : null,
+        jobTitle:           form.jobTitle,
+        companyInternalLevel: form.companyInternalLevel || null,
+        location:           form.location,
+        experienceLevel:    form.experienceLevel,
+        employmentType:     form.employmentType,
+        baseSalary:         Number(form.baseSalary)         || 0,
+        bonus:              Number(form.bonus)              || null,
+        equity:             Number(form.equity)             || null,
+        yearsOfExperience:  form.yearsOfExperience ? Number(form.yearsOfExperience) : null,
       });
       console.log('Salary submitted successfully:', res.data);
       setSuccess(true);
@@ -335,7 +309,7 @@ export default function SubmitSalaryPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Job Level *</label>
+                <label className="form-label">Internal Level *</label>
                 <select className="form-input" name="companyInternalLevel" required value={form.companyInternalLevel} onChange={handleChange} style={{ cursor: 'pointer' }}>
                   <option value="">Select internal level</option>
                   <option value="SDE_1">SDE 1</option>
@@ -388,30 +362,15 @@ export default function SubmitSalaryPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Experience Level
-                  {form.derivedExperienceLevel && (
-                    <span style={{ fontSize: 10, fontWeight: 500, padding: '1px 7px', borderRadius: 100, background: 'rgba(14,165,233,0.12)', color: '#0ea5e9', border: '1px solid rgba(14,165,233,0.25)' }}>
-                      auto-filled
-                    </span>
-                  )}
-                </label>
-                <select
-                  className="form-input"
-                  name="derivedExperienceLevel"
-                  value={form.derivedExperienceLevel}
-                  onChange={handleChange}
-                  style={{ cursor: 'pointer' }}
-                >
+                <label className="form-label">Experience Level</label>
+                <select className="form-input" name="experienceLevel" value={form.experienceLevel} onChange={handleChange} style={{ cursor: 'pointer' }}>
                   <option value="">Select level</option>
-                  <option value="INTERN">Intern (0–1 yr)</option>
-                  <option value="ENTRY">Entry (1–2 yrs)</option>
+                  <option value="ENTRY">Junior / Entry (0–2 yrs)</option>
                   <option value="MID">Mid (2–5 yrs)</option>
                   <option value="SENIOR">Senior (5–8 yrs)</option>
-                  <option value="LEAD">Lead (8–12 yrs)</option>
-                  <option value="MANAGER">Manager (12–16 yrs)</option>
-                  <option value="DIRECTOR">Director (16–20 yrs)</option>
-                  <option value="VP">VP (20+ yrs)</option>
+                  <option value="LEAD">Lead (8+ yrs)</option>
+                  <option value="DIRECTOR">Director</option>
+                  <option value="VP">VP</option>
                 </select>
               </div>
 
