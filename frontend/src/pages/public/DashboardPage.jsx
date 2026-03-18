@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import api from '../../services/api';
+import CompanyLogo from '../../components/shared/CompanyLogo';
 
 // ── Shared stacked bar row ────────────────────────────────────────────────────
 function StackedBarRow({ label, row, maxVal, labelWidth = 90 }) {
@@ -316,9 +317,12 @@ export default function DashboardPage() {
                 {displayedCompanies.map((company, ci) => (
                   <div key={company}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
-                      <div style={{ width: 22, height: 22, borderRadius: 4, flexShrink: 0, background: `${BAR_COLORS[ci % BAR_COLORS.length]}22`, border: `1px solid ${BAR_COLORS[ci % BAR_COLORS.length]}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: BAR_COLORS[ci % BAR_COLORS.length], fontFamily: "'IBM Plex Mono',monospace" }}>
-                        {company.slice(0, 2).toUpperCase()}
-                      </div>
+                      <CompanyLogo
+                        name={company} size={22} borderRadius={4}
+                        color={BAR_COLORS[ci % BAR_COLORS.length]}
+                        colorBg={`${BAR_COLORS[ci % BAR_COLORS.length]}22`}
+                        fontSize={8}
+                      />
                       <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }} title={company}>{company}</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
