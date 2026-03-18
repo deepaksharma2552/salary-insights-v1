@@ -11,12 +11,15 @@ import DashboardPage    from './pages/public/DashboardPage';
 import LoginPage        from './pages/public/LoginPage';
 import RegisterPage     from './pages/public/RegisterPage';
 import SubmitSalaryPage from './pages/public/SubmitSalaryPage';
+import SubmitReferralPage from './pages/public/SubmitReferralPage';
+import MyReferralsPage    from './pages/public/MyReferralsPage';
 
 // Admin pages
 import AdminDashboard       from './pages/admin/AdminDashboard';
 import AdminCompanies       from './pages/admin/AdminCompanies';
 import AdminPendingSalaries from './pages/admin/AdminPendingSalaries';
 import AdminAuditLogs       from './pages/admin/AdminAuditLogs';
+import AdminReferrals       from './pages/admin/AdminReferrals';
 import AdminSidebar         from './components/admin/AdminSidebar';
 
 function PrivateRoute({ children, adminOnly = false }) {
@@ -52,6 +55,12 @@ export default function App() {
             <Route path="/submit"    element={
               <PrivateRoute><SubmitSalaryPage /></PrivateRoute>
             }/>
+            <Route path="/refer" element={
+              <PrivateRoute><SubmitReferralPage /></PrivateRoute>
+            }/>
+            <Route path="/my-referrals" element={
+              <PrivateRoute><MyReferralsPage /></PrivateRoute>
+            }/>
 
             {/* Admin */}
             <Route path="/admin" element={
@@ -72,6 +81,11 @@ export default function App() {
             <Route path="/admin/audit" element={
               <PrivateRoute adminOnly>
                 <AdminLayout><AdminAuditLogs /></AdminLayout>
+              </PrivateRoute>
+            }/>
+            <Route path="/admin/referrals" element={
+              <PrivateRoute adminOnly>
+                <AdminLayout><AdminReferrals /></AdminLayout>
               </PrivateRoute>
             }/>
 

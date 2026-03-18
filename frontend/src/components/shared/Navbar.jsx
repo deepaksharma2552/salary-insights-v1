@@ -103,9 +103,12 @@ export default function Navbar() {
         {user ? (
           <>
             <span className="nav-welcome">👋 {displayName}</span>
+            <Link to="/my-referrals" className={`btn-ghost ${isActive('/my-referrals')}`} style={{ textDecoration: 'none' }}>
+              My Referrals
+            </Link>
             <button className="btn-ghost" onClick={logout}>Sign out</button>
-            <Link to="/submit" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-              Submit Salary
+            <Link to="/refer" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+              Refer Someone
             </Link>
           </>
         ) : (
