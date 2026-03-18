@@ -263,7 +263,12 @@ public class SalaryService {
             Double avgBase  = row[1] != null ? ((Number) row[1]).doubleValue() : null;
             Double avgTotal = row[2] != null ? ((Number) row[2]).doubleValue() : null;
             Long   count    = row[3] != null ? ((Number) row[3]).longValue()   : 0L;
-            return new SalaryAggregationDTO(name, avgBase, avgTotal, count);
+            SalaryAggregationDTO dto = new SalaryAggregationDTO();
+            dto.setGroupKey(name);
+            dto.setAvgBaseSalary(avgBase);
+            dto.setAvgTotalCompensation(avgTotal);
+            dto.setCount(count);
+            return dto;
         }).collect(java.util.stream.Collectors.toList());
     }
 
