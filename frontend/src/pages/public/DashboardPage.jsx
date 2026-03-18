@@ -1,6 +1,165 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
+
+/* ─── Shared helpers ─────────────────────────────────────────────────────── */
+const fmt = (val) => {
+  if (!val && val !== 0) return '—';
+  const l = val / 100000;
+  return l >= 100 ? `₹${(l / 100).toFixed(1)}Cr` : `₹${l.toFixed(1)}L`;
+};
+
+const BAR_COLORS = ['#2563eb', '#0891b2', '#7c3aed', '#16a34a', '#ea580c', '#e11d48', '#d97706', '#0284c7'];
+
+const LEVEL_COLORS = {
+  'SDE 1': '#0ea5e9', 'SDE 2': '#6366f1', 'SDE 3': '#8b5cf6',
+  'Staff Engineer': '#10b981', 'Principal Engineer': '#059669',
+  'Architect': '#f59e0b', 'Engineering Manager': '#f97316',
+  'Sr. Engineering Manager': '#ef4444', 'Director': '#dc2626',
+  'Sr. Director': '#b91c1c', 'VP': '#7f1d1d',
+};
+
+/* ─── Stacked bar row with per-bar tooltip ───────────────────────────────── */
+function StackedBarRow({ label, base, bonus, equity, total, count, maxTotal, color, labelWidth = 110 }) {
+  const [tip, setTip] = useState(false);
+  const rowRef        = useRef(null);
+  const [tipLeft, setTipLeft] = useState('50%');
+
+  const safeMax  = maxTotal || 1;
+  const basePct  = Math.round(((base  || 0) / safeMax) * 100);
+  const bonusPct = Math.round(((bonus || 0) / safeMax) * 100);
+  const eqPct    = Math.round(((equity|| 0) / safeMax) * 100);
+
+  function handleMouseEnter(e) {
+    setTip(true);
+    // keep tooltip inside card — clamp left position
+    if (rowRef.current) {
+      const rect    = rowRef.current.getBoundingClientRect();
+      const parentRect = rowRef.current.closest('.chart-card')?.getBoundingClientRect();
+      if (parentRect) {
+        const rel = e.clientX - parentRect.left;
+        const clamped = Math.max(80, Math.min(rel, parentRect.width - 80));
+        setTipLeft(clamped + 'px');
+      }
+    }
+  }
+
+  return (
+    <div
+      ref={rowRef}
+      className="level-bar-row"
+      style={{ position: 'relative', cursor: 'default' }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setTip(false)}
+    >
+      {/* Label */}
+      <span className="level-bar-label" style={{ minWidth: labelWidth, fontSize: 11 }}>{label}</span>
+
+      {/* Stacked bar */}
+      <div className="level-bar-track" style={{ flex: 1, position: 'relative' }}>
+        {/* Base segment */}
+        {basePct > 0 && (
+          <div style={{
+            position: 'absolute', left: 0, top: 0, bottom: 0,
+            width: `${basePct}%`, background: color, borderRadius: '3px 0 0 3px',
+          }} />
+        )}
+        {/* Bonus segment */}
+        {bonusPct > 0 && (
+          <div style={{
+            position: 'absolute', left: `${basePct}%`, top: 0, bottom: 0,
+            width: `${bonusPct}%`, background: `${color}99`,
+          }} />
+        )}
+        {/* Equity segment */}
+        {eqPct > 0 && (
+          <div style={{
+            position: 'absolute', left: `${basePct + bonusPct}%`, top: 0, bottom: 0,
+            width: `${eqPct}%`, background: `${color}44`,
+            borderRadius: eqPct > 0 ? '0 3px 3px 0' : 0,
+          }} />
+        )}
+      </div>
+
+      {/* Total value */}
+      <span className="level-bar-val" style={{ minWidth: 52 }}>{fmt(total || base)}</span>
+
+      {/* Tooltip */}
+      {tip && (
+        <div style={{
+          position: 'absolute', bottom: 'calc(100% + 8px)',
+          left: tipLeft, transform: 'translateX(-50%)',
+          background: 'var(--panel)', border: '1px solid var(--border)',
+          borderRadius: 10, padding: '10px 13px',
+          fontSize: 11, color: 'var(--text-2)',
+          zIndex: 200, pointerEvents: 'none',
+          boxShadow: '0 6px 24px rgba(0,0,0,0.20)',
+          minWidth: 180,
+        }}>
+          {/* Tooltip header */}
+          <div style={{ fontWeight: 700, color: 'var(--text-1)', marginBottom: 7, fontSize: 12 }}>
+            {label}
+            {count != null && (
+              <span style={{ fontWeight: 400, color: 'var(--text-3)', fontSize: 10, marginLeft: 6 }}>
+                {count} {count === 1 ? 'entry' : 'entries'}
+              </span>
+            )}
+          </div>
+          {/* Base */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />
+            <span style={{ flex: 1, color: 'var(--text-3)' }}>Base</span>
+            <span style={{ fontWeight: 600, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace" }}>{fmt(base)}</span>
+          </div>
+          {/* Bonus */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 2, background: `${color}99`, flexShrink: 0 }} />
+            <span style={{ flex: 1, color: 'var(--text-3)' }}>Bonus</span>
+            <span style={{ fontWeight: 600, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace" }}>{fmt(bonus)}</span>
+          </div>
+          {/* Equity */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 2, background: `${color}44`, flexShrink: 0 }} />
+            <span style={{ flex: 1, color: 'var(--text-3)' }}>Equity</span>
+            <span style={{ fontWeight: 600, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace" }}>{fmt(equity)}</span>
+          </div>
+          {/* Divider + Total */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: 'var(--text-3)' }}>Total comp</span>
+            <span style={{ fontWeight: 700, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace" }}>{fmt(total)}</span>
+          </div>
+          {/* Caret */}
+          <div style={{
+            position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+            width: 0, height: 0,
+            borderLeft: '5px solid transparent', borderRight: '5px solid transparent',
+            borderTop: '5px solid var(--border)',
+          }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Bar legend ─────────────────────────────────────────────────────────── */
+function BarLegend({ color }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 10, color: 'var(--text-3)', marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div style={{ width: 10, height: 8, borderRadius: 2, background: color || '#2563eb' }} />
+        Base
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div style={{ width: 10, height: 8, borderRadius: 2, background: `${color || '#2563eb'}99` }} />
+        Bonus
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div style={{ width: 10, height: 8, borderRadius: 2, background: `${color || '#2563eb'}44` }} />
+        Equity
+      </div>
+    </div>
+  );
+}
 
 /* ─── Confidence badge ───────────────────────────────────────────────────── */
 function ConfidenceBadge({ tier, label }) {
@@ -55,8 +214,8 @@ function ConfidenceBadge({ tier, label }) {
   );
 }
 
-/* ─── Company multiselect (max 5) ────────────────────────────────────────── */
-function CompanyFilter({ allCompanies, selected, onChange }) {
+/* ─── Multiselect filter (generic) ──────────────────────────────────────── */
+function MultiFilter({ label, items, selected, onChange, max = 5 }) {
   const [open, setOpen]     = useState(false);
   const [search, setSearch] = useState('');
   const wrapRef             = useRef(null);
@@ -67,34 +226,26 @@ function CompanyFilter({ allCompanies, selected, onChange }) {
     return () => document.removeEventListener('mousedown', handle);
   }, []);
 
-  const filtered = allCompanies.filter(c =>
-    c.toLowerCase().includes(search.toLowerCase()) && !selected.includes(c)
-  );
+  const filtered = items.filter(c => c.toLowerCase().includes(search.toLowerCase()) && !selected.includes(c));
 
-  function toggle(company) {
-    if (selected.includes(company)) {
-      onChange(selected.filter(c => c !== company));
-    } else if (selected.length < 5) {
-      onChange([...selected, company]);
-    }
+  function toggle(item) {
+    if (selected.includes(item)) onChange(selected.filter(c => c !== item));
+    else if (selected.length < max) onChange([...selected, item]);
   }
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '5px 10px', borderRadius: 8,
-          background: 'var(--bg-2)', border: '1px solid var(--border)',
-          cursor: 'pointer', fontSize: 11, color: 'var(--text-2)',
-          fontFamily: "'IBM Plex Mono',monospace",
-        }}
-      >
+      <button onClick={() => setOpen(o => !o)} style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '5px 10px', borderRadius: 8,
+        background: 'var(--bg-2)', border: '1px solid var(--border)',
+        cursor: 'pointer', fontSize: 11, color: 'var(--text-2)',
+        fontFamily: "'IBM Plex Mono',monospace",
+      }}>
         <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
           <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="9" y2="18"/>
         </svg>
-        Filter companies
+        {label}
         {selected.length > 0 && (
           <span style={{ background: '#2563eb', color: '#fff', borderRadius: 100, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>
             {selected.length}
@@ -106,14 +257,11 @@ function CompanyFilter({ allCompanies, selected, onChange }) {
         <div style={{
           position: 'absolute', top: 'calc(100% + 6px)', right: 0,
           background: 'var(--panel)', border: '1px solid var(--border)',
-          borderRadius: 10, padding: 8, minWidth: 220, zIndex: 50,
+          borderRadius: 10, padding: 8, minWidth: 210, zIndex: 50,
           boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
         }}>
-          <input
-            autoFocus
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search company…"
+          <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
+            placeholder={`Search…`}
             style={{
               width: '100%', padding: '6px 8px', borderRadius: 6,
               background: 'var(--bg-2)', border: '1px solid var(--border)',
@@ -121,31 +269,24 @@ function CompanyFilter({ allCompanies, selected, onChange }) {
               fontFamily: "'IBM Plex Mono',monospace", boxSizing: 'border-box',
             }}
           />
-          {selected.length >= 5 && (
+          {selected.length >= max && (
             <div style={{ fontSize: 10, color: '#d97706', padding: '4px 4px 0', fontFamily: "'IBM Plex Mono',monospace" }}>
-              Max 5 companies selected
+              Max {max} selected
             </div>
           )}
           <div style={{ maxHeight: 180, overflowY: 'auto', marginTop: 6 }}>
-            {filtered.length === 0 && (
-              <div style={{ fontSize: 11, color: 'var(--text-3)', padding: '6px 4px' }}>No matches</div>
-            )}
-            {filtered.map(company => (
-              <div
-                key={company}
-                onClick={() => toggle(company)}
+            {filtered.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-3)', padding: '6px 4px' }}>No matches</div>}
+            {filtered.map(item => (
+              <div key={item} onClick={() => toggle(item)}
                 style={{
                   padding: '6px 8px', borderRadius: 6,
-                  cursor: selected.length >= 5 ? 'not-allowed' : 'pointer',
-                  fontSize: 12, color: selected.length >= 5 ? 'var(--text-4)' : 'var(--text-2)',
-                  opacity: selected.length >= 5 ? 0.5 : 1,
-                  transition: 'background 0.1s',
+                  cursor: selected.length >= max ? 'not-allowed' : 'pointer',
+                  fontSize: 12, color: selected.length >= max ? 'var(--text-4)' : 'var(--text-2)',
+                  opacity: selected.length >= max ? 0.5 : 1, transition: 'background 0.1s',
                 }}
-                onMouseEnter={e => { if (selected.length < 5) e.currentTarget.style.background = 'var(--bg-2)'; }}
+                onMouseEnter={e => { if (selected.length < max) e.currentTarget.style.background = 'var(--bg-2)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-              >
-                {company}
-              </div>
+              >{item}</div>
             ))}
           </div>
         </div>
@@ -154,59 +295,88 @@ function CompanyFilter({ allCompanies, selected, onChange }) {
   );
 }
 
+/* ─── Selected chips ─────────────────────────────────────────────────────── */
+function Chips({ items, onRemove }) {
+  if (!items.length) return null;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
+      {items.map((c, ci) => (
+        <div key={c} style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          padding: '2px 8px', borderRadius: 100,
+          background: `${BAR_COLORS[ci % BAR_COLORS.length]}18`,
+          border: `1px solid ${BAR_COLORS[ci % BAR_COLORS.length]}44`,
+          fontSize: 11, color: BAR_COLORS[ci % BAR_COLORS.length], fontWeight: 500,
+        }}>
+          {c}
+          <span onClick={() => onRemove(c)} style={{ cursor: 'pointer', opacity: 0.7, lineHeight: 1 }}>×</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ─── Main page ──────────────────────────────────────────────────────────── */
 export default function DashboardPage() {
-  const [byLocation,        setByLocation]        = useState([]);
-  const [byCompany,         setByCompany]         = useState([]);
-  const [byCompanyLevel,    setByCompanyLevel]    = useState([]);
-  const [loading,           setLoading]           = useState(true);
-  const [selectedCompanies, setSelectedCompanies] = useState([]);
+  const [byLocation,     setByLocation]     = useState([]);
+  const [byLocationLevel,setByLocationLevel]= useState([]);
+  const [byCompanyLevel, setByCompanyLevel] = useState([]);
+  const [loading,        setLoading]        = useState(true);
+
+  const [selLocations,  setSelLocations]  = useState([]);
+  const [selCompanies,  setSelCompanies]  = useState([]);
 
   useEffect(() => {
     Promise.all([
       api.get('/public/salaries/analytics/by-location'),
-      api.get('/public/salaries/analytics/by-company'),
+      api.get('/public/salaries/analytics/by-location-level'),
       api.get('/public/salaries/analytics/by-company-level'),
-    ]).then(([loc, co, cl]) => {
-      setByLocation(loc.data?.data ?? []);
-      setByCompany(co.data?.data   ?? []);
-      setByCompanyLevel(cl.data?.data ?? []);
+    ]).then(([loc, locLvl, cl]) => {
+      setByLocation(loc.data?.data      ?? []);
+      setByLocationLevel(locLvl.data?.data ?? []);
+      setByCompanyLevel(cl.data?.data   ?? []);
     }).catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  const fmt = (val) => {
-    if (!val && val !== 0) return '—';
-    const l = val / 100000;
-    return l >= 100 ? `₹${(l/100).toFixed(1)}Cr` : `₹${l.toFixed(1)}L`;
-  };
+  /* ── Derived: group location-level data by location ── */
+  const locationLevelGrouped = useMemo(() =>
+    byLocationLevel.reduce((acc, row) => {
+      if (!acc[row.location]) acc[row.location] = [];
+      acc[row.location].push(row);
+      return acc;
+    }, {}),
+  [byLocationLevel]);
 
-  const BAR_COLORS = ['#2563eb','#0891b2','#7c3aed','#16a34a','#ea580c','#e11d48','#d97706','#0284c7'];
+  /* ── Derived: group company-level data by company ── */
+  const companyGrouped = useMemo(() =>
+    byCompanyLevel.reduce((acc, row) => {
+      if (!acc[row.companyName]) acc[row.companyName] = [];
+      acc[row.companyName].push(row);
+      return acc;
+    }, {}),
+  [byCompanyLevel]);
 
-  const LEVEL_COLORS = {
-    'SDE 1': '#0ea5e9', 'SDE 2': '#6366f1', 'SDE 3': '#8b5cf6',
-    'Staff Engineer': '#10b981', 'Principal Engineer': '#059669',
-    'Architect': '#f59e0b', 'Engineering Manager': '#f97316',
-    'Sr. Engineering Manager': '#ef4444', 'Director': '#dc2626',
-    'Sr. Director': '#b91c1c', 'VP': '#7f1d1d',
-  };
+  const allLocationNames = useMemo(() => byLocation.map(r => r.groupKey).filter(Boolean), [byLocation]);
+  const allCompanyNames  = useMemo(() => Object.keys(companyGrouped), [companyGrouped]);
 
-  const maxLoc = byLocation.length ? Math.max(...byLocation.map(r => r.avgBaseSalary ?? 0), 1) : 1;
-  const maxCo  = byCompany.length  ? Math.max(...byCompany.slice(0,10).map(r => r.avgBaseSalary ?? 0), 1) : 1;
+  const visibleLocations = selLocations.length > 0 ? selLocations.filter(l => locationLevelGrouped[l]) : [];
+  const visibleCompanies = selCompanies.length > 0 ? selCompanies.filter(c => companyGrouped[c]) : allCompanyNames.slice(0, 6);
 
-  const grouped = byCompanyLevel.reduce((acc, row) => {
-    if (!acc[row.companyName]) acc[row.companyName] = [];
-    acc[row.companyName].push(row);
-    return acc;
-  }, {});
-  const allCompanyNames = Object.keys(grouped);
+  /* ── Max total comp across relevant rows ── */
+  const maxLocTotal = useMemo(() =>
+    byLocation.length ? Math.max(...byLocation.map(r => r.avgTotalCompensation ?? 0), 1) : 1,
+  [byLocation]);
 
-  const visibleCompanies = selectedCompanies.length > 0
-    ? selectedCompanies.filter(c => grouped[c])
-    : allCompanyNames.slice(0, 6);
+  const maxLocLevelTotal = useMemo(() => {
+    const rows = visibleLocations.flatMap(l => locationLevelGrouped[l] ?? []);
+    return rows.length ? Math.max(...rows.map(r => r.avgTotalCompensation ?? 0), 1) : 1;
+  }, [visibleLocations, locationLevelGrouped]);
 
-  const maxLevelVal = byCompanyLevel.length
-    ? Math.max(...byCompanyLevel.map(r => r.avgBaseSalary ?? 0), 1) : 1;
+  const maxCompanyLevelTotal = useMemo(() => {
+    const rows = visibleCompanies.flatMap(c => companyGrouped[c] ?? []);
+    return rows.length ? Math.max(...rows.map(r => r.avgTotalCompensation ?? 0), 1) : 1;
+  }, [visibleCompanies, companyGrouped]);
 
   const EmptyState = () => (
     <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-3)', fontSize: 13 }}>
@@ -231,161 +401,173 @@ export default function DashboardPage() {
           Loading analytics…
         </div>
       ) : (
-        <>
-          {/* ── CHART GRID ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 12 }}>
 
-            {/* Chart 1 — Avg Salary by Location */}
-            <div className="chart-card">
-              <div className="chart-card-header">
+          {/* ── CHART 1 — Avg Base Salary by Location ── */}
+          <div className="chart-card">
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12, gap: 8 }}>
+              <div>
                 <div className="chart-title">Avg Base Salary by Location</div>
-                <div className="chart-subtitle">Top metro areas · sorted by salary</div>
-              </div>
-              {byLocation.length === 0 ? <EmptyState /> : (
-                <div className="level-bars">
-                  {byLocation.slice(0, 8).map((row, i) => {
-                    const pct = Math.round((row.avgBaseSalary / maxLoc) * 100);
-                    return (
-                      <div key={row.groupKey} className="level-bar-row">
-                        <span className="level-bar-label" style={{ minWidth: 90 }}>{row.groupKey}</span>
-                        <div className="level-bar-track">
-                          <div className="level-bar-fill" style={{ width: `${pct}%`, background: BAR_COLORS[i % BAR_COLORS.length] }} />
-                        </div>
-                        <span className="level-bar-val">{fmt(row.avgBaseSalary)}</span>
-                      </div>
-                    );
-                  })}
+                <div className="chart-subtitle">
+                  {selLocations.length > 0
+                    ? 'Internal level breakdown · hover each bar for details'
+                    : 'All metro areas · select locations to drill down by level'}
                 </div>
-              )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
+                <MultiFilter
+                  label="Filter locations"
+                  items={allLocationNames}
+                  selected={selLocations}
+                  onChange={setSelLocations}
+                  max={5}
+                />
+                {selLocations.length > 0 && (
+                  <button onClick={() => setSelLocations([])} style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'IBM Plex Mono',monospace" }}>
+                    ✕ clear filter
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Chart 2 — Avg Base Salary by Company & Level */}
-            <div className="chart-card">
-              {/* Header row with filter */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12, gap: 8 }}>
-                <div>
-                  <div className="chart-title">Avg Base Salary by Company &amp; Level</div>
-                  <div className="chart-subtitle">Breakdown by internal level per company</div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
-                  <CompanyFilter
-                    allCompanies={allCompanyNames}
-                    selected={selectedCompanies}
-                    onChange={setSelectedCompanies}
-                  />
-                  {selectedCompanies.length > 0 && (
-                    <button
-                      onClick={() => setSelectedCompanies([])}
-                      style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'IBM Plex Mono',monospace" }}
-                    >
-                      ✕ clear filter
-                    </button>
-                  )}
-                </div>
-              </div>
+            {/* Selected location chips */}
+            <Chips items={selLocations} onRemove={loc => setSelLocations(selLocations.filter(l => l !== loc))} />
 
-              {/* Selected chips */}
-              {selectedCompanies.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
-                  {selectedCompanies.map((c, ci) => (
-                    <div key={c} style={{
-                      display: 'flex', alignItems: 'center', gap: 4,
-                      padding: '2px 8px', borderRadius: 100,
-                      background: `${BAR_COLORS[ci % BAR_COLORS.length]}18`,
-                      border: `1px solid ${BAR_COLORS[ci % BAR_COLORS.length]}44`,
-                      fontSize: 11, color: BAR_COLORS[ci % BAR_COLORS.length], fontWeight: 500,
-                    }}>
-                      {c}
-                      <span onClick={() => setSelectedCompanies(selectedCompanies.filter(x => x !== c))} style={{ cursor: 'pointer', opacity: 0.7 }}>×</span>
+            {byLocation.length === 0 ? <EmptyState /> : (
+              <>
+                {/* ── Default view: one bar per location ── */}
+                {selLocations.length === 0 && (
+                  <>
+                    <BarLegend color={BAR_COLORS[0]} />
+                    <div className="level-bars">
+                      {byLocation.slice(0, 8).map((row, i) => (
+                        <StackedBarRow
+                          key={row.groupKey}
+                          label={row.groupKey}
+                          base={row.avgBaseSalary}
+                          bonus={row.avgBonus}
+                          equity={row.avgEquity}
+                          total={row.avgTotalCompensation}
+                          count={row.count}
+                          maxTotal={maxLocTotal}
+                          color={BAR_COLORS[i % BAR_COLORS.length]}
+                          labelWidth={90}
+                        />
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
+                  </>
+                )}
 
-              {byCompanyLevel.length === 0 ? <EmptyState /> : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {visibleCompanies.map((company, ci) => {
-                    const rows     = grouped[company] ?? [];
-                    const firstRow = rows[0];
-                    return (
-                      <div key={company}>
-                        {/* Company header: logo + name + confidence */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                          <CompanyLogo
-                            companyId={firstRow?.companyId}
-                            companyName={company}
-                            logoUrl={firstRow?.logoUrl}
-                            website={firstRow?.website}
-                            size={20}
-                            radius={4}
-                          />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', flex: 1 }}>{company}</span>
-                          <ConfidenceBadge tier={firstRow?.confidenceTier} label={firstRow?.confidenceLabel} />
-                        </div>
-                        {/* Level bars */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {rows.map(row => {
-                            const pct   = Math.round(((row.avgBaseSalary ?? 0) / maxLevelVal) * 100);
-                            const color = LEVEL_COLORS[row.internalLevel] ?? BAR_COLORS[ci % BAR_COLORS.length];
-                            return (
-                              <div key={row.internalLevel} className="level-bar-row">
-                                <span style={{ fontSize: 11, color: 'var(--text-3)', minWidth: 130, fontFamily: "'IBM Plex Mono',monospace" }}>{row.internalLevel}</span>
-                                <div className="level-bar-track">
-                                  <div className="level-bar-fill" style={{ width: `${pct}%`, background: color }} />
-                                </div>
-                                <span className="level-bar-val">{fmt(row.avgBaseSalary)}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                {/* ── Filtered view: sections per location, bars per level ── */}
+                {selLocations.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    {visibleLocations.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '16px 0', color: 'var(--text-3)', fontSize: 12 }}>
+                        No level data for selected locations yet.
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-          </div>{/* ── end chart grid ── */}
-
-          {/* ── TOP 10 PAYING COMPANIES ── */}
-          <div className="chart-card" style={{ marginBottom: 12 }}>
-            <div className="chart-card-header">
-              <div className="chart-title">🏆 Top 10 Paying Companies</div>
-              <div className="chart-subtitle">Ranked by avg base salary · approved submissions only</div>
-            </div>
-            {byCompany.length === 0 ? <EmptyState /> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {byCompany.slice(0, 10).map((co, i) => {
-                  const pct   = Math.round(((co.avgBaseSalary ?? 0) / maxCo) * 100);
-                  const color = BAR_COLORS[i % BAR_COLORS.length];
-                  return (
-                    <div key={co.groupKey} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-4)', fontFamily: "'IBM Plex Mono',monospace", minWidth: 18, textAlign: 'right' }}>
-                        {i + 1}
-                      </span>
-                      <CompanyLogo
-                        companyId={co.companyId}
-                        companyName={co.groupKey ?? ''}
-                        logoUrl={co.logoUrl}
-                        website={co.website}
-                        size={28}
-                        radius={7}
-                      />
-                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {co.groupKey}
+                    )}
+                    {visibleLocations.map((loc, li) => {
+                      const rows  = locationLevelGrouped[loc] ?? [];
+                      const color = BAR_COLORS[li % BAR_COLORS.length];
+                      return (
+                        <div key={loc}>
+                          {/* Location header */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>{loc}</span>
+                            <span style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
+                              {rows.length} level{rows.length !== 1 ? 's' : ''}
                             </span>
-                            <ConfidenceBadge tier={co.confidenceTier} label={co.confidenceLabel} />
                           </div>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace", flexShrink: 0 }}>
-                            {fmt(co.avgBaseSalary)}
-                          </span>
+                          <BarLegend color={color} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {rows.map(row => (
+                              <StackedBarRow
+                                key={row.internalLevel}
+                                label={row.internalLevel}
+                                base={row.avgBaseSalary}
+                                bonus={row.avgBonus}
+                                equity={row.avgEquity}
+                                total={row.avgTotalCompensation}
+                                count={row.count}
+                                maxTotal={maxLocLevelTotal}
+                                color={LEVEL_COLORS[row.internalLevel] ?? color}
+                                labelWidth={130}
+                              />
+                            ))}
+                          </div>
                         </div>
-                        <div className="level-bar-track">
-                          <div className="level-bar-fill" style={{ width: `${pct}%`, background: color }} />
-                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* ── CHART 2 — Avg Base Salary by Company & Level ── */}
+          <div className="chart-card">
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12, gap: 8 }}>
+              <div>
+                <div className="chart-title">Avg Base Salary by Company &amp; Level</div>
+                <div className="chart-subtitle">Hover each bar for Base · Bonus · Equity breakdown</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
+                <MultiFilter
+                  label="Filter companies"
+                  items={allCompanyNames}
+                  selected={selCompanies}
+                  onChange={setSelCompanies}
+                  max={5}
+                />
+                {selCompanies.length > 0 && (
+                  <button onClick={() => setSelCompanies([])} style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'IBM Plex Mono',monospace" }}>
+                    ✕ clear filter
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <Chips items={selCompanies} onRemove={c => setSelCompanies(selCompanies.filter(x => x !== c))} />
+
+            {byCompanyLevel.length === 0 ? <EmptyState /> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {visibleCompanies.map((company, ci) => {
+                  const rows     = companyGrouped[company] ?? [];
+                  const firstRow = rows[0];
+                  const color    = BAR_COLORS[ci % BAR_COLORS.length];
+                  return (
+                    <div key={company}>
+                      {/* Company header: logo + name + confidence */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <CompanyLogo
+                          companyId={firstRow?.companyId}
+                          companyName={company}
+                          logoUrl={firstRow?.logoUrl}
+                          website={firstRow?.website}
+                          size={20}
+                          radius={4}
+                        />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', flex: 1 }}>{company}</span>
+                        <ConfidenceBadge tier={firstRow?.confidenceTier} label={firstRow?.confidenceLabel} />
+                      </div>
+                      <BarLegend color={color} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {rows.map(row => (
+                          <StackedBarRow
+                            key={row.internalLevel}
+                            label={row.internalLevel}
+                            base={row.avgBaseSalary}
+                            bonus={row.avgBonus}
+                            equity={row.avgEquity}
+                            total={row.avgTotalCompensation}
+                            count={row.count}
+                            maxTotal={maxCompanyLevelTotal}
+                            color={LEVEL_COLORS[row.internalLevel] ?? color}
+                            labelWidth={130}
+                          />
+                        ))}
                       </div>
                     </div>
                   );
@@ -394,7 +576,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-        </>
+        </div>
       )}
     </section>
   );
