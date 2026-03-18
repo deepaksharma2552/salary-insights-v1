@@ -221,7 +221,7 @@ public class SalaryService {
     }
 
     @Transactional
-    @org.springframework.cache.annotation.CacheEvict(value = "analytics", allEntries = true)
+    @org.springframework.cache.annotation.CacheEvict(value = "analytics", allEntries = true)  // clears byLocation, byCompany, byCompanyLevel, byLocationLevel
     public SalaryResponse reviewSalary(UUID id, ReviewStatus status, String reason) {
         if (status == ReviewStatus.PENDING) {
             throw new BadRequestException("Cannot set status to PENDING");
@@ -271,6 +271,32 @@ public class SalaryService {
             dto.setAvgEquity(avgEquity);
             dto.setAvgTotalCompensation(avgTotal);
             dto.setCount(count);
+            return dto;
+        }).collect(java.util.stream.Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'byLocationLevel'")
+    public List<com.salaryinsights.dto.response.LocationLevelSalaryDTO> getAvgSalaryByLocationAndLevel() {
+        return salaryEntryRepository.avgSalaryByLocationAndLevelRaw().stream().map(row -> {
+            // col: location[0], internalLevel[1], avgBaseSalary[2], avgBonus[3], avgEquity[4], avgTotalComp[5], cnt[6]
+            String enumName    = row[0] != null ? row[0].toString() : null;
+            String displayName = enumName;
+            if (enumName != null) {
+                try {
+                    com.salaryinsights.enums.Location loc = com.salaryinsights.enums.Location.valueOf(enumName);
+                    displayName = loc.getDisplayName();
+                } catch (IllegalArgumentException ignored) {}
+            }
+            com.salaryinsights.dto.response.LocationLevelSalaryDTO dto =
+                new com.salaryinsights.dto.response.LocationLevelSalaryDTO();
+            dto.setLocation(displayName);
+            dto.setInternalLevel(row[1] != null ? row[1].toString() : null);
+            dto.setAvgBaseSalary(row[2] != null ? ((Number) row[2]).doubleValue() : null);
+            dto.setAvgBonus(row[3] != null ? ((Number) row[3]).doubleValue() : null);
+            dto.setAvgEquity(row[4] != null ? ((Number) row[4]).doubleValue() : null);
+            dto.setAvgTotalCompensation(row[5] != null ? ((Number) row[5]).doubleValue() : null);
+            dto.setCount(row[6] != null ? ((Number) row[6]).longValue() : 0L);
             return dto;
         }).collect(java.util.stream.Collectors.toList());
     }
@@ -384,8 +410,8 @@ public class SalaryService {
     public List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevel() {
         return salaryEntryRepository.avgSalaryByCompanyAndLevelRaw().stream().map(row -> {
             // col order: company_name[0], company_id_str[1], logo_url[2], website[3],
-            //            internalLevel[4], avgBaseSalary[5], avgBonus[6], avgEquity[7],
-            //            cnt[8], company_total_entries[9], most_recent_entry[10]
+            //            internalLevel[4], avgBaseSalary[5], avgBonus[6], avgEquity[7], avgTotalCompensation[8],
+            //            cnt[9], company_total_entries[10], most_recent_entry[11]
             String companyName         = row[0] != null ? row[0].toString() : null;
             String companyId           = row[1] != null ? row[1].toString() : null;
             String logoUrl             = row[2] != null ? row[2].toString() : null;
@@ -394,9 +420,10 @@ public class SalaryService {
             Double avgBase             = row[5] != null ? ((Number) row[5]).doubleValue() : null;
             Double avgBonus            = row[6] != null ? ((Number) row[6]).doubleValue() : null;
             Double avgEquity           = row[7] != null ? ((Number) row[7]).doubleValue() : null;
-            Long   count               = row[8] != null ? ((Number) row[8]).longValue()   : 0L;
-            Long   companyTotalEntries = row[9] != null ? ((Number) row[9]).longValue()   : 0L;
-            LocalDateTime recent       = row[10] != null ? ((java.sql.Timestamp) row[10]).toLocalDateTime() : null;
+            Double avgTotalComp        = row[8] != null ? ((Number) row[8]).doubleValue() : null;
+            Long   count               = row[9] != null ? ((Number) row[9]).longValue()   : 0L;
+            Long   companyTotalEntries = row[10] != null ? ((Number) row[10]).longValue()  : 0L;
+            LocalDateTime recent       = row[11] != null ? ((java.sql.Timestamp) row[11]).toLocalDateTime() : null;
             String[] conf              = computeConfidence(companyTotalEntries, recent);
             com.salaryinsights.dto.response.CompanyLevelSalaryDTO dto =
                 new com.salaryinsights.dto.response.CompanyLevelSalaryDTO();
@@ -408,6 +435,7 @@ public class SalaryService {
             dto.setAvgBaseSalary(avgBase);
             dto.setAvgBonus(avgBonus);
             dto.setAvgEquity(avgEquity);
+            dto.setAvgTotalCompensation(avgTotalComp);
             dto.setCount(count);
             dto.setCompanyTotalEntries(companyTotalEntries);
             dto.setMostRecentEntry(recent);

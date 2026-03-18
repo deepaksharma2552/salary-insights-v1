@@ -15,6 +15,7 @@ public class CompanyLevelSalaryDTO {
     private Double avgBaseSalary;
     private Double avgBonus;
     private Double avgEquity;
+    private Double avgTotalCompensation;
     private Long count;
     private Long companyTotalEntries;  // total approved entries across all levels — used for confidence
     // Company logo fields
