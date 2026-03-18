@@ -148,6 +148,8 @@ export default function DashboardPage() {
                 );
               })()}
             </div>
+
+          </div>{/* ── end chart grid ── */}
         </>
       )}
     </section>
