@@ -20,7 +20,7 @@ export default function SubmitReferralPage() {
     companyId:   '',
     companyName: '',
     referralLink: '',
-    expiresAt:   '',   // ISO date string yyyy-MM-dd, empty = use backend default (30 days)
+    expiresAt:   new Date(Date.now() + 30 * 86_400_000).toISOString().split('T')[0],
   });
 
   // ── Company autocomplete ────────────────────────────────────────────────────
@@ -126,7 +126,7 @@ export default function SubmitReferralPage() {
           <span className="section-tag">Referrals</span>
           <h2 className="section-title">Add a <em>Referral</em></h2>
           <p style={{ color: 'var(--text-2)', marginTop: 12, fontSize: 15 }}>
-            Share a referral link for an open role. It will appear under View Referral Opportunities once approved.
+            Share a referral link for an open role. It will appear under Referral Board once approved.
           </p>
         </div>
 
@@ -275,7 +275,7 @@ export default function SubmitReferralPage() {
               {/* ── Expiry date ── */}
               <div className="form-group">
                 <label className="form-label">
-                  Expires On <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(optional)</span>
+                  Expires On
                 </label>
                 <input
                   className="form-input"
