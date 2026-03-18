@@ -200,8 +200,9 @@ export default function DashboardPage() {
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 13 }}>Loading analytics…</div>
       ) : (
         <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 12, alignItems: 'start' }}>
           {/* ── Chart 1: Merged Location + Internal Level ── */}
-          <div className="chart-card" style={{ marginBottom: 12 }}>
+          <div className="chart-card">
 
             {/* Card header */}
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 14 }}>
@@ -328,6 +329,7 @@ export default function DashboardPage() {
             )}
           </div>
 
+          </div> {/* end grid */}
         </>
       )}
     </section>
