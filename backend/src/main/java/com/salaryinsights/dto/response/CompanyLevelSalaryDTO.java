@@ -12,5 +12,7 @@ public class CompanyLevelSalaryDTO {
     private String companyName;
     private String internalLevel;   // display name e.g. "SDE 1"
     private Double avgBaseSalary;
+    private Double avgBonus;
+    private Double avgEquity;
     private Long count;
 }

@@ -95,6 +95,8 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "           ELSE 'Unknown' " +
         "         END AS internalLevel, " +
         "         AVG(s.base_salary) AS avgBaseSalary, " +
+        "         AVG(s.bonus)       AS avgBonus, " +
+        "         AVG(s.equity)      AS avgEquity, " +
         "         COUNT(*)           AS cnt " +
         "  FROM salary_entries s " +
         "  JOIN top_companies tc ON s.company_id = tc.company_id " +

@@ -242,11 +242,21 @@ public class SalaryService {
     @Transactional(readOnly = true)
     public List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevel() {
         return salaryEntryRepository.avgSalaryByCompanyAndLevelRaw().stream().map(row -> {
-            String companyName    = row[0] != null ? row[0].toString() : null;
-            String internalLevel  = row[1] != null ? row[1].toString() : null;
-            Double avgBase        = row[2] != null ? ((Number) row[2]).doubleValue() : null;
-            Long   count          = row[3] != null ? ((Number) row[3]).longValue()   : 0L;
-            return new com.salaryinsights.dto.response.CompanyLevelSalaryDTO(companyName, internalLevel, avgBase, count);
+            String companyName   = row[0] != null ? row[0].toString() : null;
+            String internalLevel = row[1] != null ? row[1].toString() : null;
+            Double avgBase       = row[2] != null ? ((Number) row[2]).doubleValue() : null;
+            Double avgBonus      = row[3] != null ? ((Number) row[3]).doubleValue() : null;
+            Double avgEquity     = row[4] != null ? ((Number) row[4]).doubleValue() : null;
+            Long   count         = row[5] != null ? ((Number) row[5]).longValue()   : 0L;
+            com.salaryinsights.dto.response.CompanyLevelSalaryDTO dto =
+                new com.salaryinsights.dto.response.CompanyLevelSalaryDTO();
+            dto.setCompanyName(companyName);
+            dto.setInternalLevel(internalLevel);
+            dto.setAvgBaseSalary(avgBase);
+            dto.setAvgBonus(avgBonus);
+            dto.setAvgEquity(avgEquity);
+            dto.setCount(count);
+            return dto;
         }).collect(java.util.stream.Collectors.toList());
     }
 
