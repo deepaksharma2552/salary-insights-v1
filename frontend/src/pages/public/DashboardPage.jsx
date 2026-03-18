@@ -275,31 +275,44 @@ function MultiFilter({ label, items, selected, onChange, max = 5 }) {
 
   useEffect(() => {
     function handle(e) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+        setSearch('');
+      }
     }
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, []);
 
-  const filtered = items.filter(c =>
-    c.toLowerCase().includes(search.toLowerCase()) && !selected.includes(c)
-  );
+  // Show ALL items (selected + unselected), filtered by search
+  const filtered = items.filter(c => c.toLowerCase().includes(search.toLowerCase()));
+  // Sort: selected first, then alphabetical
+  const sorted = [
+    ...filtered.filter(c => selected.includes(c)),
+    ...filtered.filter(c => !selected.includes(c)),
+  ];
 
   function toggle(item) {
-    if (selected.includes(item)) onChange(selected.filter(c => c !== item));
-    else if (selected.length < max) onChange([...selected, item]);
+    if (selected.includes(item)) {
+      onChange(selected.filter(c => c !== item));
+    } else if (selected.length < max) {
+      onChange([...selected, item]);
+    }
   }
+
+  const atMax = selected.length >= max;
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
+      {/* Trigger button */}
       <button onClick={() => setOpen(o => !o)} style={{
         display: 'flex', alignItems: 'center', gap: 6,
         padding: '5px 10px', borderRadius: 8,
         background: open ? 'var(--bg-3)' : 'var(--bg-2)',
-        border: '1px solid var(--border)',
+        border: `1px solid ${selected.length > 0 ? '#3b82f680' : 'var(--border)'}`,
         cursor: 'pointer', fontSize: 11, color: 'var(--text-2)',
         fontFamily: "'IBM Plex Mono',monospace",
-        transition: 'background 0.15s',
+        transition: 'all 0.15s',
       }}>
         <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
           <line x1="4" y1="6" x2="20" y2="6"/>
@@ -318,51 +331,120 @@ function MultiFilter({ label, items, selected, onChange, max = 5 }) {
         )}
       </button>
 
+      {/* Dropdown panel */}
       {open && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 6px)', right: 0,
           background: 'var(--panel)', border: '1px solid var(--border)',
-          borderRadius: 10, padding: 8, minWidth: 210, zIndex: 50,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          borderRadius: 12, minWidth: 230, zIndex: 50,
+          boxShadow: '0 12px 40px rgba(0,0,0,0.22)',
+          overflow: 'hidden',
         }}>
-          <input
-            autoFocus value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search…"
-            style={{
-              width: '100%', padding: '6px 8px', borderRadius: 6,
+          {/* Search */}
+          <div style={{ padding: '8px 8px 4px' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
               background: 'var(--bg-2)', border: '1px solid var(--border)',
-              fontSize: 11, color: 'var(--text-1)', outline: 'none',
-              fontFamily: "'IBM Plex Mono',monospace", boxSizing: 'border-box',
-            }}
-          />
-          {selected.length >= max && (
-            <div style={{ fontSize: 10, color: '#d97706', padding: '4px 4px 0', fontFamily: "'IBM Plex Mono',monospace" }}>
-              Max {max} selected
-            </div>
-          )}
-          <div style={{ maxHeight: 180, overflowY: 'auto', marginTop: 6 }}>
-            {filtered.length === 0 && (
-              <div style={{ fontSize: 11, color: 'var(--text-3)', padding: '6px 4px' }}>No matches</div>
-            )}
-            {filtered.map(item => (
-              <div
-                key={item}
-                onClick={() => toggle(item)}
+              borderRadius: 7, padding: '5px 8px',
+            }}>
+              <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="var(--text-3)" strokeWidth="2.5">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                autoFocus value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search…"
                 style={{
-                  padding: '6px 8px', borderRadius: 6,
-                  cursor: selected.length >= max ? 'not-allowed' : 'pointer',
-                  fontSize: 12,
-                  color: selected.length >= max ? 'var(--text-4)' : 'var(--text-2)',
-                  opacity: selected.length >= max ? 0.5 : 1,
-                  transition: 'background 0.1s',
+                  flex: 1, border: 'none', background: 'transparent',
+                  fontSize: 11, color: 'var(--text-1)', outline: 'none',
+                  fontFamily: "'IBM Plex Mono',monospace",
                 }}
-                onMouseEnter={e => { if (selected.length < max) e.currentTarget.style.background = 'var(--bg-2)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-              >
-                {item}
+              />
+            </div>
+          </div>
+
+          {/* List */}
+          <div style={{ maxHeight: 200, overflowY: 'auto', padding: '2px 4px' }}>
+            {sorted.length === 0 && (
+              <div style={{ fontSize: 11, color: 'var(--text-3)', padding: '10px 8px', textAlign: 'center' }}>
+                No matches
               </div>
-            ))}
+            )}
+            {sorted.map(item => {
+              const isChecked  = selected.includes(item);
+              const isDisabled = !isChecked && atMax;
+              return (
+                <div
+                  key={item}
+                  onClick={() => !isDisabled && toggle(item)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 9,
+                    padding: '7px 8px', borderRadius: 7, marginBottom: 1,
+                    cursor: isDisabled ? 'not-allowed' : 'pointer',
+                    background: isChecked ? '#3b82f610' : 'transparent',
+                    opacity: isDisabled ? 0.4 : 1,
+                    transition: 'background 0.12s',
+                    userSelect: 'none',
+                  }}
+                  onMouseEnter={e => {
+                    if (!isDisabled && !isChecked)
+                      e.currentTarget.style.background = 'var(--bg-2)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = isChecked ? '#3b82f610' : 'transparent';
+                  }}
+                >
+                  {/* Custom checkbox */}
+                  <div style={{
+                    width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                    border: isChecked ? '2px solid #3b82f6' : '1.5px solid var(--border-2, #6b728060)',
+                    background: isChecked ? '#3b82f6' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.12s',
+                  }}>
+                    {isChecked && (
+                      <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                        <polyline points="1.5,5 4,7.5 8.5,2" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                  {/* Label */}
+                  <span style={{
+                    fontSize: 12, flex: 1,
+                    color: isChecked ? 'var(--text-1)' : 'var(--text-2)',
+                    fontWeight: isChecked ? 500 : 400,
+                  }}>
+                    {item}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '6px 10px 8px',
+            borderTop: '1px solid var(--border)',
+          }}>
+            <span style={{
+              fontSize: 10, color: atMax ? '#d97706' : 'var(--text-3)',
+              fontFamily: "'IBM Plex Mono',monospace", fontWeight: atMax ? 600 : 400,
+            }}>
+              {selected.length} / {max} selected
+            </span>
+            {selected.length > 0 && (
+              <button
+                onClick={() => onChange([])}
+                style={{
+                  fontSize: 10, color: '#3b82f6', background: 'none',
+                  border: 'none', cursor: 'pointer', padding: 0,
+                  fontFamily: "'IBM Plex Mono',monospace", fontWeight: 500,
+                }}
+              >
+                Clear all
+              </button>
+            )}
           </div>
         </div>
       )}
