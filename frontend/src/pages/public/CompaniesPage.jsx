@@ -1,6 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
+
+const VIZ_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#6366f1','#a78bfa','#818cf8'];
+const SEARCH_MIN_CHARS = 3;
+const SEARCH_DEBOUNCE  = 600;
 
 const PAGE_SIZE = 10;
 
@@ -27,8 +31,7 @@ function fmtDate(iso) {
 }
 
 function mapSalary(s) {
-  const colors = ['#3ecfb0','#d4a853','#e05c7a','#a08ff0','#c07df0','#e89050'];
-  const color = colors[s.companyName ? s.companyName.charCodeAt(0) % colors.length : 0];
+  const color = VIZ_COLORS[s.companyName ? s.companyName.charCodeAt(0) % VIZ_COLORS.length : 0];
   const levelMap = { INTERN:'junior',ENTRY:'junior',MID:'mid',SENIOR:'senior',LEAD:'lead',MANAGER:'lead',DIRECTOR:'lead',VP:'lead',C_LEVEL:'lead' };
   const fmt = (v) => { if (!v && v !== 0) return '—'; const l = Number(v)/100000; return l>=100?`₹${(l/100).toFixed(1)}Cr`:`₹${l.toFixed(1)}L`; };
   return {
@@ -76,7 +79,7 @@ function CompanyModal({ company, onClose }) {
       .finally(() => setLoading(false));
   }, [company.id, page]);
 
-  const LEVEL_COLORS = { junior: '#3ecfb0', mid: '#d4a853', senior: '#a08ff0', lead: '#e05c7a' };
+  const LEVEL_COLORS = { junior: '#06b6d4', mid: '#6366f1', senior: '#3b82f6', lead: '#8b5cf6' };
 
   return (
     <>
@@ -201,8 +204,10 @@ export default function CompaniesPage() {
   const [industries,    setIndustries]    = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState(null);
+  const [inputValue,    setInputValue]    = useState('');
   const [search,        setSearch]        = useState('');
   const [industry,      setIndustry]      = useState('');
+  const debounceRef = useRef(null);
   const [page,          setPage]          = useState(0);
   const [totalPages,    setTotalPages]    = useState(1);
   const [totalElements, setTotalElements] = useState(0);
@@ -214,20 +219,46 @@ export default function CompaniesPage() {
       .catch(console.error);
   }, []);
 
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
+
+  function commitSearch(val) {
+    clearTimeout(debounceRef.current);
+    setSearch(val);
+    setPage(0);
+  }
+
+  function handleSearchChange(e) {
+    const val = e.target.value;
+    setInputValue(val);
+    clearTimeout(debounceRef.current);
+    if (val.length === 0) { commitSearch(''); return; }
+    if (val.length < SEARCH_MIN_CHARS) return;
+    debounceRef.current = setTimeout(() => commitSearch(val), SEARCH_DEBOUNCE);
+  }
+
+  function handleSearchKeyDown(e) {
+    if (e.key === 'Enter' && inputValue.length >= SEARCH_MIN_CHARS) commitSearch(inputValue);
+  }
+
+  function clearSearch() {
+    clearTimeout(debounceRef.current);
+    setInputValue('');
+    commitSearch('');
+  }
+
   const fetchCompanies = useCallback(() => {
     setLoading(true);
     setError(null);
     api.get('/public/companies', { params: { page, size: PAGE_SIZE, ...(search && { name: search }), ...(industry && { industry }) } })
       .then(r => {
         const paged = r.data?.data;
-        const colors = ['#3ecfb0','#d4a853','#e05c7a','#a08ff0','#c07df0','#e89050'];
         setItems((paged?.content ?? []).map(c => ({
           id:           c.id,
           name:         c.name ?? '—',
           industry:     c.industry ?? '—',
           abbr:         c.name ? c.name.slice(0,2).toUpperCase() : '?',
-          color:        colors[c.name ? c.name.charCodeAt(0) % colors.length : 0],
-          colorBg:      `${colors[c.name ? c.name.charCodeAt(0) % colors.length : 0]}26`,
+          color:        VIZ_COLORS[c.name ? c.name.charCodeAt(0) % VIZ_COLORS.length : 0],
+          colorBg:      `${VIZ_COLORS[c.name ? c.name.charCodeAt(0) % VIZ_COLORS.length : 0]}26`,
           logoUrl:      c.logoUrl  ?? null,
           website:      c.website  ?? null,
           updatedLabel: fmtDate(c.updatedAt ?? c.createdAt),
@@ -257,10 +288,40 @@ export default function CompaniesPage() {
       </div>
 
       <div className="filter-bar" style={{ marginBottom:32 }}>
-        <div className="search-box">
-          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input className="input-field" type="text" placeholder="Search companies…" value={search}
-            onChange={e => { setSearch(e.target.value); setPage(0); }} />
+        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+          <div className="search-box" style={{ width: '100%' }}>
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input
+              className="input-field"
+              type="text"
+              placeholder="Search companies…"
+              value={inputValue}
+              onChange={handleSearchChange}
+              onKeyDown={handleSearchKeyDown}
+              style={{ paddingRight: inputValue.length >= SEARCH_MIN_CHARS && inputValue !== search ? 68 : 10 }}
+            />
+            {inputValue.length >= SEARCH_MIN_CHARS && inputValue !== search && (
+              <span
+                onClick={() => commitSearch(inputValue)}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  fontSize: 10, color: '#3b82f6',
+                  fontFamily: "'IBM Plex Mono',monospace",
+                  cursor: 'pointer', userSelect: 'none',
+                  background: 'var(--bg-2)', padding: '1px 5px',
+                  borderRadius: 4, border: '1px solid var(--border)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ↵ Search
+              </span>
+            )}
+          </div>
+          {inputValue.length > 0 && inputValue.length < SEARCH_MIN_CHARS && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, fontSize: 10, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
+              Type {SEARCH_MIN_CHARS - inputValue.length} more character{SEARCH_MIN_CHARS - inputValue.length !== 1 ? 's' : ''} to search
+            </div>
+          )}
         </div>
         <select className="select-field" value={industry} onChange={e => { setIndustry(e.target.value); setPage(0); }}>
           <option value="">All Industries</option>

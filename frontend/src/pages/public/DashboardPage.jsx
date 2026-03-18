@@ -5,18 +5,18 @@ import CompanyLogo from '../../components/shared/CompanyLogo';
 /* ─────────────────────────────────────────────────────────────────────────────
    DESIGN TOKENS
    Base   → blue   #3b82f6
-   Bonus  → purple #8b5cf6
-   Equity → emerald#10b981
+   Bonus  → violet #8b5cf6
+   Equity → cyan   #06b6d4
    These are fixed across the entire dashboard — same color always means
    the same thing, making both charts instantly comparable.
 ───────────────────────────────────────────────────────────────────────────── */
 const PALETTE = {
   base:   { solid: '#3b82f6', grad: 'linear-gradient(90deg,#2563eb,#3b82f6)', light: '#3b82f618' },
   bonus:  { solid: '#8b5cf6', grad: 'linear-gradient(90deg,#7c3aed,#8b5cf6)', light: '#8b5cf618' },
-  equity: { solid: '#10b981', grad: 'linear-gradient(90deg,#059669,#10b981)', light: '#10b98118' },
+  equity: { solid: '#06b6d4', grad: 'linear-gradient(90deg,#0891b2,#06b6d4)', light: '#06b6d418' },
 };
 
-const BAR_COLORS = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#0891b2','#f97316','#6366f1'];
+const BAR_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#6366f1','#a78bfa','#22d3ee','#818cf8','#c4b5fd'];
 
 const fmt = (val) => {
   if (!val && val !== 0) return '—';
