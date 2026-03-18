@@ -73,21 +73,51 @@ function deriveDomain(name, website) {
 }
 
 // ── CompanyLogo ───────────────────────────────────────────────────────────────
-// Priority: logoUrl → Clearbit (derived domain) → initials
+// Priority: logoUrl (DB) → Clearbit → Google favicon → initials
+// Module-level cache persists across remounts within the session
+const logoCache = new Map(); // key → 'clearbit' | 'favicon' | 'initials'
+
 function CompanyLogo({ name, website, logoUrl, size = 48, borderRadius = 12, color, colorBg, abbr, fontSize = 14 }) {
-  const [src,    setSrc]    = useState(null);
-  const [failed, setFailed] = useState(false);
+  const domain   = logoUrl ? null : deriveDomain(name, website);
+  const cacheKey = logoUrl ?? domain ?? name ?? '';
+
+  const resolve = () => {
+    if (logoUrl)  return { src: logoUrl,                                                          stage: 'logoUrl'  };
+    if (!domain)  return { src: null,                                                             stage: 'initials' };
+    const hit = logoCache.get(cacheKey);
+    if (hit === 'clearbit') return { src: `https://logo.clearbit.com/${domain}`,                              stage: 'clearbit' };
+    if (hit === 'favicon')  return { src: `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,        stage: 'favicon'  };
+    if (hit === 'initials') return { src: null,                                                               stage: 'initials' };
+    return { src: `https://logo.clearbit.com/${domain}`, stage: 'clearbit' }; // fresh — start with Clearbit
+  };
+
+  const init = resolve();
+  const [src,   setSrc]   = useState(init.src);
+  const [stage, setStage] = useState(init.stage);
 
   useEffect(() => {
-    setFailed(false);
-    if (logoUrl) { setSrc(logoUrl); return; }
-    const domain = deriveDomain(name, website);
-    if (domain) {
-      setSrc(`https://logo.clearbit.com/${domain}`);
-    } else {
-      setSrc(null);
-    }
+    const r = resolve();
+    setSrc(r.src);
+    setStage(r.stage);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, website, logoUrl]);
+
+  const handleError = () => {
+    if (stage === 'clearbit' && domain) {
+      logoCache.set(cacheKey, 'favicon');
+      setSrc(`https://www.google.com/s2/favicons?domain=${domain}&sz=64`);
+      setStage('favicon');
+    } else {
+      logoCache.set(cacheKey, 'initials');
+      setSrc(null);
+      setStage('initials');
+    }
+  };
+
+  const handleLoad = () => {
+    if (stage === 'clearbit') logoCache.set(cacheKey, 'clearbit');
+    if (stage === 'favicon')  logoCache.set(cacheKey, 'favicon');
+  };
 
   const containerStyle = {
     width: size, height: size, borderRadius, flexShrink: 0,
@@ -95,20 +125,19 @@ function CompanyLogo({ name, website, logoUrl, size = 48, borderRadius = 12, col
     background: colorBg, color,
   };
 
-  if (src && !failed) {
+  if (src && stage !== 'initials') {
+    const isFavicon = stage === 'favicon';
     return (
       <div style={containerStyle}>
         <img
-          src={src}
-          alt={name}
-          onError={() => setFailed(true)}
-          style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }}
+          src={src} alt={name}
+          onError={handleError} onLoad={handleLoad}
+          style={{ width: isFavicon ? '60%' : '100%', height: isFavicon ? '60%' : '100%', objectFit: 'contain', padding: isFavicon ? 0 : 4 }}
         />
       </div>
     );
   }
 
-  // Initials fallback
   return (
     <div style={{ ...containerStyle, fontSize, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace" }}>
       {abbr ?? (name ? name.slice(0, 2).toUpperCase() : '?')}
