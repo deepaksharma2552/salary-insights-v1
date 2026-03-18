@@ -12,16 +12,17 @@ import java.util.UUID;
 public class ReferralResponse {
 
     private UUID   id;
-    private UUID   companyId;     // for logo resolution
+    private UUID   companyId;
     private String companyName;
-    private String website;       // for logo resolution
+    private String website;
     private String referralLink;
     private ReferralStatus status;
-    private String adminNote;      // shown to the submitter on rejection
+    private String adminNote;
 
-    private String referredByName;  // firstName + lastName
+    private String referredByName;
     private String referredByEmail;
 
+    private LocalDateTime expiresAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

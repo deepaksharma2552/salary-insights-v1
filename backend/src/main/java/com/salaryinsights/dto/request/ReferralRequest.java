@@ -1,26 +1,29 @@
 package com.salaryinsights.dto.request;
 
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
 public class ReferralRequest {
 
-    /** ID of an existing company selected from autocomplete — nullable if new company. */
     private UUID companyId;
 
-    /**
-     * Company name typed by the user.
-     * Used to auto-create the company when companyId is null,
-     * exactly as in SalaryRequest.
-     */
     @Size(max = 255)
     private String companyName;
 
-    /** Direct referral or job application URL — required. */
     @NotBlank(message = "Referral link is required")
     private String referralLink;
+
+    /**
+     * Optional expiry date chosen by the user.
+     * If null, backend defaults to 30 days from now.
+     * Must be a future date if supplied.
+     */
+    @Future(message = "Expiry date must be in the future")
+    private LocalDateTime expiresAt;
 }

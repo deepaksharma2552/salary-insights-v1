@@ -5,11 +5,14 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "referrals", indexes = {
     @Index(name = "idx_referral_user",    columnList = "referred_by_id"),
     @Index(name = "idx_referral_status",  columnList = "status"),
-    @Index(name = "idx_referral_created", columnList = "created_at")
+    @Index(name = "idx_referral_created", columnList = "created_at"),
+    @Index(name = "idx_referral_expires", columnList = "expires_at")
 })
 @Getter
 @Setter
@@ -22,18 +25,10 @@ public class Referral extends BaseEntity {
     @JoinColumn(name = "referred_by_id", nullable = false)
     private User referredBy;
 
-    /**
-     * FK to companies table. Populated whether the company was pre-existing
-     * or auto-created at submission time — same pattern as SalaryEntry.
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id")
     private Company company;
 
-    /**
-     * Stores the name used at submission time so display stays correct
-     * even if the company record is later renamed.
-     */
     @Column(name = "company_name_raw", length = 255)
     private String companyNameRaw;
 
@@ -45,7 +40,14 @@ public class Referral extends BaseEntity {
     @Builder.Default
     private ReferralStatus status = ReferralStatus.PENDING;
 
-    /** Optional note from admin explaining a rejection. */
+    /** Optional rejection/acceptance note from admin. */
     @Column(name = "admin_note", length = 500)
     private String adminNote;
+
+    /**
+     * When this referral link expires and is removed from the public board.
+     * Defaults to 30 days from creation if not supplied by the user.
+     */
+    @Column(name = "expires_at", nullable = false)
+    private LocalDateTime expiresAt;
 }

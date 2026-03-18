@@ -22,12 +22,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReferralService {
+
+    private static final int DEFAULT_EXPIRY_DAYS = 30;
 
     private final ReferralRepository referralRepository;
     private final UserRepository     userRepository;
@@ -40,15 +43,13 @@ public class ReferralService {
     public ReferralResponse submit(ReferralRequest request) {
         User caller = currentUser();
 
-        // Resolve company — identical pattern to SalaryService.submitSalary()
+        // Resolve company — same pattern as SalaryService.submitSalary()
         Company company;
         if (request.getCompanyId() != null) {
-            // Existing company chosen from autocomplete
             company = companyRepository.findById(request.getCompanyId())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Company not found: " + request.getCompanyId()));
         } else if (request.getCompanyName() != null && !request.getCompanyName().isBlank()) {
-            // Auto-create or find by name — seeds the companies table for future use
             company = companyRepository.findByNameIgnoreCase(request.getCompanyName().trim())
                     .orElseGet(() -> {
                         Company newCompany = Company.builder()
@@ -65,18 +66,24 @@ public class ReferralService {
             throw new BadRequestException("Either companyId or companyName must be provided");
         }
 
+        // Default expiry to 30 days if user did not supply one
+        LocalDateTime expiresAt = request.getExpiresAt() != null
+                ? request.getExpiresAt()
+                : LocalDateTime.now().plusDays(DEFAULT_EXPIRY_DAYS);
+
         Referral referral = Referral.builder()
                 .referredBy(caller)
                 .company(company)
-                .companyNameRaw(company.getName())   // snapshot name at submission time
+                .companyNameRaw(company.getName())
                 .referralLink(request.getReferralLink())
+                .expiresAt(expiresAt)
                 .status(ReferralStatus.PENDING)
                 .build();
 
         referral = referralRepository.save(referral);
-        log.info("Referral opportunity submitted by {} for company {}", caller.getEmail(), company.getName());
-        auditLogService.log("REFERRAL", referral.getId().toString(),
-                "SUBMITTED", "Company: " + company.getName() + ", Link: " + request.getReferralLink());
+        log.info("Referral submitted by {} for {} (expires {})", caller.getEmail(), company.getName(), expiresAt);
+        auditLogService.log("REFERRAL", referral.getId().toString(), "SUBMITTED",
+                "Company: " + company.getName() + ", Expires: " + expiresAt);
 
         return toResponse(referral);
     }
@@ -93,8 +100,9 @@ public class ReferralService {
 
     @Transactional(readOnly = true)
     public PagedResponse<ReferralResponse> getAcceptedReferrals(Pageable pageable) {
+        // Only ACCEPTED entries that have not yet expired
         return PagedResponse.of(
-                referralRepository.findByStatusOrderByCreatedAtDesc(ReferralStatus.ACCEPTED, pageable)
+                referralRepository.findActiveAccepted(LocalDateTime.now(), pageable)
                         .map(this::toResponse));
     }
 
@@ -135,8 +143,6 @@ public class ReferralService {
     // ── Mapping ────────────────────────────────────────────────────────────────
 
     private ReferralResponse toResponse(Referral r) {
-        // Prefer snapshot name (companyNameRaw) so display is stable even if
-        // the company record is later renamed
         String companyName = r.getCompanyNameRaw() != null
                 ? r.getCompanyNameRaw()
                 : (r.getCompany() != null ? r.getCompany().getName() : "—");
@@ -156,6 +162,7 @@ public class ReferralService {
                 .adminNote(r.getAdminNote())
                 .referredByName(referredByName)
                 .referredByEmail(by != null ? by.getEmail() : null)
+                .expiresAt(r.getExpiresAt())
                 .createdAt(r.getCreatedAt())
                 .updatedAt(r.getUpdatedAt())
                 .build();
