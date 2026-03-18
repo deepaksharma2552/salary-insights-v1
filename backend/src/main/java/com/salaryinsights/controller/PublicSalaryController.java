@@ -54,4 +54,9 @@ public class PublicSalaryController {
     public ResponseEntity<ApiResponse<List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO>>> getByCompanyAndLevel() {
         return ResponseEntity.ok(ApiResponse.success(salaryService.getAvgSalaryByCompanyAndLevel()));
     }
+
+    @GetMapping("/analytics/by-internal-level")
+    public ResponseEntity<ApiResponse<List<SalaryAggregationDTO>>> getByInternalLevel() {
+        return ResponseEntity.ok(ApiResponse.success(salaryService.getAvgSalaryByInternalLevel()));
+    }
 }

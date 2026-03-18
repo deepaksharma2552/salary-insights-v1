@@ -213,7 +213,6 @@ public class SalaryService {
     public List<SalaryAggregationDTO> getAvgSalaryByLocation() {
         return salaryEntryRepository.avgSalaryByLocationRaw().stream().map(row -> {
             String enumName = row[0] != null ? row[0].toString() : null;
-            // Convert DB enum name (e.g. "DELHI_NCR") to display name via Location enum
             String displayName = enumName;
             if (enumName != null) {
                 try {
@@ -222,9 +221,38 @@ public class SalaryService {
                 } catch (IllegalArgumentException ignored) { }
             }
             Double avgBase  = row[1] != null ? ((Number) row[1]).doubleValue() : null;
-            Double avgTotal = row[2] != null ? ((Number) row[2]).doubleValue() : null;
-            Long   count    = row[3] != null ? ((Number) row[3]).longValue()   : 0L;
-            return new SalaryAggregationDTO(displayName, avgBase, avgTotal, count);
+            Double avgBonus = row[2] != null ? ((Number) row[2]).doubleValue() : null;
+            Double avgEquity= row[3] != null ? ((Number) row[3]).doubleValue() : null;
+            Double avgTotal = row[4] != null ? ((Number) row[4]).doubleValue() : null;
+            Long   count    = row[5] != null ? ((Number) row[5]).longValue()   : 0L;
+            SalaryAggregationDTO dto = new SalaryAggregationDTO();
+            dto.setGroupKey(displayName);
+            dto.setAvgBaseSalary(avgBase);
+            dto.setAvgBonus(avgBonus);
+            dto.setAvgEquity(avgEquity);
+            dto.setAvgTotalCompensation(avgTotal);
+            dto.setCount(count);
+            return dto;
+        }).collect(java.util.stream.Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<SalaryAggregationDTO> getAvgSalaryByInternalLevel() {
+        return salaryEntryRepository.avgSalaryByInternalLevelRaw().stream().map(row -> {
+            String groupKey = row[0] != null ? row[0].toString() : null;
+            Double avgBase  = row[1] != null ? ((Number) row[1]).doubleValue() : null;
+            Double avgBonus = row[2] != null ? ((Number) row[2]).doubleValue() : null;
+            Double avgEquity= row[3] != null ? ((Number) row[3]).doubleValue() : null;
+            Double avgTotal = row[4] != null ? ((Number) row[4]).doubleValue() : null;
+            Long   count    = row[5] != null ? ((Number) row[5]).longValue()   : 0L;
+            SalaryAggregationDTO dto = new SalaryAggregationDTO();
+            dto.setGroupKey(groupKey);
+            dto.setAvgBaseSalary(avgBase);
+            dto.setAvgBonus(avgBonus);
+            dto.setAvgEquity(avgEquity);
+            dto.setAvgTotalCompensation(avgTotal);
+            dto.setCount(count);
+            return dto;
         }).collect(java.util.stream.Collectors.toList());
     }
 

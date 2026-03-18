@@ -12,6 +12,8 @@ import java.math.BigDecimal;
 public class SalaryAggregationDTO {
     private String groupKey;
     private Double avgBaseSalary;
+    private Double avgBonus;
+    private Double avgEquity;
     private Double avgTotalCompensation;
     private Long count;
 }

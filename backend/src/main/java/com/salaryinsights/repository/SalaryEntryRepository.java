@@ -34,16 +34,49 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "WITH loc_agg AS ( " +
         "  SELECT location AS groupKey, " +
         "         AVG(base_salary)         AS avgBaseSalary, " +
+        "         AVG(bonus)               AS avgBonus, " +
+        "         AVG(equity)              AS avgEquity, " +
         "         AVG(total_compensation)  AS avgTotalCompensation, " +
         "         COUNT(*)                 AS cnt " +
         "  FROM salary_entries " +
         "  WHERE review_status = 'APPROVED' AND location IS NOT NULL " +
         "  GROUP BY location " +
         ") " +
-        "SELECT groupKey, avgBaseSalary, avgTotalCompensation, cnt FROM loc_agg " +
+        "SELECT groupKey, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt FROM loc_agg " +
         "ORDER BY avgBaseSalary DESC",
         nativeQuery = true)
     List<Object[]> avgSalaryByLocationRaw();
+
+    // Avg salary by internal level across all companies
+    @Query(value =
+        "WITH lvl_agg AS ( " +
+        "  SELECT CASE company_internal_level " +
+        "           WHEN 'SDE_1'                 THEN 'SDE 1' " +
+        "           WHEN 'SDE_2'                 THEN 'SDE 2' " +
+        "           WHEN 'SDE_3'                 THEN 'SDE 3' " +
+        "           WHEN 'STAFF_ENGINEER'         THEN 'Staff Engineer' " +
+        "           WHEN 'PRINCIPAL_ENGINEER'     THEN 'Principal Engineer' " +
+        "           WHEN 'ARCHITECT'              THEN 'Architect' " +
+        "           WHEN 'ENGINEERING_MANAGER'    THEN 'Engineering Manager' " +
+        "           WHEN 'SR_ENGINEERING_MANAGER' THEN 'Sr. Engineering Manager' " +
+        "           WHEN 'DIRECTOR'               THEN 'Director' " +
+        "           WHEN 'SR_DIRECTOR'            THEN 'Sr. Director' " +
+        "           WHEN 'VP'                     THEN 'VP' " +
+        "           ELSE 'Unknown' " +
+        "         END AS groupKey, " +
+        "         AVG(base_salary)        AS avgBaseSalary, " +
+        "         AVG(bonus)              AS avgBonus, " +
+        "         AVG(equity)             AS avgEquity, " +
+        "         AVG(total_compensation) AS avgTotalCompensation, " +
+        "         COUNT(*)                AS cnt " +
+        "  FROM salary_entries " +
+        "  WHERE review_status = 'APPROVED' AND company_internal_level IS NOT NULL " +
+        "  GROUP BY company_internal_level " +
+        ") " +
+        "SELECT groupKey, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt FROM lvl_agg " +
+        "ORDER BY avgBaseSalary DESC",
+        nativeQuery = true)
+    List<Object[]> avgSalaryByInternalLevelRaw();
 
     // CTE pre-computes AVG once; ORDER BY references the alias — no double aggregation
     @Query(value =
