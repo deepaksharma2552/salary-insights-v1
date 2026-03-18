@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import SalaryTable from '../../components/shared/SalaryTable';
 import api from '../../services/api';
+import CompanyLogo from '../../components/shared/CompanyLogo';
 
 function mapSalary(s) {
   const colors = ['#3ecfb0','#d4a853','#e05c7a','#a08ff0','#c07df0','#e89050'];
@@ -140,12 +141,15 @@ export default function HomePage() {
                         <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-4)', fontFamily: "'IBM Plex Mono',monospace", minWidth: 16, textAlign: 'right' }}>
                           {i + 1}
                         </span>
-                        {/* Company initial dot */}
-                        <div style={{ width: 22, height: 22, borderRadius: 6, background: `${color}22`, border: `1px solid ${color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <span style={{ fontSize: 9, fontWeight: 700, color, fontFamily: "'IBM Plex Mono',monospace" }}>
-                            {co.groupKey ? co.groupKey.slice(0,2).toUpperCase() : '?'}
-                          </span>
-                        </div>
+                        {/* Company Logo */}
+                        <CompanyLogo
+                          companyId={co.companyId}
+                          companyName={co.groupKey ?? ''}
+                          logoUrl={co.logoUrl}
+                          website={co.website}
+                          size={22}
+                          radius={6}
+                        />
                         {/* Bar */}
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

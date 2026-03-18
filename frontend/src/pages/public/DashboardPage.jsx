@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
+import CompanyLogo from '../../components/shared/CompanyLogo';
 
 export default function DashboardPage() {
   const [byLocation,      setByLocation]      = useState([]);
@@ -122,9 +123,14 @@ export default function DashboardPage() {
                     {companies.map((company, ci) => (
                       <div key={company}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 20, height: 20, borderRadius: 4, background: `${BAR_COLORS[ci % BAR_COLORS.length]}22`, border: `1px solid ${BAR_COLORS[ci % BAR_COLORS.length]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: BAR_COLORS[ci % BAR_COLORS.length], fontFamily: "'IBM Plex Mono',monospace" }}>
-                            {company.slice(0,2).toUpperCase()}
-                          </div>
+                          <CompanyLogo
+                            companyId={grouped[company][0]?.companyId}
+                            companyName={company}
+                            logoUrl={grouped[company][0]?.logoUrl}
+                            website={grouped[company][0]?.website}
+                            size={20}
+                            radius={4}
+                          />
                           {company}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -150,6 +156,54 @@ export default function DashboardPage() {
             </div>
 
           </div>{/* ── end chart grid ── */}
+
+          {/* ── TOP 10 PAYING COMPANIES ── */}
+          <div className="chart-card" style={{ marginBottom: 12 }}>
+            <div className="chart-card-header">
+              <div className="chart-title">🏆 Top 10 Paying Companies</div>
+              <div className="chart-subtitle">Ranked by average base salary · approved submissions only</div>
+            </div>
+            {byCompany.length === 0 ? <EmptyState /> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {byCompany.slice(0, 10).map((co, i) => {
+                  const pct = Math.round(((co.avgBaseSalary ?? 0) / maxCo) * 100);
+                  const color = BAR_COLORS[i % BAR_COLORS.length];
+                  return (
+                    <div key={co.groupKey} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {/* Rank */}
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-4)', fontFamily: "'IBM Plex Mono',monospace", minWidth: 18, textAlign: 'right' }}>
+                        {i + 1}
+                      </span>
+                      {/* Logo */}
+                      <CompanyLogo
+                        companyId={co.companyId}
+                        companyName={co.groupKey ?? ''}
+                        logoUrl={co.logoUrl}
+                        website={co.website}
+                        size={28}
+                        radius={7}
+                      />
+                      {/* Bar + Label */}
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {co.groupKey}
+                          </span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace" }}>
+                            {fmt(co.avgBaseSalary)}
+                          </span>
+                        </div>
+                        <div className="level-bar-track">
+                          <div className="level-bar-fill" style={{ width: `${pct}%`, background: color }} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
         </>
       )}
     </section>
