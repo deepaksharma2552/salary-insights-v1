@@ -10,9 +10,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class CompanyLevelSalaryDTO {
     private String companyName;
-    private String internalLevel;   // display name e.g. "SDE 1"
+    private String internalLevel;
     private Double avgBaseSalary;
     private Double avgBonus;
     private Double avgEquity;
     private Long count;
+    private Long companyTotalEntries;  // total approved entries across all levels — used for confidence
 }
