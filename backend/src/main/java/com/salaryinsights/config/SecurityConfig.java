@@ -2,6 +2,8 @@ package com.salaryinsights.config;
 
 import com.salaryinsights.security.JwtAuthenticationFilter;
 import com.salaryinsights.security.oauth2.CustomOAuth2UserService;
+import com.salaryinsights.security.oauth2.OAuth2AuthenticationFailureHandler;
+import com.salaryinsights.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,16 +18,21 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final CustomOAuth2UserService customOAuth2UserService;
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomOAuth2UserService             customOAuth2UserService;
+    private final JwtAuthenticationFilter             jwtAuthenticationFilter;
+    private final OAuth2AuthenticationSuccessHandler  oAuth2SuccessHandler;
+    private final OAuth2AuthenticationFailureHandler  oAuth2FailureHandler;
 
     public SecurityConfig(CustomOAuth2UserService customOAuth2UserService,
-                          JwtAuthenticationFilter jwtAuthenticationFilter) {
+                          JwtAuthenticationFilter jwtAuthenticationFilter,
+                          OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler,
+                          OAuth2AuthenticationFailureHandler oAuth2FailureHandler) {
         this.customOAuth2UserService = customOAuth2UserService;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.oAuth2SuccessHandler    = oAuth2SuccessHandler;
+        this.oAuth2FailureHandler    = oAuth2FailureHandler;
     }
 
-    // THIS IS THE NEW PART TO FIX THE LATEST ERROR
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration configuration) throws Exception {
@@ -48,7 +55,10 @@ public class SecurityConfig {
                     "/api/public/**",
                     "/public/**",
                     "/api/health",
-                    "/health"
+                    "/health",
+                    "/oauth2/**",           // OAuth2 initiation endpoints
+                    "/api/oauth2/**",
+                    "/login/oauth2/**"      // Spring's OAuth2 callback path
                 ).permitAll()
                 .anyRequest().authenticated()
             )
@@ -56,8 +66,9 @@ public class SecurityConfig {
                 .userInfoEndpoint(userInfo -> userInfo
                     .userService(customOAuth2UserService)
                 )
+                .successHandler(oAuth2SuccessHandler)
+                .failureHandler(oAuth2FailureHandler)
             )
-            // Register JWT filter — validates Bearer tokens on every request
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
