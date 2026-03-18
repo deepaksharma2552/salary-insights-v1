@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError]       = useState(searchParams.get('error') ?? '');
+  const [error, setError] = useState(searchParams.get('oauthError') ?? searchParams.get('error') ?? '');
 
   async function handleSubmit(e) {
     e.preventDefault();
