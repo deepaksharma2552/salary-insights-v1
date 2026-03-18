@@ -188,6 +188,15 @@ export default function DashboardPage() {
     }
     return map;
   }, [byCompanyLevel]);
+
+  // Total entries per company — first row carries companyTotalEntries from backend
+  const companyEntryCount = useMemo(() => {
+    const map = new Map();
+    for (const row of byCompanyLevel) {
+      if (!map.has(row.companyName)) map.set(row.companyName, row.companyTotalEntries ?? 0);
+    }
+    return map;
+  }, [byCompanyLevel]);
   const allCompanies     = useMemo(() => Array.from(groupedByCompany.keys()), [groupedByCompany]);
   const filteredCoOpts   = useMemo(() => allCompanies.filter(c => c.toLowerCase().includes(coSearch.toLowerCase())), [allCompanies, coSearch]);
   const displayedCompanies = useMemo(() =>
@@ -200,6 +209,14 @@ export default function DashboardPage() {
   }, [displayedCompanies, groupedByCompany]);
 
   const toggleCompany = (c) => setSelectedCompanies(prev => prev.includes(c) ? prev.filter(x => x !== c) : prev.length >= 5 ? prev : [...prev, c]);
+
+  // Confidence tier based on total company entries
+  const getConfidence = (totalEntries) => {
+    if (!totalEntries || totalEntries <= 2)  return { label: 'Low',       color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.25)'   };
+    if (totalEntries <= 9)                   return { label: 'Medium',    color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.25)'  };
+    if (totalEntries <= 24)                  return { label: 'High',      color: '#16a34a', bg: 'rgba(22,163,74,0.1)',   border: 'rgba(22,163,74,0.25)'   };
+    return                                          { label: 'Very High', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)',  border: 'rgba(124,58,237,0.25)'  };
+  };
 
   const EmptyState = () => <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-3)', fontSize: 13 }}>No data available yet.</div>;
   const Legend     = () => (
@@ -273,7 +290,21 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
               <div>
                 <div className="chart-title">Avg Salary by Company &amp; Job Level</div>
-                <div className="chart-subtitle">{selectedCompanies.length > 0 ? `Showing ${selectedCompanies.length} of 10 · up to 5 selectable` : 'Top 5 by latest data · up to 10 available'}</div>
+                <div className="chart-subtitle">{selectedCompanies.length > 0 ? `Showing ${selectedCompanies.length} of 10 · up to 5 selectable` : 'Top 10 by weighted score · ranked by avg TC × log(entries)'}</div>
+                {/* Confidence legend */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'Low',       color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.25)',   tip: '1–2 entries'   },
+                    { label: 'Medium',    color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.25)',  tip: '3–9 entries'   },
+                    { label: 'High',      color: '#16a34a', bg: 'rgba(22,163,74,0.1)',   border: 'rgba(22,163,74,0.25)',   tip: '10–24 entries' },
+                    { label: 'Very High', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)',  border: 'rgba(124,58,237,0.25)',  tip: '25+ entries'   },
+                  ].map(({ label, color, bg, border, tip }) => (
+                    <span key={label} title={tip} style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 100, background: bg, color, border: `1px solid ${border}`, cursor: 'default' }}>
+                      {label}
+                    </span>
+                  ))}
+                  <span style={{ fontSize: 10, color: 'var(--text-3)' }}>confidence</span>
+                </div>
               </div>
               <div ref={coRef} style={{ position: 'relative', flexShrink: 0 }}>
                 <button onClick={() => { setCoFilterOpen(o => !o); setCoSearch(''); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 6, fontSize: 12, border: '1px solid var(--border)', background: selectedCompanies.length ? 'var(--blue)' : 'var(--panel)', color: selectedCompanies.length ? '#fff' : 'var(--text-2)', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}>
@@ -314,7 +345,10 @@ export default function DashboardPage() {
 
             {byCompanyLevel.length === 0 ? <EmptyState /> : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {displayedCompanies.map((company, ci) => (
+                {displayedCompanies.map((company, ci) => {
+                  const totalEntries = companyEntryCount.get(company) ?? 0;
+                  const confidence   = getConfidence(totalEntries);
+                  return (
                   <div key={company}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
                       <CompanyLogo
@@ -323,7 +357,18 @@ export default function DashboardPage() {
                         colorBg={`${BAR_COLORS[ci % BAR_COLORS.length]}22`}
                         fontSize={8}
                       />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }} title={company}>{company}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }} title={company}>{company}</span>
+                      {/* Confidence badge */}
+                      <span title={`${totalEntries} approved entr${totalEntries !== 1 ? 'ies' : 'y'}`} style={{
+                        fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 100, flexShrink: 0,
+                        background: confidence.bg, color: confidence.color, border: `1px solid ${confidence.border}`,
+                        cursor: 'default',
+                      }}>
+                        {confidence.label}
+                      </span>
+                      <span style={{ fontSize: 10, color: 'var(--text-3)', flexShrink: 0 }}>
+                        {totalEntries} {totalEntries === 1 ? 'entry' : 'entries'}
+                      </span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {(groupedByCompany.get(company) ?? []).map(row => {
@@ -366,7 +411,8 @@ export default function DashboardPage() {
                       })}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
