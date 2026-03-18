@@ -237,8 +237,28 @@ public class SalaryService {
     }
 
     @Transactional(readOnly = true)
-    public List<SalaryAggregationDTO> getAvgSalaryByInternalLevel() {
-        return salaryEntryRepository.avgSalaryByInternalLevelRaw().stream().map(row -> {
+    public List<SalaryAggregationDTO> getAvgSalaryByInternalLevel(List<String> locationDisplayNames) {
+        // Convert display names (e.g. "Delhi-NCR") → DB enum names (e.g. "DELHI_NCR")
+        // Empty list means no filter — pass null so the SQL COALESCE trick short-circuits
+        List<String> locationEnumNames = null;
+        if (locationDisplayNames != null && !locationDisplayNames.isEmpty()) {
+            locationEnumNames = locationDisplayNames.stream()
+                .map(name -> {
+                    for (com.salaryinsights.enums.Location loc : com.salaryinsights.enums.Location.values()) {
+                        if (loc.getDisplayName().equalsIgnoreCase(name) || loc.name().equalsIgnoreCase(name)) {
+                            return loc.name();
+                        }
+                    }
+                    return name; // pass through unknown values — SQL IN will just not match
+                })
+                .collect(java.util.stream.Collectors.toList());
+        }
+
+        List<Object[]> rows = (locationEnumNames == null || locationEnumNames.isEmpty())
+            ? salaryEntryRepository.avgSalaryByInternalLevelRaw()
+            : salaryEntryRepository.avgSalaryByInternalLevelFilteredRaw(locationEnumNames);
+
+        return rows.stream().map(row -> {
             String groupKey = row[0] != null ? row[0].toString() : null;
             Double avgBase  = row[1] != null ? ((Number) row[1]).doubleValue() : null;
             Double avgBonus = row[2] != null ? ((Number) row[2]).doubleValue() : null;
