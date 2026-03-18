@@ -24,10 +24,9 @@ public class SalaryRequest {
     private String department;
 
     @NotNull
-    private ExperienceLevel experienceLevel;
-
-    @NotNull
     private com.salaryinsights.enums.InternalLevel companyInternalLevel;
+
+    private ExperienceLevel experienceLevel;   // optional — auto-derived from YOE or internalLevel if not sent
 
     private com.salaryinsights.enums.Location location;
 

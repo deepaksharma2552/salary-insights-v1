@@ -169,6 +169,10 @@ public class SalaryService {
         StandardizedLevel standardizedLevel = null;
 
         SalaryEntry entry = salaryMapper.toEntity(request);
+        // Auto-derive experienceLevel when not provided — DB column is NOT NULL
+        if (entry.getExperienceLevel() == null) {
+            entry.setExperienceLevel(deriveExperienceLevel(request));
+        }
         entry.setCompany(company);
         entry.setSubmittedBy(submitter);
         entry.setStandardizedLevel(standardizedLevel);
@@ -181,6 +185,37 @@ public class SalaryService {
                 "Submitted salary for " + company.getName());
 
         return salaryMapper.toResponse(entry);
+    }
+
+    // Derives ExperienceLevel from yearsOfExperience, falling back to companyInternalLevel mapping
+    private ExperienceLevel deriveExperienceLevel(com.salaryinsights.dto.request.SalaryRequest request) {
+        if (request.getYearsOfExperience() != null) {
+            int y = request.getYearsOfExperience();
+            if (y <= 1)  return ExperienceLevel.INTERN;
+            if (y <= 2)  return ExperienceLevel.ENTRY;
+            if (y <= 5)  return ExperienceLevel.MID;
+            if (y <= 8)  return ExperienceLevel.SENIOR;
+            if (y <= 12) return ExperienceLevel.LEAD;
+            if (y <= 16) return ExperienceLevel.MANAGER;
+            if (y <= 20) return ExperienceLevel.DIRECTOR;
+            return ExperienceLevel.VP;
+        }
+        if (request.getCompanyInternalLevel() != null) {
+            return switch (request.getCompanyInternalLevel()) {
+                case SDE_1                -> ExperienceLevel.ENTRY;
+                case SDE_2                -> ExperienceLevel.MID;
+                case SDE_3                -> ExperienceLevel.SENIOR;
+                case STAFF_ENGINEER,
+                     PRINCIPAL_ENGINEER,
+                     ARCHITECT            -> ExperienceLevel.LEAD;
+                case ENGINEERING_MANAGER,
+                     SR_ENGINEERING_MANAGER -> ExperienceLevel.MANAGER;
+                case DIRECTOR,
+                     SR_DIRECTOR          -> ExperienceLevel.DIRECTOR;
+                case VP                   -> ExperienceLevel.VP;
+            };
+        }
+        return ExperienceLevel.MID; // safe default
     }
 
     @Transactional
