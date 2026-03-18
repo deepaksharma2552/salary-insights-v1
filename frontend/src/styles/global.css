@@ -587,12 +587,22 @@ body {
 .chart-subtitle { font-size: 12px; color: var(--text-3); margin-top: 3px; }
 .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-.level-bars { display: flex; flex-direction: column; gap: 10px; }
-.level-bar-row { display: flex; align-items: center; gap: 12px; }
-.level-bar-label { font-size: 12px; color: var(--text-2); min-width: 80px; font-weight: 500; }
-.level-bar-track { flex: 1; height: 8px; background: var(--bg-3); border-radius: 100px; overflow: hidden; }
-.level-bar-fill { height: 100%; border-radius: 100px; background: var(--blue); transition: width 0.8s cubic-bezier(0.16,1,0.3,1); }
-.level-bar-val { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: var(--text-1); min-width: 60px; text-align: right; }
+/* ── Salary bar system — semantic palette used across all charts ── */
+.bar-palette-base   { background: linear-gradient(90deg, #2563eb, #3b82f6); }
+.bar-palette-bonus  { background: linear-gradient(90deg, #7c3aed, #8b5cf6); }
+.bar-palette-equity { background: linear-gradient(90deg, #059669, #10b981); }
+
+.level-bars { display: flex; flex-direction: column; gap: 8px; }
+.level-bar-row { display: flex; align-items: center; gap: 10px; position: relative; }
+.level-bar-label { font-size: 11px; color: var(--text-2); font-weight: 500; flex-shrink: 0; }
+.level-bar-track {
+  flex: 1; height: 12px;
+  background: var(--bg-3);
+  border-radius: 6px;
+  overflow: visible;
+  position: relative;
+}
+.level-bar-val { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; color: var(--text-1); min-width: 52px; text-align: right; flex-shrink: 0; }
 
 /* ── AUTH ── */
 .auth-page {
