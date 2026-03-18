@@ -30,4 +30,6 @@ public class SalaryResponse {
     private String rejectionReason;
     private String submittedByEmail;
     private LocalDateTime createdAt;
+    private String logoUrl;
+    private String website;
 }

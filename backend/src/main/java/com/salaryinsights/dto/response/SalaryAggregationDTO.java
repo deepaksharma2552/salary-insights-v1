@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
@@ -20,4 +21,8 @@ public class SalaryAggregationDTO {
     private String companyId;
     private String logoUrl;
     private String website;
+    // Confidence fields
+    private LocalDateTime mostRecentEntry;
+    private String confidenceTier;  // HIGH / MEDIUM / LOW
+    private String confidenceLabel; // e.g. "High · 14 entries · updated 2mo ago"
 }

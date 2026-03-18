@@ -10,6 +10,8 @@ public interface SalaryMapper {
 
     @Mapping(target = "companyId", source = "company.id")
     @Mapping(target = "companyName", source = "company.name")
+    @Mapping(target = "logoUrl", source = "company.logoUrl")
+    @Mapping(target = "website", source = "company.website")
     @Mapping(target = "standardizedLevelName", source = "standardizedLevel.name")
     @Mapping(target = "submittedByEmail", source = "submittedBy.email")
     SalaryResponse toResponse(SalaryEntry entry);

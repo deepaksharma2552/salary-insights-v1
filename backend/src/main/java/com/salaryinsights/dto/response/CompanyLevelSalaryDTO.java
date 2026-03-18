@@ -4,6 +4,7 @@ import com.salaryinsights.enums.InternalLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
@@ -20,4 +21,8 @@ public class CompanyLevelSalaryDTO {
     private String companyId;
     private String logoUrl;
     private String website;
+    // Confidence fields (company-level, same for all levels of a company)
+    private LocalDateTime mostRecentEntry;
+    private String confidenceTier;
+    private String confidenceLabel;
 }

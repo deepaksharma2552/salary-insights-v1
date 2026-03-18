@@ -17,6 +17,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -105,7 +107,7 @@ public class SalaryService {
     public PagedResponse<SalaryResponse> getPendingSalaries(Pageable pageable) {
         long totalPending = salaryEntryRepository.countByReviewStatus(ReviewStatus.PENDING);
         log.info("getPendingSalaries called — total PENDING in DB: {}, page: {}", totalPending, pageable);
-        Page<SalaryEntry> page = salaryEntryRepository.findByReviewStatus(ReviewStatus.PENDING, pageable);
+        Page<SalaryEntry> page = salaryEntryRepository.findByReviewStatusWithDetails(ReviewStatus.PENDING, pageable);
         log.info("findByReviewStatus returned {} entries on this page", page.getNumberOfElements());
         // Force mapping inside the transaction so lazy fields (company, submittedBy) can be accessed
         List<SalaryResponse> mapped = page.getContent().stream()
@@ -219,6 +221,7 @@ public class SalaryService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "analytics", allEntries = true)
     public SalaryResponse reviewSalary(UUID id, ReviewStatus status, String reason) {
         if (status == ReviewStatus.PENDING) {
             throw new BadRequestException("Cannot set status to PENDING");
@@ -245,6 +248,7 @@ public class SalaryService {
 
     // Analytics
     @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'byLocation'")
     public List<SalaryAggregationDTO> getAvgSalaryByLocation() {
         return salaryEntryRepository.avgSalaryByLocationRaw().stream().map(row -> {
             String enumName = row[0] != null ? row[0].toString() : null;
@@ -311,19 +315,53 @@ public class SalaryService {
         }).collect(java.util.stream.Collectors.toList());
     }
 
+    /**
+     * Two-signal confidence score (mirrors Glassdoor / Levels.fyi approach):
+     *   score = log(count + 1)  ×  recency_factor
+     * recency_factor = e^(-λ × months_since_last_entry), λ = 0.05
+     * Tiers:  HIGH ≥ 1.5 · MEDIUM ≥ 0.6 · LOW < 0.6
+     * Suppressed (tier = "INSUFFICIENT") when count < 2.
+     */
+    private String[] computeConfidence(long count, LocalDateTime mostRecent) {
+        if (count < 2) {
+            return new String[]{"INSUFFICIENT", "Insufficient data · " + count + " entr" + (count == 1 ? "y" : "ies")};
+        }
+        double monthsAgo = mostRecent != null
+            ? ChronoUnit.DAYS.between(mostRecent, LocalDateTime.now()) / 30.0
+            : 24.0; // assume stale if unknown
+        double recencyFactor = Math.exp(-0.05 * monthsAgo);
+        double score = Math.log(count + 1) * recencyFactor;
+        String tier;
+        if (score >= 1.5)      tier = "HIGH";
+        else if (score >= 0.6) tier = "MEDIUM";
+        else                   tier = "LOW";
+        long mo = Math.round(monthsAgo);
+        String recencyStr = mo <= 1 ? "updated recently"
+            : mo < 12 ? "updated " + mo + "mo ago"
+            : "updated " + (mo / 12) + "yr ago";
+        String label = tier.charAt(0) + tier.substring(1).toLowerCase()
+            + " · " + count + " entr" + (count == 1 ? "y" : "ies")
+            + " · " + recencyStr;
+        return new String[]{tier, label};
+    }
+
     @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'byCompany'")
     public List<SalaryAggregationDTO> getAvgSalaryByCompany() {
         return salaryEntryRepository.avgSalaryByCompanyRaw().stream().map(row -> {
-            // col order: groupKey, companyId, logoUrl, website, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt
-            String name       = row[0] != null ? row[0].toString() : null;
-            String companyId  = row[1] != null ? row[1].toString() : null;
-            String logoUrl    = row[2] != null ? row[2].toString() : null;
-            String website    = row[3] != null ? row[3].toString() : null;
-            Double avgBase    = row[4] != null ? ((Number) row[4]).doubleValue() : null;
-            Double avgBonus   = row[5] != null ? ((Number) row[5]).doubleValue() : null;
-            Double avgEquity  = row[6] != null ? ((Number) row[6]).doubleValue() : null;
-            Double avgTotal   = row[7] != null ? ((Number) row[7]).doubleValue() : null;
-            Long   count      = row[8] != null ? ((Number) row[8]).longValue()   : 0L;
+            // col order: groupKey[0], companyId[1], logoUrl[2], website[3],
+            //            avgBaseSalary[4], avgBonus[5], avgEquity[6], avgTotalComp[7], cnt[8], mostRecentEntry[9]
+            String name            = row[0] != null ? row[0].toString() : null;
+            String companyId       = row[1] != null ? row[1].toString() : null;
+            String logoUrl         = row[2] != null ? row[2].toString() : null;
+            String website         = row[3] != null ? row[3].toString() : null;
+            Double avgBase         = row[4] != null ? ((Number) row[4]).doubleValue() : null;
+            Double avgBonus        = row[5] != null ? ((Number) row[5]).doubleValue() : null;
+            Double avgEquity       = row[6] != null ? ((Number) row[6]).doubleValue() : null;
+            Double avgTotal        = row[7] != null ? ((Number) row[7]).doubleValue() : null;
+            Long   count           = row[8] != null ? ((Number) row[8]).longValue()   : 0L;
+            LocalDateTime recent   = row[9] != null ? ((java.sql.Timestamp) row[9]).toLocalDateTime() : null;
+            String[] conf          = computeConfidence(count, recent);
             SalaryAggregationDTO dto = new SalaryAggregationDTO();
             dto.setGroupKey(name);
             dto.setCompanyId(companyId);
@@ -334,15 +372,20 @@ public class SalaryService {
             dto.setAvgEquity(avgEquity);
             dto.setAvgTotalCompensation(avgTotal);
             dto.setCount(count);
+            dto.setMostRecentEntry(recent);
+            dto.setConfidenceTier(conf[0]);
+            dto.setConfidenceLabel(conf[1]);
             return dto;
         }).collect(java.util.stream.Collectors.toList());
     }
 
     @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'byCompanyLevel'")
     public List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevel() {
         return salaryEntryRepository.avgSalaryByCompanyAndLevelRaw().stream().map(row -> {
             // col order: company_name[0], company_id_str[1], logo_url[2], website[3],
-            //            internalLevel[4], avgBaseSalary[5], avgBonus[6], avgEquity[7], cnt[8], company_total_entries[9]
+            //            internalLevel[4], avgBaseSalary[5], avgBonus[6], avgEquity[7],
+            //            cnt[8], company_total_entries[9], most_recent_entry[10]
             String companyName         = row[0] != null ? row[0].toString() : null;
             String companyId           = row[1] != null ? row[1].toString() : null;
             String logoUrl             = row[2] != null ? row[2].toString() : null;
@@ -353,6 +396,8 @@ public class SalaryService {
             Double avgEquity           = row[7] != null ? ((Number) row[7]).doubleValue() : null;
             Long   count               = row[8] != null ? ((Number) row[8]).longValue()   : 0L;
             Long   companyTotalEntries = row[9] != null ? ((Number) row[9]).longValue()   : 0L;
+            LocalDateTime recent       = row[10] != null ? ((java.sql.Timestamp) row[10]).toLocalDateTime() : null;
+            String[] conf              = computeConfidence(companyTotalEntries, recent);
             com.salaryinsights.dto.response.CompanyLevelSalaryDTO dto =
                 new com.salaryinsights.dto.response.CompanyLevelSalaryDTO();
             dto.setCompanyName(companyName);
@@ -365,6 +410,9 @@ public class SalaryService {
             dto.setAvgEquity(avgEquity);
             dto.setCount(count);
             dto.setCompanyTotalEntries(companyTotalEntries);
+            dto.setMostRecentEntry(recent);
+            dto.setConfidenceTier(conf[0]);
+            dto.setConfidenceLabel(conf[1]);
             return dto;
         }).collect(java.util.stream.Collectors.toList());
     }

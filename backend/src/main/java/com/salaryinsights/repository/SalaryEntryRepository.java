@@ -114,21 +114,22 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
     // CTE pre-computes AVG once; ORDER BY references the alias — no double aggregation
     @Query(value =
         "WITH co_agg AS ( " +
-        "  SELECT c.name                   AS groupKey, " +
-        "         CAST(c.id AS VARCHAR)     AS companyId, " +
-        "         c.logo_url               AS logoUrl, " +
-        "         c.website                AS website, " +
-        "         AVG(s.base_salary)        AS avgBaseSalary, " +
-        "         AVG(s.bonus)              AS avgBonus, " +
-        "         AVG(s.equity)             AS avgEquity, " +
-        "         AVG(s.total_compensation) AS avgTotalCompensation, " +
-        "         COUNT(*)                  AS cnt " +
+        "  SELECT c.name                      AS groupKey, " +
+        "         CAST(c.id AS VARCHAR)        AS companyId, " +
+        "         c.logo_url                  AS logoUrl, " +
+        "         c.website                   AS website, " +
+        "         AVG(s.base_salary)           AS avgBaseSalary, " +
+        "         AVG(s.bonus)                 AS avgBonus, " +
+        "         AVG(s.equity)                AS avgEquity, " +
+        "         AVG(s.total_compensation)    AS avgTotalCompensation, " +
+        "         COUNT(*)                     AS cnt, " +
+        "         MAX(s.created_at)            AS mostRecentEntry " +
         "  FROM salary_entries s " +
         "  JOIN companies c ON s.company_id = c.id " +
         "  WHERE s.review_status = 'APPROVED' " +
         "  GROUP BY c.id, c.name, c.logo_url, c.website " +
         ") " +
-        "SELECT groupKey, companyId, logoUrl, website, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt FROM co_agg " +
+        "SELECT groupKey, companyId, logoUrl, website, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt, mostRecentEntry FROM co_agg " +
         "ORDER BY avgTotalCompensation DESC",
         nativeQuery = true)
     List<Object[]> avgSalaryByCompanyRaw();
@@ -145,6 +146,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "         c.logo_url AS logo_url, " +
         "         c.website AS website, " +
         "         COUNT(*) AS total_entries, " +
+        "         MAX(s.created_at) AS most_recent_entry, " +
         "         AVG(s.total_compensation) * LN(COUNT(*) + 1) AS weighted_score " +
         "  FROM salary_entries s " +
         "  JOIN companies c ON s.company_id = c.id " +
@@ -159,6 +161,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "         tc.logo_url, " +
         "         tc.website, " +
         "         tc.total_entries AS company_total_entries, " +
+        "         tc.most_recent_entry, " +
         "         tc.weighted_score, " +
         "         CASE s.company_internal_level " +
         "           WHEN 'SDE_1'                THEN 'SDE 1' " +
@@ -181,9 +184,9 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  FROM salary_entries s " +
         "  JOIN top_companies tc ON s.company_id = tc.company_id " +
         "  WHERE s.review_status = 'APPROVED' AND s.company_internal_level IS NOT NULL " +
-        "  GROUP BY tc.company_name, tc.company_id, tc.logo_url, tc.website, tc.total_entries, tc.weighted_score, s.company_internal_level " +
+        "  GROUP BY tc.company_name, tc.company_id, tc.logo_url, tc.website, tc.total_entries, tc.most_recent_entry, tc.weighted_score, s.company_internal_level " +
         ") " +
-        "SELECT company_name, company_id_str, logo_url, website, internalLevel, avgBaseSalary, avgBonus, avgEquity, cnt, company_total_entries " +
+        "SELECT company_name, company_id_str, logo_url, website, internalLevel, avgBaseSalary, avgBonus, avgEquity, cnt, company_total_entries, most_recent_entry " +
         "FROM level_agg " +
         "ORDER BY weighted_score DESC, avgBaseSalary DESC",
         nativeQuery = true)
