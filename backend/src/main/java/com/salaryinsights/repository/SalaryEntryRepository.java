@@ -29,42 +29,44 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
            "WHERE s.id = :id")
     java.util.Optional<SalaryEntry> findByIdWithDetails(@Param("id") UUID id);
 
-    @Query("SELECT new com.salaryinsights.dto.response.SalaryAggregationDTO(" +
-           "s.location, AVG(s.baseSalary), AVG(s.totalCompensation), COUNT(s)) " +
-           "FROM SalaryEntry s " +
-           "WHERE s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED AND s.location IS NOT NULL " +
-           "GROUP BY s.location ORDER BY AVG(s.baseSalary) DESC")
-    List<SalaryAggregationDTO> avgSalaryByLocation();
+    @Query(value =
+        "SELECT location AS groupKey, AVG(base_salary) AS avgBaseSalary, AVG(total_compensation) AS avgTotalCompensation, COUNT(*) AS count " +
+        "FROM salary_entries " +
+        "WHERE review_status = 'APPROVED' AND location IS NOT NULL " +
+        "GROUP BY location ORDER BY AVG(base_salary) DESC",
+        nativeQuery = true)
+    List<Object[]> avgSalaryByLocationRaw();
 
-    @Query("SELECT new com.salaryinsights.dto.response.SalaryAggregationDTO(" +
-           "c.name, AVG(s.baseSalary), AVG(s.totalCompensation), COUNT(s)) " +
-           "FROM SalaryEntry s JOIN s.company c " +
-           "WHERE s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED " +
-           "GROUP BY c.name ORDER BY AVG(s.baseSalary) DESC")
-    List<SalaryAggregationDTO> avgSalaryByCompany();
+    @Query(value =
+        "SELECT c.name AS groupKey, AVG(s.base_salary) AS avgBaseSalary, AVG(s.total_compensation) AS avgTotalCompensation, COUNT(*) AS count " +
+        "FROM salary_entries s JOIN companies c ON s.company_id = c.id " +
+        "WHERE s.review_status = 'APPROVED' " +
+        "GROUP BY c.name ORDER BY AVG(s.base_salary) DESC",
+        nativeQuery = true)
+    List<Object[]> avgSalaryByCompanyRaw();
 
-    @Query("SELECT new com.salaryinsights.dto.response.CompanyLevelSalaryDTO(" +
-           "c.name, " +
-           "CASE s.companyInternalLevel " +
-           "WHEN com.salaryinsights.enums.InternalLevel.SDE_1 THEN 'SDE 1' " +
-           "WHEN com.salaryinsights.enums.InternalLevel.SDE_2 THEN 'SDE 2' " +
-           "WHEN com.salaryinsights.enums.InternalLevel.SDE_3 THEN 'SDE 3' " +
-           "WHEN com.salaryinsights.enums.InternalLevel.STAFF_ENGINEER THEN 'Staff Engineer' " +
-           "WHEN com.salaryinsights.enums.InternalLevel.PRINCIPAL_ENGINEER THEN 'Principal Engineer' " +
-           "WHEN com.salaryinsights.enums.InternalLevel.ARCHITECT THEN 'Architect' " +
-           "WHEN com.salaryinsights.enums.InternalLevel.ENGINEERING_MANAGER THEN 'Engineering Manager' " +
-           "WHEN com.salaryinsights.enums.InternalLevel.SR_ENGINEERING_MANAGER THEN 'Sr. Engineering Manager' " +
-           "WHEN com.salaryinsights.enums.InternalLevel.DIRECTOR THEN 'Director' " +
-           "WHEN com.salaryinsights.enums.InternalLevel.SR_DIRECTOR THEN 'Sr. Director' " +
-           "WHEN com.salaryinsights.enums.InternalLevel.VP THEN 'VP' " +
-           "ELSE 'Unknown' END, " +
-           "AVG(s.baseSalary), COUNT(s)) " +
-           "FROM SalaryEntry s JOIN s.company c " +
-           "WHERE s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED " +
-           "AND s.companyInternalLevel IS NOT NULL " +
-           "GROUP BY c.name, s.companyInternalLevel " +
-           "ORDER BY c.name, AVG(s.baseSalary) DESC")
-    List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> avgSalaryByCompanyAndLevel();
+    @Query(value =
+        "SELECT c.name AS companyName, " +
+        "CASE s.company_internal_level " +
+        "WHEN 'SDE_1' THEN 'SDE 1' " +
+        "WHEN 'SDE_2' THEN 'SDE 2' " +
+        "WHEN 'SDE_3' THEN 'SDE 3' " +
+        "WHEN 'STAFF_ENGINEER' THEN 'Staff Engineer' " +
+        "WHEN 'PRINCIPAL_ENGINEER' THEN 'Principal Engineer' " +
+        "WHEN 'ARCHITECT' THEN 'Architect' " +
+        "WHEN 'ENGINEERING_MANAGER' THEN 'Engineering Manager' " +
+        "WHEN 'SR_ENGINEERING_MANAGER' THEN 'Sr. Engineering Manager' " +
+        "WHEN 'DIRECTOR' THEN 'Director' " +
+        "WHEN 'SR_DIRECTOR' THEN 'Sr. Director' " +
+        "WHEN 'VP' THEN 'VP' " +
+        "ELSE 'Unknown' END AS internalLevel, " +
+        "AVG(s.base_salary) AS avgBaseSalary, COUNT(*) AS count " +
+        "FROM salary_entries s JOIN companies c ON s.company_id = c.id " +
+        "WHERE s.review_status = 'APPROVED' AND s.company_internal_level IS NOT NULL " +
+        "GROUP BY c.name, s.company_internal_level " +
+        "ORDER BY c.name, AVG(s.base_salary) DESC",
+        nativeQuery = true)
+    List<Object[]> avgSalaryByCompanyAndLevelRaw();
 
     long countByReviewStatus(ReviewStatus status);
 
