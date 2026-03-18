@@ -29,6 +29,9 @@ function mapSalary(s) {
   return {
     id: s.id, company: s.companyName ?? '—', compAbbr: abbr,
     compColor: color, compBg: `${color}26`, compInd: '',
+    companyId: s.companyId ?? null,
+    logoUrl:   s.logoUrl   ?? null,
+    website:   s.website   ?? null,
     role: s.jobTitle ?? '—', internalLevel: s.standardizedLevelName ?? s.companyInternalLevel ?? '—',
     level: levelMap[s.experienceLevel] ?? 'mid', location: s.location ?? '—',
     exp: s.yearsOfExperience != null ? `${s.yearsOfExperience} yr` : '—',

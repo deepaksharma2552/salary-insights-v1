@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
+import CompanyLogo from '../../components/shared/CompanyLogo';
 
 const STATUS_META = {
   PENDING:  { label: 'Pending',  bg: 'rgba(234,179,8,0.12)',  color: '#ca8a04', border: 'rgba(234,179,8,0.25)' },
@@ -164,8 +165,17 @@ export default function AdminReferrals() {
 
                   {/* Company */}
                   <td>
-                    <div className="company-name" style={{ fontSize: 14 }}>
-                      {r.companyName || '—'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <CompanyLogo
+                        companyId={r.companyId}
+                        companyName={r.companyName}
+                        website={r.website}
+                        size={32}
+                        radius={8}
+                      />
+                      <div className="company-name" style={{ fontSize: 14 }}>
+                        {r.companyName || '—'}
+                      </div>
                     </div>
                   </td>
 

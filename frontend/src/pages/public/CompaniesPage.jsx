@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
+import CompanyLogo from '../../components/shared/CompanyLogo';
 
 const PAGE_SIZE = 10;
 
@@ -90,12 +91,14 @@ function CompanyModal({ company, onClose }) {
         <div style={{ padding:'28px 32px 20px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
             <div style={{ display:'flex', gap:16, alignItems:'center' }}>
-              <div style={{
-                width:48, height:48, borderRadius:12, flexShrink:0,
-                background:company.colorBg, color:company.color,
-                display:'flex', alignItems:'center', justifyContent:'center',
-                fontSize:14, fontWeight:700, fontFamily:"'JetBrains Mono',monospace",
-              }}>{company.abbr}</div>
+              <CompanyLogo
+                companyId={company.id}
+                companyName={company.name}
+                logoUrl={company.logoUrl}
+                website={company.website}
+                size={48}
+                radius={12}
+              />
               <div>
                 <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, color:'var(--text-1)', fontWeight:700 }}>{company.name}</div>
                 <div style={{ fontSize:13, color:'var(--text-3)', marginTop:2 }}>{company.industry}</div>
@@ -225,6 +228,8 @@ export default function CompaniesPage() {
           abbr:         c.name ? c.name.slice(0,2).toUpperCase() : '?',
           color:        colors[c.name ? c.name.charCodeAt(0) % colors.length : 0],
           colorBg:      `${colors[c.name ? c.name.charCodeAt(0) % colors.length : 0]}26`,
+          logoUrl:      c.logoUrl  ?? null,
+          website:      c.website  ?? null,
           updatedLabel: fmtDate(c.updatedAt ?? c.createdAt),
           entries:      c.entryCount ?? '—',
           avgBase:      fmtSalary(c.avgBaseSalary),
@@ -284,7 +289,15 @@ export default function CompaniesPage() {
                 onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=''; }}
               >
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
-                  <div className="company-card-logo" style={{ background:c.colorBg, color:c.color, marginBottom:0 }}>{c.abbr}</div>
+                  <CompanyLogo
+                    companyId={c.id}
+                    companyName={c.name}
+                    logoUrl={c.logoUrl}
+                    website={c.website}
+                    size={40}
+                    radius={8}
+                    style={{ marginBottom: 0 }}
+                  />
                   <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:'var(--text-3)', background:'var(--ink-3)', padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)' }}>
                     Updated {c.updatedLabel}
                   </span>

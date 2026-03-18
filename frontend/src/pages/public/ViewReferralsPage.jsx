@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
+import CompanyLogo from '../../components/shared/CompanyLogo';
 
 export default function ViewReferralsPage() {
   const [referrals, setReferrals] = useState([]);
@@ -91,7 +92,6 @@ export default function ViewReferralsPage() {
 }
 
 function ReferralCard({ r }) {
-  const initials = r.companyName ? r.companyName.slice(0, 2).toUpperCase() : '??';
   return (
     <div
       style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', gap: 16, transition: 'border-color 0.15s' }}
@@ -100,14 +100,13 @@ function ReferralCard({ r }) {
     >
       {/* Company */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: 10, flexShrink: 0,
-          background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 14, fontWeight: 700, color: '#0ea5e9', fontFamily: "'JetBrains Mono',monospace",
-        }}>
-          {initials}
-        </div>
+        <CompanyLogo
+          companyId={r.companyId}
+          companyName={r.companyName}
+          website={r.website}
+          size={44}
+          radius={10}
+        />
         <div>
           <div style={{ fontWeight: 600, fontSize: 16, color: 'var(--text-1)' }}>{r.companyName || '—'}</div>
           <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2, fontFamily: "'JetBrains Mono',monospace" }}>
