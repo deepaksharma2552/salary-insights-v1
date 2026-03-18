@@ -10,6 +10,7 @@ import CompaniesPage    from './pages/public/CompaniesPage';
 import DashboardPage    from './pages/public/DashboardPage';
 import LoginPage        from './pages/public/LoginPage';
 import RegisterPage     from './pages/public/RegisterPage';
+import OAuth2RedirectPage from './pages/public/OAuth2RedirectPage';
 import SubmitSalaryPage from './pages/public/SubmitSalaryPage';
 import SubmitReferralPage  from './pages/public/SubmitReferralPage';
 import MyReferralLinksPage from './pages/public/MyReferralLinksPage';
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/login"     element={<LoginPage />} />
             <Route path="/register"  element={<RegisterPage />} />
+            <Route path="/oauth2/redirect" element={<OAuth2RedirectPage />} />
             <Route path="/submit"    element={
               <PrivateRoute><SubmitSalaryPage /></PrivateRoute>
             }/>

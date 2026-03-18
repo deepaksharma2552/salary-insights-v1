@@ -22,6 +22,12 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
+  // Called by OAuth2RedirectPage after the backend redirect — no API call needed,
+  // token + user are already in localStorage by the time this runs.
+  const loginWithToken = useCallback((userData) => {
+    setUser(userData);
+  }, []);
+
   const login = useCallback(async (email, password) => {
     const response = await api.post('/auth/login', { email, password });
     // Backend wraps response in ApiResponse<T>, real data is at response.data.data
@@ -53,7 +59,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithToken, register, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );
