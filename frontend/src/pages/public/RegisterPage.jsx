@@ -23,16 +23,48 @@ export default function RegisterPage() {
   return (
     <div className="auth-page">
       <div className="auth-bg" />
+      <style>{`
+        @keyframes navRingSpin    { to { transform: rotate(360deg);  } }
+        @keyframes navRingSpinRev { to { transform: rotate(-360deg); } }
+      `}</style>
       <div className="auth-card">
 
-        {/* ── LOGO ── */}
-        <div className="auth-logo">
-          <div className="logo-mark" style={{ margin: '0 auto 16px', width: 48, height: 48, fontSize: 12 }}>360</div>
-          <div className="logo-text" style={{ justifyContent: 'center', marginBottom: 4 }}>
-            <span className="w-salary" style={{ fontSize: 17 }}>Salary</span>
-            <span className="w-insights" style={{ fontSize: 18 }}>Insights</span>
-            <em className="brand-360" style={{ fontSize: 11 }}>360</em>
-          </div>
+        {/* ── LOGO — matches Navbar ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 28 }}>
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginBottom: 8 }}>
+            <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                border: '2.5px solid transparent',
+                borderTopColor: '#0ea5e9', borderRightColor: '#7dd3fc',
+                animation: 'navRingSpin 3s linear infinite',
+              }} />
+              <div style={{
+                position: 'absolute', inset: 4, borderRadius: '50%',
+                border: '1.5px solid transparent',
+                borderBottomColor: '#e0f2fe', borderLeftColor: '#0284c7',
+                animation: 'navRingSpinRev 2s linear infinite',
+                opacity: 0.55,
+              }} />
+              <div style={{
+                position: 'absolute', inset: 9, borderRadius: 6,
+                background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: 'white', letterSpacing: '-0.02em', lineHeight: 1, fontFamily: 'Inter,sans-serif' }}>SI</span>
+                <span style={{ fontSize: 6, fontWeight: 600, color: 'rgba(255,255,255,0.85)', letterSpacing: '0.05em', fontFamily: "'IBM Plex Mono',monospace", marginTop: 1 }}>360°</span>
+              </div>
+            </div>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 1 }}>
+              <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif' }}>
+                Salary<span style={{ color: '#0ea5e9' }}>Insights</span>
+              </span>
+              <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.06em', color: '#0ea5e9', fontFamily: "'IBM Plex Mono',monospace", opacity: 0.8 }}>
+                360° COMPENSATION
+              </span>
+            </span>
+          </Link>
         </div>
 
         <h2 className="auth-title">Join the community</h2>
