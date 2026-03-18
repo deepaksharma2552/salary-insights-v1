@@ -9,13 +9,15 @@ spring:
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
-      minimum-idle: 5
+      minimum-idle: 2          # don't hold 5 persistent connections when idle
       connection-timeout: 30000
+      keepalive-time: 30000    # ping idle connections every 30s — prevents "timed out" logs
+      idle-timeout: 600000     # evict idle connections after 10 min
+      max-lifetime: 1800000    # recycle connections after 30 min (must be < DB wait_timeout)
 
-  # Moved JPA and Flyway out of the 'app' block back to 'spring' level
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate       # Flyway owns the schema — Hibernate must not alter it
     show-sql: false
     properties:
       hibernate:
@@ -42,7 +44,6 @@ server:
   servlet:
     context-path: /api
 
-# Unified 'app' block (merged line 16 and line 42)
 app:
   ai:
     anthropic-api-key: ${ANTHROPIC_API_KEY:}
@@ -56,4 +57,4 @@ app:
   cors:
     allowed-origins:
       - http://localhost:3000
-      - http
+      - ${APP_CORS_ORIGIN:http://localhost:3000}
