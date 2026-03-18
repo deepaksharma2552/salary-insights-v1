@@ -1,6 +1,29 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import api from '../../services/api';
+import CompanyLogo from '../../components/shared/CompanyLogo';
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000);
+}
+
+function ExpiryCell({ expiresAt }) {
+  const days = daysUntil(expiresAt);
+  if (days === null) return <span style={{ color: 'var(--text-4)', fontSize: 11 }}>—</span>;
+  const expired = days <= 0;
+  const soon    = days > 0 && days <= 3;
+  const warning = days > 3 && days <= 7;
+  const color   = expired ? '#dc2626' : soon ? '#dc2626' : warning ? '#ca8a04' : 'var(--text-3)';
+  const label   = expired
+    ? 'Expired'
+    : `${new Date(expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}${soon ? ` (${days}d left)` : ''}`;
+  return (
+    <span style={{ fontSize: 11, color, fontFamily: "'JetBrains Mono',monospace", fontWeight: soon || expired ? 600 : 400 }}>
+      {label}
+    </span>
+  );
+}
 
 const STATUS_META = {
   PENDING:  { label: 'Pending',  bg: 'rgba(234,179,8,0.12)',  color: '#ca8a04', border: 'rgba(234,179,8,0.25)' },
@@ -129,6 +152,7 @@ export default function MyReferralLinksPage() {
                 <th>Company</th>
                 <th>Referral Link</th>
                 <th>Submitted</th>
+                <th>Expires</th>
                 <th>Status</th>
                 <th>Note from team</th>
               </tr>
@@ -140,7 +164,16 @@ export default function MyReferralLinksPage() {
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   <td>
-                    <div className="company-name" style={{ fontSize: 14 }}>{r.companyName}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <CompanyLogo
+                        companyId={r.companyId}
+                        companyName={r.companyName}
+                        website={r.website}
+                        size={32}
+                        radius={8}
+                      />
+                      <div className="company-name" style={{ fontSize: 14 }}>{r.companyName}</div>
+                    </div>
                   </td>
 
                   <td>
@@ -162,6 +195,8 @@ export default function MyReferralLinksPage() {
                     <div>{r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-IN') : '—'}</div>
                     <div style={{ marginTop: 2 }}>{r.createdAt ? daysSince(r.createdAt) : ''}</div>
                   </td>
+
+                  <td><ExpiryCell expiresAt={r.expiresAt} /></td>
 
                   <td><StatusBadge status={r.status} /></td>
 

@@ -145,13 +145,14 @@ export default function AdminReferrals() {
                 <th>Company</th>
                 <th>Referral Link</th>
                 <th>Date</th>
+                <th>Expires</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {referrals.map(r => (
-                <tr key={r.id}>
+                <tr key={r.id} style={{ opacity: r.expiresAt && new Date(r.expiresAt) < new Date() ? 0.55 : 1 }}>
 
                   {/* Submitted by — referredByName + referredByEmail from ReferralResponse */}
                   <td>
@@ -207,6 +208,32 @@ export default function AdminReferrals() {
                   {/* Date */}
                   <td style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--text-3)' }}>
                     {r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-IN') : '—'}
+                  </td>
+
+                  {/* Expires */}
+                  <td>
+                    {(() => {
+                      if (!r.expiresAt) return <span style={{ color: 'var(--text-4)', fontSize: 11 }}>—</span>;
+                      const days = Math.ceil((new Date(r.expiresAt).getTime() - Date.now()) / 86_400_000);
+                      const expired = days <= 0;
+                      const urgent  = days > 0 && days <= 5;
+                      return (
+                        <div>
+                          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--text-3)' }}>
+                            {new Date(r.expiresAt).toLocaleDateString('en-IN')}
+                          </div>
+                          <span style={{
+                            display: 'inline-block', marginTop: 3, padding: '2px 7px', borderRadius: 99,
+                            fontSize: 10, fontWeight: 600, fontFamily: "'JetBrains Mono',monospace",
+                            background: expired ? 'rgba(107,114,128,0.1)' : urgent ? 'rgba(239,68,68,0.1)' : 'rgba(14,165,233,0.1)',
+                            color: expired ? 'var(--text-3)' : urgent ? '#dc2626' : '#0284c7',
+                            border: `1px solid ${expired ? 'rgba(107,114,128,0.2)' : urgent ? 'rgba(239,68,68,0.25)' : 'rgba(14,165,233,0.25)'}`,
+                          }}>
+                            {expired ? 'Expired' : days === 0 ? 'Today' : `${days}d left`}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </td>
 
                   {/* Status + admin note */}

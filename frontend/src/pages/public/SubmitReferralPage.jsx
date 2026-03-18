@@ -20,6 +20,7 @@ export default function SubmitReferralPage() {
     companyId:   '',
     companyName: '',
     referralLink: '',
+    expiresAt:   '',   // ISO date string yyyy-MM-dd, empty = use backend default (30 days)
   });
 
   // ── Company autocomplete ────────────────────────────────────────────────────
@@ -92,6 +93,8 @@ export default function SubmitReferralPage() {
         companyId:    form.companyId   || null,
         companyName:  form.companyName || null,
         referralLink: form.referralLink,
+        // Send as ISO datetime if user picked a date, otherwise null → backend defaults to 30 days
+        expiresAt:    form.expiresAt ? `${form.expiresAt}T23:59:59` : null,
       });
       navigate('/my-referral-links', { state: { submitted: true } });
     } catch (err) {
@@ -266,6 +269,25 @@ export default function SubmitReferralPage() {
                 />
                 <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontFamily: "'JetBrains Mono',monospace" }}>
                   The direct referral or job application link you want to share
+                </div>
+              </div>
+
+              {/* ── Expiry date ── */}
+              <div className="form-group">
+                <label className="form-label">
+                  Expires On <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(optional)</span>
+                </label>
+                <input
+                  className="form-input"
+                  name="expiresAt"
+                  type="date"
+                  min={new Date(Date.now() + 86_400_000).toISOString().split('T')[0]}
+                  value={form.expiresAt}
+                  onChange={handleChange}
+                  disabled={submitting}
+                />
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontFamily: "'JetBrains Mono',monospace" }}>
+                  Leave blank to default to 30 days from today
                 </div>
               </div>
 
