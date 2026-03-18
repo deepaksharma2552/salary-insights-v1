@@ -77,11 +77,15 @@ export default function DashboardPage() {
     [selectedCompanies, allCompanies, groupedByCompany]
   );
 
-  // Max salary across displayed companies only — recomputed only when selection changes
+  // Max total comp across displayed companies — used to scale stacked bars
   const maxCompLevel = useMemo(() => {
     if (!displayedCompanies.length) return 1;
     return Math.max(
-      ...displayedCompanies.flatMap(c => (groupedByCompany.get(c) ?? []).map(r => r.avgBaseSalary ?? 0)),
+      ...displayedCompanies.flatMap(c =>
+        (groupedByCompany.get(c) ?? []).map(r =>
+          (r.avgBaseSalary ?? 0) + (r.avgBonus ?? 0) + (r.avgEquity ?? 0)
+        )
+      ),
       1
     );
   }, [displayedCompanies, groupedByCompany]);
@@ -283,35 +287,93 @@ export default function DashboardPage() {
 
             {/* Chart body */}
             {byCompanyLevel.length === 0 ? <EmptyState /> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+                {/* Legend */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'Base', color: '#2563eb' },
+                    { label: 'Bonus', color: '#10b981' },
+                    { label: 'Equity', color: '#f59e0b' },
+                  ].map(({ label, color }) => (
+                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+
                 {displayedCompanies.map((company, ci) => (
                   <div key={company}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {/* Company header — avatar + truncated name */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
                       <div style={{
-                        width: 20, height: 20, borderRadius: 4,
+                        width: 22, height: 22, borderRadius: 4, flexShrink: 0,
                         background: `${BAR_COLORS[ci % BAR_COLORS.length]}22`,
-                        border: `1px solid ${BAR_COLORS[ci % BAR_COLORS.length]}44`,
+                        border: `1px solid ${BAR_COLORS[ci % BAR_COLORS.length]}55`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 8, fontWeight: 700, color: BAR_COLORS[ci % BAR_COLORS.length],
                         fontFamily: "'IBM Plex Mono',monospace",
                       }}>
                         {company.slice(0, 2).toUpperCase()}
                       </div>
-                      {company}
+                      <span style={{
+                        fontSize: 12, fontWeight: 600, color: 'var(--text-1)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        maxWidth: '100%',
+                      }} title={company}>
+                        {company}
+                      </span>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+
+                    {/* Level rows */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {(groupedByCompany.get(company) ?? []).map(row => {
-                        const pct = Math.round(((row.avgBaseSalary ?? 0) / maxCompLevel) * 100);
-                        const color = LEVEL_COLORS[row.internalLevel] ?? BAR_COLORS[ci % BAR_COLORS.length];
+                        const base   = row.avgBaseSalary ?? 0;
+                        const bonus  = row.avgBonus      ?? 0;
+                        const equity = row.avgEquity     ?? 0;
+                        const total  = base + bonus + equity;
+                        const basePct   = Math.round((base   / maxCompLevel) * 100);
+                        const bonusPct  = Math.round((bonus  / maxCompLevel) * 100);
+                        const equityPct = Math.round((equity / maxCompLevel) * 100);
+
                         return (
-                          <div key={row.internalLevel} className="level-bar-row">
-                            <span style={{ fontSize: 11, color: 'var(--text-3)', minWidth: 130, fontFamily: "'IBM Plex Mono',monospace" }}>
+                          <div key={row.internalLevel} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {/* Fixed-width level label — truncates if too long */}
+                            <span style={{
+                              fontSize: 11, color: 'var(--text-3)',
+                              width: 120, minWidth: 120,
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              fontFamily: "'IBM Plex Mono',monospace",
+                            }} title={row.internalLevel}>
                               {row.internalLevel}
                             </span>
-                            <div className="level-bar-track">
-                              <div className="level-bar-fill" style={{ width: `${pct}%`, background: color }} />
+
+                            {/* Stacked bar */}
+                            <div style={{
+                              flex: 1, height: 8, borderRadius: 100,
+                              background: 'var(--bg-3)', overflow: 'hidden',
+                              display: 'flex',
+                            }}>
+                              {basePct > 0 && (
+                                <div style={{ width: `${basePct}%`, height: '100%', background: '#2563eb', flexShrink: 0 }} />
+                              )}
+                              {bonusPct > 0 && (
+                                <div style={{ width: `${bonusPct}%`, height: '100%', background: '#10b981', flexShrink: 0 }} />
+                              )}
+                              {equityPct > 0 && (
+                                <div style={{ width: `${equityPct}%`, height: '100%', background: '#f59e0b', flexShrink: 0 }} />
+                              )}
                             </div>
-                            <span className="level-bar-val">{fmt(row.avgBaseSalary)}</span>
+
+                            {/* Total comp value — fixed width so values align */}
+                            <span style={{
+                              fontFamily: "'IBM Plex Mono',monospace",
+                              fontSize: 11, fontWeight: 600, color: 'var(--text-1)',
+                              width: 52, minWidth: 52, textAlign: 'right',
+                            }}>
+                              {fmt(total)}
+                            </span>
                           </div>
                         );
                       })}
