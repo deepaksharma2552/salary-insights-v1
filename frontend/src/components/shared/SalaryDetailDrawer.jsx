@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { LEVEL_BADGE_CLASS, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../data/salaryData';
+import { STATUS_BADGE_CLASS, STATUS_LABEL } from '../../data/salaryData';
+import CompanyLogo from './CompanyLogo';
 import api from '../../services/api';
 
 /**
@@ -54,10 +55,11 @@ export default function SalaryDetailDrawer({ open, salary: rowSalary, salaryId, 
           compAbbr:       s.companyName ? s.companyName.slice(0,2).toUpperCase() : '?',
           compColor:      color,
           compBg:         `${color}26`,
+          compWebsite:    s.website  ?? null,
+          compLogoUrl:    s.logoUrl  ?? null,
           role:           s.jobTitle ?? '—',
           internalLevel:  s.companyInternalLevel ?? '—',
           standardized:   s.standardizedLevelName ?? '—',
-          level:          levelMap[s.experienceLevel] ?? 'mid',
           location:       s.location ?? '—',
           exp:            s.yearsOfExperience != null ? `${s.yearsOfExperience} yr` : '—',
           yoe:            s.yearsOfExperience != null ? `${s.yearsOfExperience} year${s.yearsOfExperience !== 1 ? 's' : ''}` : '—',
@@ -93,12 +95,8 @@ export default function SalaryDetailDrawer({ open, salary: rowSalary, salaryId, 
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const lvlClass = LEVEL_BADGE_CLASS[salary?.level] ?? 'badge';
   const stClass  = STATUS_BADGE_CLASS[salary?.status] ?? 'status-badge';
   const stLabel  = STATUS_LABEL[salary?.status] ?? salary?.status;
-  const capLevel = salary?.level
-    ? salary.level.charAt(0).toUpperCase() + salary.level.slice(1)
-    : '—';
 
   return (
     <>
@@ -118,19 +116,21 @@ export default function SalaryDetailDrawer({ open, salary: rowSalary, salaryId, 
           {salary ? (
             <>
               <div className="drawer-company-row">
-                <div
-                  className="drawer-company-avatar"
-                  style={{ background: salary.compBg, color: salary.compColor }}
-                >
-                  {salary.compAbbr}
-                </div>
+                <CompanyLogo
+                  name={salary.company} website={salary.compWebsite} logoUrl={salary.compLogoUrl}
+                  size={44} borderRadius={10}
+                  color={salary.compColor} colorBg={salary.compBg} abbr={salary.compAbbr}
+                  fontSize={12}
+                />
                 <div>
                   <div className="drawer-company-name">{salary.company}</div>
                   <div className="drawer-role">{salary.role} · {salary.location}</div>
                 </div>
               </div>
               <div className="drawer-badges">
-                <span className={lvlClass}>{capLevel}</span>
+                {salary.internalLevel && salary.internalLevel !== '—' && (
+                  <span style={{ fontSize: 12, fontFamily: "'JetBrains Mono',monospace", color: 'var(--text-2)', background: 'var(--bg-3)', padding: '2px 8px', borderRadius: 6 }}>{salary.internalLevel}</span>
+                )}
                 {salary.exp && salary.exp !== '—' && (
                   <span className="badge badge-exp">{salary.exp}</span>
                 )}

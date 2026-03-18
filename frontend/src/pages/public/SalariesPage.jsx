@@ -10,11 +10,7 @@ function mapSalary(s) {
   const colors = ['#3ecfb0','#d4a853','#e05c7a','#a08ff0','#c07df0','#e89050'];
   const colorIdx = s.companyName ? s.companyName.charCodeAt(0) % colors.length : 0;
   const color = colors[colorIdx];
-  const levelMap = {
-    INTERN: 'junior', ENTRY: 'junior', MID: 'mid',
-    SENIOR: 'senior', LEAD: 'lead', MANAGER: 'lead',
-    DIRECTOR: 'lead', VP: 'lead', C_LEVEL: 'lead',
-  };
+  const levelMap = {};  // kept for compatibility, unused
   const fmt = (val) => {
     if (!val && val !== 0) return '—';
     const l = Number(val) / 100000;
@@ -29,8 +25,9 @@ function mapSalary(s) {
   return {
     id: s.id, company: s.companyName ?? '—', compAbbr: abbr,
     compColor: color, compBg: `${color}26`, compInd: '',
+    compWebsite: s.website ?? null, compLogoUrl: s.logoUrl ?? null,
     role: s.jobTitle ?? '—', internalLevel: s.standardizedLevelName ?? s.companyInternalLevel ?? '—',
-    level: levelMap[s.experienceLevel] ?? 'mid', location: s.location ?? '—',
+    location: s.location ?? '—',
     exp: s.yearsOfExperience != null ? `${s.yearsOfExperience} yr` : '—',
     yoe: s.yearsOfExperience != null ? `${s.yearsOfExperience} year${s.yearsOfExperience !== 1 ? 's' : ''}` : '—',
     empType: s.employmentType ?? 'Full-time',
@@ -39,8 +36,6 @@ function mapSalary(s) {
     recordedAt: formatDate(s.createdAt), notes: '',
   };
 }
-
-const LEVEL_MAP = { junior: 'ENTRY', mid: 'MID', senior: 'SENIOR', lead: 'LEAD' };
 
 // Clamp page buttons to max 7 visible
 function getPageRange(current, total) {
@@ -57,7 +52,6 @@ export default function SalariesPage() {
 
   // Filters
   const [search,   setSearch]   = useState('');
-  const [level,    setLevel]    = useState('');
   const [location, setLocation] = useState('');
   const [empType,  setEmpType]  = useState('');
 
@@ -71,7 +65,7 @@ export default function SalariesPage() {
   const searchTimer = useRef(null);
 
   // Track whether any filter is active
-  const isFiltering = search || level || location || empType;
+  const isFiltering = search || location || empType;
 
   const fetchSalaries = useCallback(() => {
     setLoading(true);
@@ -79,9 +73,8 @@ export default function SalariesPage() {
     const params = {
       page,
       size: pageSize,
-      sort: 'createdAt,desc',          // always newest first
+      sort: 'createdAt,desc',
       ...(location && { location }),
-      ...(level    && { experienceLevel: LEVEL_MAP[level] }),
       ...(search   && { companyName: search, jobTitle: search }),
     };
     api.get('/public/salaries', { params })
@@ -96,7 +89,7 @@ export default function SalariesPage() {
         setError(`Failed to load salaries (${err.response?.status ?? 'network error'})`);
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, search, level, location]);
+  }, [page, pageSize, search, location]);
 
   useEffect(() => { fetchSalaries(); }, [fetchSalaries]);
 
@@ -146,14 +139,6 @@ export default function SalariesPage() {
             onChange={handleSearchChange}
           />
         </div>
-
-        <select className="select-field" value={level} onChange={handleFilterChange(setLevel)}>
-          <option value="">All Levels</option>
-          <option value="junior">Junior</option>
-          <option value="mid">Mid</option>
-          <option value="senior">Senior</option>
-          <option value="lead">Lead</option>
-        </select>
 
         <select className="select-field" value={location} onChange={handleFilterChange(setLocation)}>
           <option value="">All Locations</option>
