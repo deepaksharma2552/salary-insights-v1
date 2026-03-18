@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../services/api';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE  = 10;
+const DEBOUNCE_MS = 300;
+const MIN_CHARS   = 2;
 
 // ── Domain derivation ─────────────────────────────────────────────────────────
 // Known overrides for companies whose domain doesn't match their name
@@ -314,12 +316,14 @@ export default function CompaniesPage() {
   const [industries,    setIndustries]    = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState(null);
-  const [search,        setSearch]        = useState('');
+  const [searchInput,   setSearchInput]   = useState('');   // display — updates instantly
+  const [search,        setSearch]        = useState('');   // committed — drives API
   const [industry,      setIndustry]      = useState('');
   const [page,          setPage]          = useState(0);
   const [totalPages,    setTotalPages]    = useState(1);
   const [totalElements, setTotalElements] = useState(0);
   const [selected,      setSelected]      = useState(null);
+  const debounceTimer = useRef(null);
 
   useEffect(() => {
     api.get('/public/companies/industries')
@@ -357,6 +361,27 @@ export default function CompaniesPage() {
 
   useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
 
+  // Search — debounce 300ms, min 2 chars (empty string always allowed to reset)
+  function handleSearchChange(e) {
+    const val = e.target.value;
+    setSearchInput(val);
+    clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      if (val === '' || val.length >= MIN_CHARS) {
+        setSearch(val);
+        setPage(0);
+      }
+    }, DEBOUNCE_MS);
+  }
+
+  // Industry — select dropdown, fires immediately (no typing involved)
+  function handleIndustryChange(e) {
+    setIndustry(e.target.value);
+    setPage(0);
+  }
+
+  useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
+
   return (
     <section className="section">
       <div className="section-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:16, marginBottom:32 }}>
@@ -372,10 +397,10 @@ export default function CompaniesPage() {
       <div className="filter-bar" style={{ marginBottom:32 }}>
         <div className="search-box">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input className="input-field" type="text" placeholder="Search companies…" value={search}
-            onChange={e => { setSearch(e.target.value); setPage(0); }} />
+          <input className="input-field" type="text" placeholder="Search companies…" value={searchInput}
+            onChange={handleSearchChange} />
         </div>
-        <select className="select-field" value={industry} onChange={e => { setIndustry(e.target.value); setPage(0); }}>
+        <select className="select-field" value={industry} onChange={handleIndustryChange}>
           <option value="">All Industries</option>
           {industries.map(i => <option key={i}>{i}</option>)}
         </select>

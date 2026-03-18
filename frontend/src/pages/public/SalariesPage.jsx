@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import SalaryTable from '../../components/shared/SalaryTable';
+import CompanyLogo from '../../components/shared/CompanyLogo';
 import api from '../../services/api';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const DEFAULT_SIZE = 10;
+const DEBOUNCE_MS  = 300;
+const MIN_CHARS    = 2;
 
 function mapSalary(s) {
   const abbr = s.companyName ? s.companyName.slice(0, 2).toUpperCase() : '?';
@@ -50,10 +53,15 @@ export default function SalariesPage() {
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState(null);
 
-  // Filters
-  const [search,   setSearch]   = useState('');
-  const [location, setLocation] = useState('');
-  const [empType,  setEmpType]  = useState('');
+  // Display state — updates instantly for responsive input feel
+  const [searchInput, setSearchInput] = useState('');
+  const [location,    setLocation]    = useState('');
+  const [empType,     setEmpType]     = useState('');
+
+  // Committed state — debounced, drives the API call
+  const [search,          setSearch]          = useState('');
+  const [committedLocation, setCommittedLocation] = useState('');
+  const [committedEmpType,  setCommittedEmpType]  = useState('');
 
   // Pagination
   const [page,          setPage]          = useState(0);
@@ -61,11 +69,10 @@ export default function SalariesPage() {
   const [totalPages,    setTotalPages]    = useState(1);
   const [totalElements, setTotalElements] = useState(0);
 
-  // Debounce search input
-  const searchTimer = useRef(null);
+  const debounceTimer = useRef(null);
 
   // Track whether any filter is active
-  const isFiltering = search || location || empType;
+  const isFiltering = searchInput || location || empType;
 
   const fetchSalaries = useCallback(() => {
     setLoading(true);
@@ -74,8 +81,8 @@ export default function SalariesPage() {
       page,
       size: pageSize,
       sort: 'createdAt,desc',
-      ...(location && { location }),
-      ...(search   && { companyName: search, jobTitle: search }),
+      ...(committedLocation && { location: committedLocation }),
+      ...(search            && { companyName: search, jobTitle: search }),
     };
     api.get('/public/salaries', { params })
       .then(res => {
@@ -89,19 +96,40 @@ export default function SalariesPage() {
         setError(`Failed to load salaries (${err.response?.status ?? 'network error'})`);
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, search, location]);
+  }, [page, pageSize, search, committedLocation]);
 
   useEffect(() => { fetchSalaries(); }, [fetchSalaries]);
 
+  // Search input — debounce 300ms, min 2 chars
   function handleSearchChange(e) {
     const val = e.target.value;
-    setSearch(val);
-    clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => { setPage(0); }, 400);
+    setSearchInput(val);
+    clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setSearch(val.length >= MIN_CHARS || val === '' ? val : '');
+      setPage(0);
+    }, DEBOUNCE_MS);
   }
 
-  function handleFilterChange(setter) {
-    return (e) => { setter(e.target.value); setPage(0); };
+  // Dropdowns — debounce 300ms (no min chars needed for selects)
+  function handleLocationChange(e) {
+    const val = e.target.value;
+    setLocation(val);
+    clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setCommittedLocation(val);
+      setPage(0);
+    }, DEBOUNCE_MS);
+  }
+
+  function handleEmpTypeChange(e) {
+    const val = e.target.value;
+    setEmpType(val);
+    clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setCommittedEmpType(val);
+      setPage(0);
+    }, DEBOUNCE_MS);
   }
 
   function handlePageSizeChange(e) {
@@ -110,7 +138,10 @@ export default function SalariesPage() {
   }
 
   function clearFilters() {
-    setSearch(''); setLevel(''); setLocation(''); setEmpType('');
+    clearTimeout(debounceTimer.current);
+    setSearchInput(''); setSearch('');
+    setLocation('');    setCommittedLocation('');
+    setEmpType('');     setCommittedEmpType('');
     setPage(0);
   }
 
@@ -135,12 +166,13 @@ export default function SalariesPage() {
             className="input-field"
             type="text"
             placeholder="Search by company or role..."
-            value={search}
+            value={searchInput}
             onChange={handleSearchChange}
+            placeholder={`Search companies or roles… (min ${MIN_CHARS} chars)`}
           />
         </div>
 
-        <select className="select-field" value={location} onChange={handleFilterChange(setLocation)}>
+        <select className="select-field" value={location} onChange={handleLocationChange}>
           <option value="">All Locations</option>
           <option value="BENGALURU">Bengaluru</option>
           <option value="HYDERABAD">Hyderabad</option>
@@ -152,7 +184,7 @@ export default function SalariesPage() {
           <option value="MANGALURU">Mangaluru</option>
         </select>
 
-        <select className="select-field" value={empType} onChange={handleFilterChange(setEmpType)}>
+        <select className="select-field" value={empType} onChange={handleEmpTypeChange}>
           <option value="">Employment Type</option>
           <option>Full-time</option>
           <option>Contract</option>
