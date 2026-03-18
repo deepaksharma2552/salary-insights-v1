@@ -83,7 +83,7 @@ export default function AdminReferrals() {
       <div style={{ marginBottom: 32 }}>
         <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin</span>
         <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, color: 'var(--text-1)', marginTop: 8, letterSpacing: '-0.02em' }}>
-          Referrals{' '}
+          Referral Opportunities{' '}
           <span style={{ fontSize: 18, color: 'var(--text-3)' }}>
             ({total} total{pending > 0 ? `, ${pending} pending` : ''})
           </span>
@@ -138,9 +138,9 @@ export default function AdminReferrals() {
           <table className="salary-table">
             <thead>
               <tr>
-                <th>Candidate</th>
-                <th>Referred by</th>
-                <th>Role</th>
+                
+                <th>Submitted by</th>
+                
                 <th>Company</th>
                 <th>Submitted</th>
                 <th>Status</th>

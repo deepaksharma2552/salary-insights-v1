@@ -9,20 +9,15 @@ export default function ViewReferralsPage() {
   const [search,    setSearch]    = useState('');
 
   useEffect(() => {
-    // Fetch all ACCEPTED referrals — public endpoint, no auth needed
     api.get('/public/referrals', { params: { page: 0, size: 100 } })
       .then(r => setReferrals(r.data?.data?.content ?? []))
       .catch(err => setError(err.response?.data?.message ?? 'Failed to load referrals.'))
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = referrals.filter(r => {
-    const q = search.toLowerCase();
-    return !q
-      || r.companyName?.toLowerCase().includes(q)
-      || r.jobTitle?.toLowerCase().includes(q)
-      || r.candidateName?.toLowerCase().includes(q);
-  });
+  const filtered = referrals.filter(r =>
+    !search || r.companyName?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <section className="section">
@@ -31,9 +26,9 @@ export default function ViewReferralsPage() {
       <div className="section-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <span className="section-tag">Referrals</span>
-          <h2 className="section-title">Open <em>Referral Links</em></h2>
+          <h2 className="section-title">View Referral <em>Opportunities</em></h2>
           <p style={{ color: 'var(--text-2)', fontSize: 14, marginTop: 6 }}>
-            Browse referral links shared by our community. Click Apply to use the referral link directly.
+            Referral links shared by our community. Click Apply to use the link directly.
           </p>
         </div>
         <Link
@@ -47,7 +42,7 @@ export default function ViewReferralsPage() {
 
       {/* Search */}
       {!loading && !error && referrals.length > 0 && (
-        <div style={{ margin: '24px 0 20px', position: 'relative', maxWidth: 400 }}>
+        <div style={{ margin: '24px 0 20px', position: 'relative', maxWidth: 360 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="2"
             style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
@@ -55,7 +50,7 @@ export default function ViewReferralsPage() {
           <input
             className="form-input"
             type="text"
-            placeholder="Search by company, role…"
+            placeholder="Search by company…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{ paddingLeft: 36 }}
@@ -66,7 +61,7 @@ export default function ViewReferralsPage() {
       {/* Loading */}
       {loading && (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>
-          Loading referrals…
+          Loading opportunities…
         </div>
       )}
 
@@ -77,11 +72,11 @@ export default function ViewReferralsPage() {
         </div>
       )}
 
-      {/* Empty */}
+      {/* Empty state */}
       {!loading && !error && referrals.length === 0 && (
         <div style={{ textAlign: 'center', padding: '80px 0' }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>🔗</div>
-          <h3 style={{ color: 'var(--text-1)', marginBottom: 8 }}>No referral links yet</h3>
+          <h3 style={{ color: 'var(--text-1)', marginBottom: 8 }}>No referral opportunities yet</h3>
           <p style={{ color: 'var(--text-3)', fontSize: 14, marginBottom: 24 }}>
             Be the first to share a referral link for an open role.
           </p>
@@ -91,24 +86,17 @@ export default function ViewReferralsPage() {
         </div>
       )}
 
-      {/* No search results */}
+      {/* No search match */}
       {!loading && !error && referrals.length > 0 && filtered.length === 0 && (
         <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-3)' }}>
-          No referrals match "<strong>{search}</strong>"
+          No results for "<strong>{search}</strong>"
         </div>
       )}
 
-      {/* Cards grid */}
+      {/* Card grid */}
       {!loading && !error && filtered.length > 0 && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-          gap: 16,
-          marginTop: 8,
-        }}>
-          {filtered.map(r => (
-            <ReferralCard key={r.id} r={r} />
-          ))}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, marginTop: 8 }}>
+          {filtered.map(r => <ReferralCard key={r.id} r={r} />)}
         </div>
       )}
     </section>
@@ -116,71 +104,38 @@ export default function ViewReferralsPage() {
 }
 
 function ReferralCard({ r }) {
-  const initials = r.companyName
-    ? r.companyName.slice(0, 2).toUpperCase()
-    : '??';
-
+  const initials = r.companyName ? r.companyName.slice(0, 2).toUpperCase() : '??';
   return (
-    <div style={{
-      background: 'var(--panel)',
-      border: '1px solid var(--border)',
-      borderRadius: 16,
-      padding: 24,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 14,
-      transition: 'border-color 0.15s',
-    }}
+    <div
+      style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', gap: 16, transition: 'border-color 0.15s' }}
       onMouseEnter={e => e.currentTarget.style.borderColor = '#0ea5e9'}
       onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
     >
-      {/* Company row */}
+      {/* Company */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{
-          width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+          width: 44, height: 44, borderRadius: 10, flexShrink: 0,
           background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.2)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 13, fontWeight: 700, color: '#0ea5e9',
-          fontFamily: "'JetBrains Mono',monospace",
+          fontSize: 14, fontWeight: 700, color: '#0ea5e9', fontFamily: "'JetBrains Mono',monospace",
         }}>
           {initials}
         </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {r.companyName || '—'}
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 16, color: 'var(--text-1)' }}>{r.companyName || '—'}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2, fontFamily: "'JetBrains Mono',monospace" }}>
+            {r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
           </div>
-          {r.jobTitle && (
-            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {r.jobTitle}
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Referred by */}
+      {/* Shared by */}
       <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
         Shared by <span style={{ color: 'var(--text-2)', fontWeight: 500 }}>{r.referredByName || 'a community member'}</span>
-        {r.createdAt && (
-          <span style={{ marginLeft: 6, fontFamily: "'JetBrains Mono',monospace", fontSize: 11 }}>
-            · {new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-          </span>
-        )}
       </div>
 
-      {/* Note */}
-      {r.note && (
-        <p style={{
-          fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5,
-          margin: 0, fontStyle: 'italic',
-          display: '-webkit-box', WebkitLineClamp: 3,
-          WebkitBoxOrient: 'vertical', overflow: 'hidden',
-        }}>
-          "{r.note}"
-        </p>
-      )}
-
       {/* Apply button */}
-      <div style={{ marginTop: 'auto', paddingTop: 4 }}>
+      <div style={{ marginTop: 'auto' }}>
         {r.referralLink ? (
           <a
             href={r.referralLink}
@@ -190,8 +145,7 @@ function ReferralCard({ r }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               width: '100%', padding: '10px 0', borderRadius: 10,
               background: '#0ea5e9', color: 'white',
-              fontWeight: 600, fontSize: 14, textDecoration: 'none',
-              transition: 'background 0.15s',
+              fontWeight: 600, fontSize: 14, textDecoration: 'none', transition: 'background 0.15s',
             }}
             onMouseEnter={e => e.currentTarget.style.background = '#0284c7'}
             onMouseLeave={e => e.currentTarget.style.background = '#0ea5e9'}
@@ -203,9 +157,7 @@ function ReferralCard({ r }) {
             Apply via Referral
           </a>
         ) : (
-          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-4)', padding: '10px 0' }}>
-            No link available
-          </div>
+          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-4)', padding: '10px 0' }}>No link available</div>
         )}
       </div>
     </div>
