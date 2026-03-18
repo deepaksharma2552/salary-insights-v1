@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 
 const STATUS_META = {
-  PENDING:  { label: 'Pending',  bg: 'rgba(234,179,8,0.12)',   color: '#ca8a04', border: 'rgba(234,179,8,0.25)' },
-  ACCEPTED: { label: 'Accepted', bg: 'rgba(34,197,94,0.12)',   color: '#16a34a', border: 'rgba(34,197,94,0.25)' },
-  REJECTED: { label: 'Rejected', bg: 'rgba(239,68,68,0.12)',   color: '#dc2626', border: 'rgba(239,68,68,0.25)' },
+  PENDING:  { label: 'Pending',  bg: 'rgba(234,179,8,0.12)',  color: '#ca8a04', border: 'rgba(234,179,8,0.25)' },
+  ACCEPTED: { label: 'Accepted', bg: 'rgba(34,197,94,0.12)',  color: '#16a34a', border: 'rgba(34,197,94,0.25)' },
+  REJECTED: { label: 'Rejected', bg: 'rgba(239,68,68,0.12)',  color: '#dc2626', border: 'rgba(239,68,68,0.25)' },
 };
 
 function StatusBadge({ status }) {
@@ -22,13 +22,13 @@ function StatusBadge({ status }) {
 }
 
 export default function AdminReferrals() {
-  const [referrals,   setReferrals]   = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [fetchError,  setFetchError]  = useState(null);
-  const [statusFilter, setStatusFilter] = useState('');  // '' = all
+  const [referrals,    setReferrals]    = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [fetchError,   setFetchError]   = useState(null);
+  const [statusFilter, setStatusFilter] = useState('');
 
-  // Reject modal state
-  const [rejectTarget, setRejectTarget] = useState(null);  // referral object
+  // Reject modal
+  const [rejectTarget, setRejectTarget] = useState(null);
   const [adminNote,    setAdminNote]    = useState('');
   const [actioning,    setActioning]    = useState(false);
 
@@ -69,8 +69,8 @@ export default function AdminReferrals() {
     finally { setActioning(false); }
   }
 
-  const total    = referrals.length;
-  const pending  = referrals.filter(r => r.status === 'PENDING').length;
+  const total   = referrals.length;
+  const pending = referrals.filter(r => r.status === 'PENDING').length;
 
   return (
     <div style={{ padding: 40 }}>
@@ -79,11 +79,11 @@ export default function AdminReferrals() {
         .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; animation:fadeIn 0.15s ease; }
       `}</style>
 
-      {/* Page header */}
+      {/* Header */}
       <div style={{ marginBottom: 32 }}>
         <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin</span>
         <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, color: 'var(--text-1)', marginTop: 8, letterSpacing: '-0.02em' }}>
-          Referral Opportunities{' '}
+          Referral Board{' '}
           <span style={{ fontSize: 18, color: 'var(--text-3)' }}>
             ({total} total{pending > 0 ? `, ${pending} pending` : ''})
           </span>
@@ -113,7 +113,9 @@ export default function AdminReferrals() {
       {fetchError && (
         <div style={{ padding: '14px 18px', background: 'var(--rose-dim)', border: '1px solid rgba(224,92,122,0.2)', borderRadius: 10, color: 'var(--rose)', fontSize: 13, marginBottom: 20 }}>
           {fetchError}
-          <button onClick={load} style={{ marginLeft: 14, padding: '3px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 6, border: '1px solid var(--rose)', background: 'transparent', color: 'var(--rose)' }}>Retry</button>
+          <button onClick={load} style={{ marginLeft: 14, padding: '3px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 6, border: '1px solid var(--rose)', background: 'transparent', color: 'var(--rose)' }}>
+            Retry
+          </button>
         </div>
       )}
 
@@ -132,17 +134,16 @@ export default function AdminReferrals() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Table — 5 columns matching ReferralResponse fields exactly */}
       {!loading && !fetchError && referrals.length > 0 && (
         <div className="salary-table-wrap">
           <table className="salary-table">
             <thead>
               <tr>
-                
                 <th>Submitted by</th>
-                
                 <th>Company</th>
-                <th>Submitted</th>
+                <th>Referral Link</th>
+                <th>Date</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -150,42 +151,65 @@ export default function AdminReferrals() {
             <tbody>
               {referrals.map(r => (
                 <tr key={r.id}>
+
+                  {/* Submitted by — referredByName + referredByEmail from ReferralResponse */}
                   <td>
-                    <div style={{ fontWeight: 600, color: 'var(--text-1)', fontSize: 14 }}>{r.candidateName}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", marginTop: 2 }}>
-                      {r.candidateEmail}
+                    <div style={{ fontWeight: 600, color: 'var(--text-1)', fontSize: 14 }}>
+                      {r.referredByName || '—'}
                     </div>
-                    {r.note && (
-                      <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontStyle: 'italic', maxWidth: 200 }} title={r.note}>
-                        "{r.note.length > 60 ? r.note.slice(0, 60) + '…' : r.note}"
-                      </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", marginTop: 2 }}>
+                      {r.referredByEmail || ''}
+                    </div>
+                  </td>
+
+                  {/* Company */}
+                  <td>
+                    <div className="company-name" style={{ fontSize: 14 }}>
+                      {r.companyName || '—'}
+                    </div>
+                  </td>
+
+                  {/* Referral link */}
+                  <td>
+                    {r.referralLink ? (
+                      <a
+                        href={r.referralLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={r.referralLink}
+                        style={{
+                          color: '#0ea5e9', textDecoration: 'none',
+                          fontFamily: "'JetBrains Mono',monospace", fontSize: 11,
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                        }}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                          <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                        </svg>
+                        Open link
+                      </a>
+                    ) : (
+                      <span style={{ color: 'var(--text-4)', fontSize: 11, fontFamily: "'JetBrains Mono',monospace" }}>—</span>
                     )}
                   </td>
 
-                  <td>
-                    <div style={{ fontSize: 13, color: 'var(--text-2)' }}>{r.referredByName}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", marginTop: 2 }}>
-                      {r.referredByEmail}
-                    </div>
-                  </td>
-
-                  <td style={{ fontSize: 13, color: 'var(--text-2)' }}>{r.jobTitle || '—'}</td>
-
-                  <td><div className="company-name" style={{ fontSize: 13 }}>{r.companyName}</div></td>
-
+                  {/* Date */}
                   <td style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--text-3)' }}>
                     {r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-IN') : '—'}
                   </td>
 
+                  {/* Status + admin note */}
                   <td>
                     <StatusBadge status={r.status} />
                     {r.adminNote && (
-                      <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, maxWidth: 140 }} title={r.adminNote}>
+                      <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, maxWidth: 160 }} title={r.adminNote}>
                         {r.adminNote.length > 40 ? r.adminNote.slice(0, 40) + '…' : r.adminNote}
                       </div>
                     )}
                   </td>
 
+                  {/* Actions */}
                   <td>
                     {r.status === 'PENDING' ? (
                       <div style={{ display: 'flex', gap: 8 }}>
@@ -216,6 +240,7 @@ export default function AdminReferrals() {
                       <span style={{ fontSize: 12, color: 'var(--text-4)' }}>—</span>
                     )}
                   </td>
+
                 </tr>
               ))}
             </tbody>
@@ -228,23 +253,23 @@ export default function AdminReferrals() {
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setRejectTarget(null)}>
           <div style={{
             background: 'var(--panel)', border: '1px solid var(--border)',
-            borderRadius: 16, padding: 32, width: '100%', maxWidth: 440,
-            margin: '0 16px',
+            borderRadius: 16, padding: 32, width: '100%', maxWidth: 440, margin: '0 16px',
           }}>
             <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: 'var(--text-1)', marginBottom: 6 }}>
               Reject referral
             </h3>
             <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>
-              <strong style={{ color: 'var(--text-2)' }}>{rejectTarget.candidateName}</strong> referred by {rejectTarget.referredByName}
+              <strong style={{ color: 'var(--text-2)' }}>{rejectTarget.companyName}</strong>
+              {' '}submitted by {rejectTarget.referredByName}
             </p>
 
             <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
-              Reason <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(shown to referrer — optional)</span>
+              Reason <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(shown to submitter — optional)</span>
             </label>
             <textarea
               className="form-input"
               rows={3}
-              placeholder="e.g. Duplicate submission, candidate already in pipeline…"
+              placeholder="e.g. Broken link, duplicate submission…"
               value={adminNote}
               onChange={e => setAdminNote(e.target.value)}
               style={{ resize: 'vertical', width: '100%', marginBottom: 20 }}
