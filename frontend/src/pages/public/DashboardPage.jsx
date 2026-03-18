@@ -333,13 +333,27 @@ export default function DashboardPage() {
                         const bonus  = row.avgBonus      ?? 0;
                         const equity = row.avgEquity     ?? 0;
                         const total  = base + bonus + equity;
-                        const basePct   = Math.round((base   / maxCompLevel) * 100);
-                        const bonusPct  = Math.round((bonus  / maxCompLevel) * 100);
-                        const equityPct = Math.round((equity / maxCompLevel) * 100);
+
+                        // Scale to maxCompLevel, then distribute remaining pixels to base
+                        // so segments always sum to exactly trackPct — no fourth sliver
+                        const trackPct   = (total / maxCompLevel) * 100;
+                        const bonusPct   = total > 0 ? (bonus  / total) * trackPct : 0;
+                        const equityPct  = total > 0 ? (equity / total) * trackPct : 0;
+                        const basePct    = trackPct - bonusPct - equityPct; // remainder — no rounding error
 
                         return (
-                          <div key={row.internalLevel} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            {/* Fixed-width level label — truncates if too long */}
+                          <div key={row.internalLevel}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}
+                            onMouseEnter={e => {
+                              const tip = e.currentTarget.querySelector('.comp-tooltip');
+                              if (tip) tip.style.display = 'block';
+                            }}
+                            onMouseLeave={e => {
+                              const tip = e.currentTarget.querySelector('.comp-tooltip');
+                              if (tip) tip.style.display = 'none';
+                            }}
+                          >
+                            {/* Fixed-width level label */}
                             <span style={{
                               fontSize: 11, color: 'var(--text-3)',
                               width: 120, minWidth: 120,
@@ -349,7 +363,7 @@ export default function DashboardPage() {
                               {row.internalLevel}
                             </span>
 
-                            {/* Stacked bar */}
+                            {/* Stacked bar — segments sum exactly to trackPct */}
                             <div style={{
                               flex: 1, height: 8, borderRadius: 100,
                               background: 'var(--bg-3)', overflow: 'hidden',
@@ -366,7 +380,7 @@ export default function DashboardPage() {
                               )}
                             </div>
 
-                            {/* Total comp value — fixed width so values align */}
+                            {/* Total comp — fixed width */}
                             <span style={{
                               fontFamily: "'IBM Plex Mono',monospace",
                               fontSize: 11, fontWeight: 600, color: 'var(--text-1)',
@@ -374,6 +388,41 @@ export default function DashboardPage() {
                             }}>
                               {fmt(total)}
                             </span>
+
+                            {/* Hover tooltip */}
+                            <div className="comp-tooltip" style={{
+                              display: 'none',
+                              position: 'absolute', left: 128, bottom: 'calc(100% + 6px)',
+                              zIndex: 200, pointerEvents: 'none',
+                              background: 'var(--panel)', border: '1px solid var(--border)',
+                              borderRadius: 8, padding: '8px 10px',
+                              boxShadow: '0 4px 16px rgba(0,0,0,0.14)',
+                              minWidth: 170, whiteSpace: 'nowrap',
+                            }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-1)', marginBottom: 6 }}>
+                                {row.internalLevel}
+                              </div>
+                              {[
+                                { label: 'Base salary', value: base,   color: '#2563eb' },
+                                { label: 'Bonus',       value: bonus,  color: '#10b981' },
+                                { label: 'Equity',      value: equity, color: '#f59e0b' },
+                              ].map(({ label, value, color }) => (
+                                <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 3 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                    <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
+                                    <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{label}</span>
+                                  </div>
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace" }}>
+                                    {value > 0 ? fmt(value) : '—'}
+                                  </span>
+                                </div>
+                              ))}
+                              <div style={{ borderTop: '1px solid var(--border)', marginTop: 5, paddingTop: 5, display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600 }}>Total</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace" }}>{fmt(total)}</span>
+                              </div>
+                            </div>
+
                           </div>
                         );
                       })}
