@@ -12,18 +12,12 @@ import java.util.UUID;
 public class ReferralResponse {
 
     private UUID   id;
-    private String candidateName;
-    private String candidateEmail;
-    private String jobTitle;
-
-    /** Resolved company name — from the FK relationship or the free-text fallback. */
-    private String companyName;
-
-    private String        note;
+    private String companyName;    // resolved: FK company name or companyNameRaw
+    private String referralLink;
     private ReferralStatus status;
-    private String        adminNote;
+    private String adminNote;      // shown to the submitter on rejection
 
-    private String referredByName;   // firstName + lastName of the submitting user
+    private String referredByName;  // firstName + lastName
     private String referredByEmail;
 
     private LocalDateTime createdAt;

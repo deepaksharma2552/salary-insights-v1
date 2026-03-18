@@ -22,33 +22,30 @@ public class Referral extends BaseEntity {
     @JoinColumn(name = "referred_by_id", nullable = false)
     private User referredBy;
 
-    @Column(name = "candidate_name", nullable = false, length = 200)
-    private String candidateName;
-
-    @Column(name = "candidate_email", nullable = false, length = 255)
-    private String candidateEmail;
-
-    @Column(name = "job_title", length = 200)
-    private String jobTitle;
-
-    /** Nullable — referral may be for a company not yet in the system. */
+    /**
+     * FK to companies table. Populated whether the company was pre-existing
+     * or auto-created at submission time — same pattern as SalaryEntry.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id")
     private Company company;
 
-    /** Free-text fallback when company is not in the system. */
+    /**
+     * Stores the name used at submission time so display stays correct
+     * even if the company record is later renamed.
+     */
     @Column(name = "company_name_raw", length = 255)
     private String companyNameRaw;
 
-    @Column(name = "note", columnDefinition = "TEXT")
-    private String note;
+    @Column(name = "referral_link", columnDefinition = "TEXT", nullable = false)
+    private String referralLink;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     @Builder.Default
     private ReferralStatus status = ReferralStatus.PENDING;
 
-    /** Optional note from admin explaining acceptance or rejection. */
+    /** Optional note from admin explaining a rejection. */
     @Column(name = "admin_note", length = 500)
     private String adminNote;
 }

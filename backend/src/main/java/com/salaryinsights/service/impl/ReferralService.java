@@ -7,6 +7,7 @@ import com.salaryinsights.dto.response.ReferralResponse;
 import com.salaryinsights.entity.Company;
 import com.salaryinsights.entity.Referral;
 import com.salaryinsights.entity.User;
+import com.salaryinsights.enums.CompanyStatus;
 import com.salaryinsights.enums.ReferralStatus;
 import com.salaryinsights.exception.BadRequestException;
 import com.salaryinsights.exception.ResourceNotFoundException;
@@ -39,29 +40,43 @@ public class ReferralService {
     public ReferralResponse submit(ReferralRequest request) {
         User caller = currentUser();
 
-        // Resolve company — prefer ID lookup, fall back to free-text
-        Company company = null;
+        // Resolve company — identical pattern to SalaryService.submitSalary()
+        Company company;
         if (request.getCompanyId() != null) {
+            // Existing company chosen from autocomplete
             company = companyRepository.findById(request.getCompanyId())
-                    .orElseThrow(() -> new BadRequestException("Company not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Company not found: " + request.getCompanyId()));
+        } else if (request.getCompanyName() != null && !request.getCompanyName().isBlank()) {
+            // Auto-create or find by name — seeds the companies table for future use
+            company = companyRepository.findByNameIgnoreCase(request.getCompanyName().trim())
+                    .orElseGet(() -> {
+                        Company newCompany = Company.builder()
+                                .name(request.getCompanyName().trim())
+                                .status(CompanyStatus.ACTIVE)
+                                .build();
+                        Company saved = companyRepository.save(newCompany);
+                        log.info("Auto-created company during referral submission: {}", saved.getName());
+                        auditLogService.log("COMPANY", saved.getId().toString(),
+                                "AUTO_CREATED", "Created via referral submission by " + caller.getEmail());
+                        return saved;
+                    });
+        } else {
+            throw new BadRequestException("Either companyId or companyName must be provided");
         }
 
         Referral referral = Referral.builder()
                 .referredBy(caller)
-                .candidateName(request.getCandidateName())
-                .candidateEmail(request.getCandidateEmail())
-                .jobTitle(request.getJobTitle())
                 .company(company)
-                .companyNameRaw(request.getCompanyNameRaw())
-                .note(request.getNote())
+                .companyNameRaw(company.getName())   // snapshot name at submission time
+                .referralLink(request.getReferralLink())
                 .status(ReferralStatus.PENDING)
                 .build();
 
         referral = referralRepository.save(referral);
-        log.info("Referral submitted by {} for {}", caller.getEmail(), request.getCandidateEmail());
-
+        log.info("Referral opportunity submitted by {} for company {}", caller.getEmail(), company.getName());
         auditLogService.log("REFERRAL", referral.getId().toString(),
-                "SUBMITTED", "Candidate: " + request.getCandidateEmail());
+                "SUBMITTED", "Company: " + company.getName() + ", Link: " + request.getReferralLink());
 
         return toResponse(referral);
     }
@@ -98,24 +113,21 @@ public class ReferralService {
         Referral referral = referralRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Referral not found"));
 
-        // Guard: only PENDING referrals can be actioned
         if (referral.getStatus() != ReferralStatus.PENDING) {
             throw new BadRequestException(
                     "Referral is already " + referral.getStatus() + " and cannot be changed");
         }
-
-        ReferralStatus newStatus = request.getStatus();
-        if (newStatus == ReferralStatus.PENDING) {
+        if (request.getStatus() == ReferralStatus.PENDING) {
             throw new BadRequestException("Cannot set status back to PENDING");
         }
 
-        referral.setStatus(newStatus);
+        referral.setStatus(request.getStatus());
         referral.setAdminNote(request.getAdminNote());
         referral = referralRepository.save(referral);
 
-        log.info("Referral {} set to {} by admin", id, newStatus);
+        log.info("Referral {} set to {} by admin", id, request.getStatus());
         auditLogService.log("REFERRAL", id.toString(),
-                newStatus.name(), request.getAdminNote());
+                request.getStatus().name(), request.getAdminNote());
 
         return toResponse(referral);
     }
@@ -123,10 +135,11 @@ public class ReferralService {
     // ── Mapping ────────────────────────────────────────────────────────────────
 
     private ReferralResponse toResponse(Referral r) {
-        // Resolve display company name: prefer FK company, then free-text, then blank
-        String companyName = r.getCompany() != null
-                ? r.getCompany().getName()
-                : (r.getCompanyNameRaw() != null ? r.getCompanyNameRaw() : "—");
+        // Prefer snapshot name (companyNameRaw) so display is stable even if
+        // the company record is later renamed
+        String companyName = r.getCompanyNameRaw() != null
+                ? r.getCompanyNameRaw()
+                : (r.getCompany() != null ? r.getCompany().getName() : "—");
 
         User by = r.getReferredBy();
         String referredByName = by != null
@@ -135,11 +148,8 @@ public class ReferralService {
 
         return ReferralResponse.builder()
                 .id(r.getId())
-                .candidateName(r.getCandidateName())
-                .candidateEmail(r.getCandidateEmail())
-                .jobTitle(r.getJobTitle())
                 .companyName(companyName)
-                .note(r.getNote())
+                .referralLink(r.getReferralLink())
                 .status(r.getStatus())
                 .adminNote(r.getAdminNote())
                 .referredByName(referredByName)
