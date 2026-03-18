@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import api from '../../services/api';
 
 export default function DashboardPage() {
-  const [byLocation,     setByLocation]     = useState([]);
-  const [byCompanyLevel, setByCompanyLevel] = useState([]);
+  const [byLocation,      setByLocation]      = useState([]);
+  const [byCompanyLevel,  setByCompanyLevel]  = useState([]);
+  const [byInternalLevel, setByInternalLevel] = useState([]);
   const [loading,        setLoading]        = useState(true);
   const [selectedCompanies, setSelectedCompanies] = useState([]);
   const [filterOpen,     setFilterOpen]     = useState(false);
@@ -14,9 +15,11 @@ export default function DashboardPage() {
     Promise.all([
       api.get('/public/salaries/analytics/by-location'),
       api.get('/public/salaries/analytics/by-company-level'),
-    ]).then(([loc, cl]) => {
-      setByLocation(loc.data?.data   ?? []);
-      setByCompanyLevel(cl.data?.data ?? []);
+      api.get('/public/salaries/analytics/by-internal-level'),
+    ]).then(([loc, cl, il]) => {
+      setByLocation(loc.data?.data       ?? []);
+      setByCompanyLevel(cl.data?.data    ?? []);
+      setByInternalLevel(il.data?.data   ?? []);
     }).catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -52,9 +55,15 @@ export default function DashboardPage() {
     'Sr. Director': '#b91c1c', 'VP': '#7f1d1d',
   };
 
-  const maxLoc = byLocation.length
-    ? Math.max(...byLocation.map(r => r.avgBaseSalary ?? 0), 1)
-    : 1;
+  const maxLoc = useMemo(() =>
+    byLocation.length ? Math.max(...byLocation.map(r => (r.avgBaseSalary ?? 0) + (r.avgBonus ?? 0) + (r.avgEquity ?? 0)), 1) : 1,
+    [byLocation]
+  );
+
+  const maxLevel = useMemo(() =>
+    byInternalLevel.length ? Math.max(...byInternalLevel.map(r => (r.avgBaseSalary ?? 0) + (r.avgBonus ?? 0) + (r.avgEquity ?? 0)), 1) : 1,
+    [byInternalLevel]
+  );
 
   // Map preserves backend insertion order (recency sort) — plain {} does not guarantee it
   const groupedByCompany = useMemo(() => {
@@ -116,6 +125,80 @@ export default function DashboardPage() {
     </div>
   );
 
+  // Shared stacked-bar row — used by location and internal-level charts
+  const StackedBarRow = ({ label, row, maxVal, labelWidth = 90 }) => {
+    const base   = row.avgBaseSalary ?? 0;
+    const bonus  = row.avgBonus      ?? 0;
+    const equity = row.avgEquity     ?? 0;
+    const total  = base + bonus + equity;
+    const trackPct  = (total / maxVal) * 100;
+    const bonusPct  = total > 0 ? (bonus  / total) * trackPct : 0;
+    const equityPct = total > 0 ? (equity / total) * trackPct : 0;
+    const basePct   = trackPct - bonusPct - equityPct;
+    return (
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}
+        onMouseEnter={e => { const t = e.currentTarget.querySelector('.loc-tip'); if (t) t.style.display = 'block'; }}
+        onMouseLeave={e => { const t = e.currentTarget.querySelector('.loc-tip'); if (t) t.style.display = 'none'; }}
+      >
+        <span style={{
+          fontSize: 11, color: 'var(--text-2)', fontWeight: 500,
+          width: labelWidth, minWidth: labelWidth,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }} title={label}>{label}</span>
+
+        <div style={{ flex: 1, height: 8, borderRadius: 100, background: 'var(--bg-3)', overflow: 'hidden', display: 'flex' }}>
+          {basePct   > 0 && <div style={{ width: `${basePct}%`,   height: '100%', background: '#2563eb', flexShrink: 0 }} />}
+          {bonusPct  > 0 && <div style={{ width: `${bonusPct}%`,  height: '100%', background: '#10b981', flexShrink: 0 }} />}
+          {equityPct > 0 && <div style={{ width: `${equityPct}%`, height: '100%', background: '#f59e0b', flexShrink: 0 }} />}
+        </div>
+
+        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, color: 'var(--text-1)', width: 52, minWidth: 52, textAlign: 'right' }}>
+          {fmt(total)}
+        </span>
+
+        {/* Hover tooltip */}
+        <div className="loc-tip" style={{
+          display: 'none', position: 'absolute', left: labelWidth + 8, bottom: 'calc(100% + 6px)',
+          zIndex: 200, pointerEvents: 'none', background: 'var(--panel)', border: '1px solid var(--border)',
+          borderRadius: 8, padding: '8px 10px', boxShadow: '0 4px 16px rgba(0,0,0,0.14)', minWidth: 170, whiteSpace: 'nowrap',
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-1)', marginBottom: 6 }}>{label}</div>
+          {[
+            { label: 'Base salary', value: base,   color: '#2563eb' },
+            { label: 'Bonus',       value: bonus,  color: '#10b981' },
+            { label: 'Equity',      value: equity, color: '#f59e0b' },
+          ].map(({ label: l, value, color }) => (
+            <div key={l} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 3 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
+                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{l}</span>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace" }}>
+                {value > 0 ? fmt(value) : '—'}
+              </span>
+            </div>
+          ))}
+          <div style={{ borderTop: '1px solid var(--border)', marginTop: 5, paddingTop: 5, display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600 }}>Total</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace" }}>{fmt(total)}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const BarLegend = () => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 12 }}>
+      {[{ label: 'Base', color: '#2563eb' }, { label: 'Bonus', color: '#10b981' }, { label: 'Equity', color: '#f59e0b' }].map(({ label, color }) => (
+        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />
+          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <section className="section">
 
@@ -132,44 +215,51 @@ export default function DashboardPage() {
           Loading analytics…
         </div>
       ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-          gap: 12,
-          marginBottom: 12,
-        }}>
+        <>
+          {/* Row 1 — Location + Internal Level side by side */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12, marginBottom: 12 }}>
 
-          {/* Chart 1 — Avg Salary by Location */}
-          <div className="chart-card">
-            <div className="chart-card-header">
-              <div className="chart-title">Avg Base Salary by Location</div>
-              <div className="chart-subtitle">Top metro areas · sorted by salary</div>
-            </div>
-            {byLocation.length === 0 ? <EmptyState /> : (
-              <div className="level-bars">
-                {byLocation.slice(0, 8).map((row, i) => {
-                  const pct = Math.round((row.avgBaseSalary / maxLoc) * 100);
-                  return (
-                    <div key={row.groupKey} className="level-bar-row">
-                      <span className="level-bar-label" style={{ minWidth: 90 }}>{row.groupKey}</span>
-                      <div className="level-bar-track">
-                        <div className="level-bar-fill" style={{ width: `${pct}%`, background: BAR_COLORS[i % BAR_COLORS.length] }} />
-                      </div>
-                      <span className="level-bar-val">{fmt(row.avgBaseSalary)}</span>
-                    </div>
-                  );
-                })}
+            {/* Chart 1 — Avg Salary by Location */}
+            <div className="chart-card">
+              <div className="chart-card-header">
+                <div className="chart-title">Avg Salary by Location</div>
+                <div className="chart-subtitle">Base · Bonus · Equity breakdown · hover for details</div>
               </div>
-            )}
+              <BarLegend />
+              {byLocation.length === 0 ? <EmptyState /> : (
+                <div className="level-bars">
+                  {byLocation.slice(0, 8).map(row => (
+                    <StackedBarRow key={row.groupKey} label={row.groupKey} row={row} maxVal={maxLoc} labelWidth={90} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Chart 2 — Avg Salary by Internal Level */}
+            <div className="chart-card">
+              <div className="chart-card-header">
+                <div className="chart-title">Avg Salary by Internal Level</div>
+                <div className="chart-subtitle">Across all companies · hover for details</div>
+              </div>
+              <BarLegend />
+              {byInternalLevel.length === 0 ? <EmptyState /> : (
+                <div className="level-bars">
+                  {byInternalLevel.map(row => (
+                    <StackedBarRow key={row.groupKey} label={row.groupKey} row={row} maxVal={maxLevel} labelWidth={130} />
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
 
-          {/* Chart 2 — Avg Base Salary by Company & Level */}
+          {/* Row 2 — Company & Level full width */}
           <div className="chart-card">
             {/* Header + filter */}
             <div className="chart-card-header" style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                 <div>
-                  <div className="chart-title">Avg Base Salary by Company &amp; Level</div>
+                  <div className="chart-title">Avg Salary by Company &amp; Level</div>
                   <div className="chart-subtitle">
                     {selectedCompanies.length > 0
                       ? `Showing ${selectedCompanies.length} of 10 · up to 5 selectable`
@@ -433,7 +523,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-        </div>
+        </>
       )}
     </section>
   );
