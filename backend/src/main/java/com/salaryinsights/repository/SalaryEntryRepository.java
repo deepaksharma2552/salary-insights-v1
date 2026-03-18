@@ -103,7 +103,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  WHERE s.review_status = 'APPROVED' AND s.company_internal_level IS NOT NULL " +
         "  GROUP BY tc.company_name, tc.last_activity, s.company_internal_level " +
         ") " +
-        "SELECT company_name, internalLevel, avgBaseSalary, cnt " +
+        "SELECT company_name, internalLevel, avgBaseSalary, avgBonus, avgEquity, cnt " +
         "FROM level_agg " +
         "ORDER BY last_activity DESC, avgBaseSalary DESC",
         nativeQuery = true)
