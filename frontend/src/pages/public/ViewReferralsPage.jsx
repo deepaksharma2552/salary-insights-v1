@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../../services/api';
 
 export default function ViewReferralsPage() {
@@ -23,21 +22,12 @@ export default function ViewReferralsPage() {
     <section className="section">
 
       {/* Header */}
-      <div className="section-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-        <div>
-          <span className="section-tag">Referrals</span>
-          <h2 className="section-title">View Referral <em>Opportunities</em></h2>
-          <p style={{ color: 'var(--text-2)', fontSize: 14, marginTop: 6 }}>
-            Referral links shared by our community. Click Apply to use the link directly.
-          </p>
-        </div>
-        <Link
-          to="/refer"
-          className="btn-primary"
-          style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderRadius: 10, fontSize: 14, whiteSpace: 'nowrap' }}
-        >
-          + Add a Referral
-        </Link>
+      <div className="section-header">
+        <span className="section-tag">Community</span>
+        <h2 className="section-title">Referral <em>Board</em></h2>
+        <p style={{ color: 'var(--text-2)', fontSize: 14, marginTop: 6 }}>
+          Referral links shared by our community. Click Apply to use the link directly.
+        </p>
       </div>
 
       {/* Search */}
@@ -72,17 +62,14 @@ export default function ViewReferralsPage() {
         </div>
       )}
 
-      {/* Empty state */}
+      {/* Empty state — no button, just a message */}
       {!loading && !error && referrals.length === 0 && (
         <div style={{ textAlign: 'center', padding: '80px 0' }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>🔗</div>
-          <h3 style={{ color: 'var(--text-1)', marginBottom: 8 }}>No referral opportunities yet</h3>
-          <p style={{ color: 'var(--text-3)', fontSize: 14, marginBottom: 24 }}>
-            Be the first to share a referral link for an open role.
+          <h3 style={{ color: 'var(--text-1)', marginBottom: 8 }}>No referrals yet</h3>
+          <p style={{ color: 'var(--text-3)', fontSize: 14 }}>
+            Referral links shared by the community will appear here once approved.
           </p>
-          <Link to="/refer" className="btn-primary" style={{ textDecoration: 'none', padding: '10px 24px', borderRadius: 10, fontSize: 14 }}>
-            Add the first referral →
-          </Link>
         </div>
       )}
 
