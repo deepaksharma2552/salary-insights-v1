@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import React from 'react';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 
@@ -510,7 +511,23 @@ export default function DashboardPage() {
 
   const [selLocations, setSelLocations] = useState([]);
   const [selCompanies, setSelCompanies] = useState([]);
+  const [selLocationsForCompany, setSelLocationsForCompany] = useState([]);
 
+  // All valid location display names (from the Location enum — matches what the DB stores)
+  const ALL_LOCATIONS = [
+    'Bengaluru', 'Hyderabad', 'Pune', 'Delhi-NCR',
+    'Kochi', 'Coimbatore', 'Mysore', 'Mangaluru',
+  ];
+
+  // Fetch company-level data — re-runs whenever location filter changes
+  const fetchCompanyLevel = React.useCallback(() => {
+    const params = selLocationsForCompany.length > 0
+      ? { locations: selLocationsForCompany }
+      : {};
+    return api.get('/public/salaries/analytics/by-company-level', { params });
+  }, [selLocationsForCompany]);
+
+  // Initial load — fetch both charts in parallel
   useEffect(() => {
     Promise.all([
       api.get('/public/salaries/analytics/by-location-level'),
@@ -521,6 +538,18 @@ export default function DashboardPage() {
     }).catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  // Re-fetch company-level data whenever the location filter changes
+  // (skip on initial mount — already fetched above)
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    setLoading(true);
+    fetchCompanyLevel()
+      .then(cl => setByCompanyLevel(cl.data?.data ?? []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [fetchCompanyLevel]);
 
   /* ── Group location-level rows by location ── */
   const locationGrouped = useMemo(() =>
@@ -669,28 +698,49 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4, gap: 8 }}>
               <div>
                 <div className="chart-title">Avg Salary by Company &amp; Level</div>
-                <div className="chart-subtitle">Hover each bar for Base · Bonus · Equity breakdown</div>
+                <div className="chart-subtitle">
+                  {selLocationsForCompany.length > 0
+                    ? `${selLocationsForCompany.length} location${selLocationsForCompany.length > 1 ? 's' : ''} · ${selCompanies.length > 0 ? selCompanies.length + ' companies' : 'all companies'} · hover for breakdown`
+                    : 'Hover each bar for Base · Bonus · Equity breakdown'}
+                </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
-                <MultiFilter
-                  label="Filter"
-                  items={allCompanyNames}
-                  selected={selCompanies}
-                  onChange={setSelCompanies}
-                  max={5}
-                />
-                {selCompanies.length > 0 && (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <MultiFilter
+                    label="Location"
+                    items={ALL_LOCATIONS}
+                    selected={selLocationsForCompany}
+                    onChange={setSelLocationsForCompany}
+                    max={5}
+                  />
+                  <MultiFilter
+                    label="Company"
+                    items={allCompanyNames}
+                    selected={selCompanies}
+                    onChange={setSelCompanies}
+                    max={5}
+                  />
+                </div>
+                {(selLocationsForCompany.length > 0 || selCompanies.length > 0) && (
                   <button
-                    onClick={() => setSelCompanies([])}
+                    onClick={() => { setSelLocationsForCompany([]); setSelCompanies([]); }}
                     style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'IBM Plex Mono',monospace" }}
                   >
-                    ✕ clear
+                    ✕ clear all
                   </button>
                 )}
               </div>
             </div>
 
-            <Chips items={selCompanies} onRemove={c => setSelCompanies(selCompanies.filter(x => x !== c))} />
+            {/* Active filter chips — locations first, then companies */}
+            <Chips
+              items={selLocationsForCompany}
+              onRemove={loc => setSelLocationsForCompany(selLocationsForCompany.filter(l => l !== loc))}
+            />
+            <Chips
+              items={selCompanies}
+              onRemove={c => setSelCompanies(selCompanies.filter(x => x !== c))}
+            />
 
             <BarLegend />
 
