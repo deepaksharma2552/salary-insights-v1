@@ -507,7 +507,8 @@ const EmptyState = () => (
 export default function DashboardPage() {
   const [byLocationLevel, setByLocationLevel] = useState([]);
   const [byCompanyLevel,  setByCompanyLevel]  = useState([]);
-  const [loading,         setLoading]         = useState(true);
+  const [initialLoading,  setInitialLoading]  = useState(true);  // first paint only
+  const [refetching,      setRefetching]      = useState(false); // filter re-fetch — no blink
 
   const [selLocations, setSelLocations] = useState([]);
   const [selCompanies, setSelCompanies] = useState([]);
@@ -527,7 +528,7 @@ export default function DashboardPage() {
     return api.get('/public/salaries/analytics/by-company-level', { params });
   }, [selLocationsForCompany]);
 
-  // Initial load — fetch both charts in parallel
+  // Initial load — fetch both charts in parallel, show full-page spinner once
   useEffect(() => {
     Promise.all([
       api.get('/public/salaries/analytics/by-location-level'),
@@ -536,19 +537,19 @@ export default function DashboardPage() {
       setByLocationLevel(locLvl.data?.data ?? []);
       setByCompanyLevel(cl.data?.data      ?? []);
     }).catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => setInitialLoading(false));
   }, []);
 
-  // Re-fetch company-level data whenever the location filter changes
-  // (skip on initial mount — already fetched above)
+  // Re-fetch company-level data whenever location filter changes.
+  // Uses refetching (not initialLoading) so the chart stays visible — no blink.
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return; }
-    setLoading(true);
+    setRefetching(true);
     fetchCompanyLevel()
       .then(cl => setByCompanyLevel(cl.data?.data ?? []))
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => setRefetching(false));
   }, [fetchCompanyLevel]);
 
   /* ── Group location-level rows by location ── */
@@ -594,6 +595,14 @@ export default function DashboardPage() {
 
   return (
     <section className="section">
+      <style>{`
+        @keyframes progressCrawl {
+          0%   { width: 0%;  }
+          40%  { width: 65%; }
+          70%  { width: 82%; }
+          100% { width: 90%; }
+        }
+      `}</style>
 
       {/* ── HEADER ── */}
       <div className="section-header">
@@ -604,7 +613,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {loading ? (
+      {initialLoading ? (
         <div style={{
           textAlign: 'center', padding: '60px 0',
           color: 'var(--text-3)',
@@ -741,6 +750,18 @@ export default function DashboardPage() {
               items={selCompanies}
               onRemove={c => setSelCompanies(selCompanies.filter(x => x !== c))}
             />
+
+            {/* Progress bar — crawls while backend re-fetches, invisible otherwise */}
+            <div style={{ height: 3, marginBottom: 8, borderRadius: 99, overflow: 'hidden', background: refetching ? 'rgba(59,130,246,0.12)' : 'transparent', transition: 'background 0.2s' }}>
+              {refetching && (
+                <div style={{
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #60a5fa, #3b82f6)',
+                  borderRadius: 99,
+                  animation: 'progressCrawl 2s cubic-bezier(0.05, 0.6, 0.4, 1) forwards',
+                }} />
+              )}
+            </div>
 
             <BarLegend />
 
