@@ -3,7 +3,6 @@
 
 spring:
   datasource:
-    # Explicitly mapping every field to ensure the Production profile finds them
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
@@ -15,14 +14,15 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      # validate: Flyway owns the schema — Hibernate must never alter production data
+      # Changed from 'update' which could silently drop/alter columns on startup
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
 
-  # Ensure Flyway still runs in production
   flyway:
     enabled: true
     baseline-on-migrate: true
@@ -32,7 +32,6 @@ logging:
     root: WARN
     com.salaryinsights: INFO
     org.springframework.security: WARN
-  # Removed file logging to prevent 'Permission Denied' errors in the container
 
 management:
   endpoints:
@@ -41,10 +40,8 @@ management:
         include: health,info,metrics
   endpoint:
     health:
-      show-details: never 
+      show-details: never
 
 app:
   oauth2:
     redirect-uri: ${APP_OAUTH2_REDIRECT_URI}
-  # JWT settings will be inherited from application.yml 
-  # unless you choose to override them here.

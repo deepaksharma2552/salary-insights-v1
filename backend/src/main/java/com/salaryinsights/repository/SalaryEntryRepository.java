@@ -193,70 +193,6 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         nativeQuery = true)
     List<Object[]> avgSalaryByCompanyAndLevelRaw();
 
-    /**
-     * Same as avgSalaryByCompanyAndLevelRaw but scoped to specific location enum values.
-     * top_companies CTE still ranks by weighted score, but only over entries in the
-     * requested locations — so the "best" companies for that location bubble up.
-     * The location IN clause uses a native-SQL workaround: passing a joined string
-     * and using string_to_array / ANY so Spring Data can bind a List<String> param.
-     */
-    @Query(value =
-        "WITH top_companies AS ( " +
-        "  SELECT c.id AS company_id, " +
-        "         c.name AS company_name, " +
-        "         c.logo_url AS logo_url, " +
-        "         c.website AS website, " +
-        "         COUNT(*) AS total_entries, " +
-        "         MAX(s.created_at) AS most_recent_entry, " +
-        "         AVG(s.total_compensation) * LN(COUNT(*) + 1) AS weighted_score " +
-        "  FROM salary_entries s " +
-        "  JOIN companies c ON s.company_id = c.id " +
-        "  WHERE s.review_status = 'APPROVED' " +
-        "    AND s.location IN (:locations) " +
-        "  GROUP BY c.id, c.name, c.logo_url, c.website " +
-        "  ORDER BY most_recent_entry DESC " +
-        "  LIMIT 5 " +
-        "), " +
-        "level_agg AS ( " +
-        "  SELECT tc.company_name, " +
-        "         CAST(tc.company_id AS VARCHAR) AS company_id_str, " +
-        "         tc.logo_url, " +
-        "         tc.website, " +
-        "         tc.total_entries AS company_total_entries, " +
-        "         tc.most_recent_entry, " +
-        "         tc.weighted_score, " +
-        "         CASE s.company_internal_level " +
-        "           WHEN 'SDE_1'                THEN 'SDE 1' " +
-        "           WHEN 'SDE_2'                THEN 'SDE 2' " +
-        "           WHEN 'SDE_3'                THEN 'SDE 3' " +
-        "           WHEN 'STAFF_ENGINEER'        THEN 'Staff Engineer' " +
-        "           WHEN 'PRINCIPAL_ENGINEER'    THEN 'Principal Engineer' " +
-        "           WHEN 'ARCHITECT'             THEN 'Architect' " +
-        "           WHEN 'ENGINEERING_MANAGER'   THEN 'Engineering Manager' " +
-        "           WHEN 'SR_ENGINEERING_MANAGER' THEN 'Sr. Engineering Manager' " +
-        "           WHEN 'DIRECTOR'              THEN 'Director' " +
-        "           WHEN 'SR_DIRECTOR'           THEN 'Sr. Director' " +
-        "           WHEN 'VP'                    THEN 'VP' " +
-        "           ELSE 'Unknown' " +
-        "         END AS internalLevel, " +
-        "         AVG(s.base_salary)        AS avgBaseSalary, " +
-        "         AVG(s.bonus)               AS avgBonus, " +
-        "         AVG(s.equity)              AS avgEquity, " +
-        "         AVG(s.total_compensation)  AS avgTotalCompensation, " +
-        "         COUNT(*)                   AS cnt " +
-        "  FROM salary_entries s " +
-        "  JOIN top_companies tc ON s.company_id = tc.company_id " +
-        "  WHERE s.review_status = 'APPROVED' " +
-        "    AND s.company_internal_level IS NOT NULL " +
-        "    AND s.location IN (:locations) " +
-        "  GROUP BY tc.company_name, tc.company_id, tc.logo_url, tc.website, tc.total_entries, tc.most_recent_entry, tc.weighted_score, s.company_internal_level " +
-        ") " +
-        "SELECT company_name, company_id_str, logo_url, website, internalLevel, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt, company_total_entries, most_recent_entry " +
-        "FROM level_agg " +
-        "ORDER BY weighted_score DESC, avgBaseSalary DESC",
-        nativeQuery = true)
-    List<Object[]> avgSalaryByCompanyAndLevelFilteredRaw(@Param("locations") List<String> locations);
-
     // Avg base/bonus/equity per location × internal level.
     // loc_recency CTE ranks the 5 most recently updated locations.
     // loc_lvl aggregates salary data only for those 5 locations.
@@ -326,4 +262,68 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
     @Query("SELECT s FROM SalaryEntry s JOIN FETCH s.company LEFT JOIN FETCH s.submittedBy " +
            "WHERE s.reviewStatus = :status")
     Page<SalaryEntry> findByReviewStatusWithDetails(@Param("status") ReviewStatus status, Pageable pageable);
+
+    /**
+     * Location-filtered variant of avgSalaryByCompanyAndLevelRaw.
+     * top_companies CTE ranks by weighted score scoped to the requested locations.
+     * level_agg aggregates per company+level, also scoped to those locations.
+     * Used by DashboardPage when a location filter is active.
+     */
+    @Query(value =
+        "WITH top_companies AS ( " +
+        "  SELECT c.id AS company_id, " +
+        "         c.name AS company_name, " +
+        "         c.logo_url AS logo_url, " +
+        "         c.website AS website, " +
+        "         COUNT(*) AS total_entries, " +
+        "         MAX(s.created_at) AS most_recent_entry, " +
+        "         AVG(s.total_compensation) * LN(COUNT(*) + 1) AS weighted_score " +
+        "  FROM salary_entries s " +
+        "  JOIN companies c ON s.company_id = c.id " +
+        "  WHERE s.review_status = 'APPROVED' " +
+        "    AND s.location IN (:locations) " +
+        "  GROUP BY c.id, c.name, c.logo_url, c.website " +
+        "  ORDER BY most_recent_entry DESC " +
+        "  LIMIT 5 " +
+        "), " +
+        "level_agg AS ( " +
+        "  SELECT tc.company_name, " +
+        "         CAST(tc.company_id AS VARCHAR) AS company_id_str, " +
+        "         tc.logo_url, " +
+        "         tc.website, " +
+        "         tc.total_entries AS company_total_entries, " +
+        "         tc.most_recent_entry, " +
+        "         tc.weighted_score, " +
+        "         CASE s.company_internal_level " +
+        "           WHEN 'SDE_1'                THEN 'SDE 1' " +
+        "           WHEN 'SDE_2'                THEN 'SDE 2' " +
+        "           WHEN 'SDE_3'                THEN 'SDE 3' " +
+        "           WHEN 'STAFF_ENGINEER'        THEN 'Staff Engineer' " +
+        "           WHEN 'PRINCIPAL_ENGINEER'    THEN 'Principal Engineer' " +
+        "           WHEN 'ARCHITECT'             THEN 'Architect' " +
+        "           WHEN 'ENGINEERING_MANAGER'   THEN 'Engineering Manager' " +
+        "           WHEN 'SR_ENGINEERING_MANAGER' THEN 'Sr. Engineering Manager' " +
+        "           WHEN 'DIRECTOR'              THEN 'Director' " +
+        "           WHEN 'SR_DIRECTOR'           THEN 'Sr. Director' " +
+        "           WHEN 'VP'                    THEN 'VP' " +
+        "           ELSE 'Unknown' " +
+        "         END AS internalLevel, " +
+        "         AVG(s.base_salary)        AS avgBaseSalary, " +
+        "         AVG(s.bonus)               AS avgBonus, " +
+        "         AVG(s.equity)              AS avgEquity, " +
+        "         AVG(s.total_compensation)  AS avgTotalCompensation, " +
+        "         COUNT(*)                   AS cnt " +
+        "  FROM salary_entries s " +
+        "  JOIN top_companies tc ON s.company_id = tc.company_id " +
+        "  WHERE s.review_status = 'APPROVED' " +
+        "    AND s.company_internal_level IS NOT NULL " +
+        "    AND s.location IN (:locations) " +
+        "  GROUP BY tc.company_name, tc.company_id, tc.logo_url, tc.website, tc.total_entries, tc.most_recent_entry, tc.weighted_score, s.company_internal_level " +
+        ") " +
+        "SELECT company_name, company_id_str, logo_url, website, internalLevel, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt, company_total_entries, most_recent_entry " +
+        "FROM level_agg " +
+        "ORDER BY weighted_score DESC, avgBaseSalary DESC",
+        nativeQuery = true)
+    List<Object[]> avgSalaryByCompanyAndLevelFilteredRaw(@Param("locations") List<String> locations);
+
 }

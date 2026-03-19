@@ -1,7 +1,6 @@
 package com.salaryinsights.controller;
 
 import com.salaryinsights.dto.response.*;
-import com.salaryinsights.enums.ExperienceLevel;
 import com.salaryinsights.service.impl.SalaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -19,13 +18,18 @@ public class PublicSalaryController {
 
     private final SalaryService salaryService;
 
+    /**
+     * GET /public/salaries
+     * Supports multiselect: ?location=Bengaluru&location=Pune&experienceLevel=SENIOR&experienceLevel=LEAD
+     * Single values work identically — Spring binds List<String> from repeated params.
+     */
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<SalaryResponse>>> getSalaries(
             @RequestParam(required = false) UUID companyId,
             @RequestParam(required = false) String companyName,
             @RequestParam(required = false) String jobTitle,
-            @RequestParam(required = false) String location,
-            @RequestParam(required = false) ExperienceLevel experienceLevel,
+            @RequestParam(required = false) List<String> location,
+            @RequestParam(required = false) List<String> experienceLevel,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
@@ -50,6 +54,12 @@ public class PublicSalaryController {
         return ResponseEntity.ok(ApiResponse.success(salaryService.getAvgSalaryByCompany()));
     }
 
+    /**
+     * GET /public/salaries/analytics/by-company-level
+     * Optional ?locations=Bengaluru&locations=Pune — when provided, averages are
+     * scoped to those locations only (used by DashboardPage location filter).
+     * No param = nationwide averages (default, backwards compatible).
+     */
     @GetMapping("/analytics/by-company-level")
     public ResponseEntity<ApiResponse<List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO>>> getByCompanyAndLevel(
             @RequestParam(required = false) List<String> locations) {
