@@ -165,7 +165,14 @@ export default function Navbar() {
 
         {user ? (
           <>
-            {/* Primary CTA */}
+            {/* Primary CTAs */}
+            <Link
+              to="/submit"
+              className="btn-ghost"
+              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              Share Salary
+            </Link>
             <Link
               to="/refer"
               className="btn-primary"
@@ -221,14 +228,6 @@ export default function Navbar() {
                       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                     </svg>
                     My Referral Links
-                  </Link>
-
-                  {/* Submit Salary */}
-                  <Link to="/submit" className="dropdown-item">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                    </svg>
-                    Submit Salary
                   </Link>
 
                   <div className="dropdown-divider" />
