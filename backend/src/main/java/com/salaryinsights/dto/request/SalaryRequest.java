@@ -24,7 +24,7 @@ public class SalaryRequest {
     @Size(max = 100)
     private String department;
 
-    @NotNull
+    // Optional — kept for backwards compatibility with existing data; new submissions use jobFunctionId + functionLevelId
     private com.salaryinsights.enums.InternalLevel companyInternalLevel;
 
     private ExperienceLevel experienceLevel;   // optional — auto-derived from YOE or internalLevel if not sent
