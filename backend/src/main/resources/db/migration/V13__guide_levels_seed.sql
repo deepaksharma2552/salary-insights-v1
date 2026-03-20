@@ -52,7 +52,7 @@ VALUES
     ('b1000001-0000-0000-0000-000000000006', 'Razorpay',  'Fintech',               'https://razorpay.com',  'ACTIVE', NOW()),
     ('b1000001-0000-0000-0000-000000000007', 'Atlassian', 'Technology',            'https://atlassian.com', 'ACTIVE', NOW()),
     ('b1000001-0000-0000-0000-000000000008', 'PhonePe',   'Fintech',               'https://phonepe.com',   'ACTIVE', NOW())
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- STEP 3 — Company Levels (function_category: Engineering / Product / Program)
