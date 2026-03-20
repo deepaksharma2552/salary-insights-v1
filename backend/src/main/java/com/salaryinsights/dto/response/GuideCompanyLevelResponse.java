@@ -10,6 +10,7 @@ public class GuideCompanyLevelResponse {
     private String companyName;
     private String title;
     private String description;
+    private String functionCategory;
     // null if not yet mapped
     private UUID   mappedStandardLevelId;
     private String mappedStandardLevelName;

@@ -27,13 +27,15 @@ public class PublicGuideLevelController {
 
     /**
      * Comparison grid for selected companies.
-     * ?companyIds=uuid1&companyIds=uuid2 — up to 5, capped server-side.
-     * Returns only standard levels that have at least one mapping
-     * across the selected companies — no empty rows.
+     * ?companyIds=uuid1&companyIds=uuid2&functionCategory=Engineering
+     * functionCategory is optional — omit or pass "All" to show every function track.
+     * Up to 5 companies, capped server-side. Returns only standard levels that have
+     * at least one mapping across the selected companies — no empty rows.
      */
     @GetMapping("/grid")
     public ResponseEntity<ApiResponse<GuideLevelGridResponse>> getGrid(
-            @RequestParam List<UUID> companyIds) {
-        return ResponseEntity.ok(ApiResponse.success(service.buildGrid(companyIds)));
+            @RequestParam List<UUID> companyIds,
+            @RequestParam(required = false) String functionCategory) {
+        return ResponseEntity.ok(ApiResponse.success(service.buildGrid(companyIds, functionCategory)));
     }
 }

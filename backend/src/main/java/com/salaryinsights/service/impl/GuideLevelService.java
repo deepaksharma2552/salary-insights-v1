@@ -78,10 +78,14 @@ public class GuideLevelService {
         if (companyLevelRepo.existsByCompanyIdAndTitle(req.getCompanyId(), req.getTitle().trim())) {
             throw new BadRequestException("Level '" + req.getTitle() + "' already exists for " + company.getName());
         }
+        String fn = (req.getFunctionCategory() != null && !req.getFunctionCategory().isBlank())
+                ? req.getFunctionCategory().trim()
+                : "Engineering";
         GuideCompanyLevel cl = GuideCompanyLevel.builder()
                 .company(company)
                 .title(req.getTitle().trim())
                 .description(req.getDescription())
+                .functionCategory(fn)
                 .build();
         return toCompanyLevelResponse(companyLevelRepo.save(cl));
     }
@@ -129,7 +133,7 @@ public class GuideLevelService {
      * then assembles into a row/column structure in memory.
      */
     @Transactional(readOnly = true)
-    public GuideLevelGridResponse buildGrid(List<UUID> companyIds) {
+    public GuideLevelGridResponse buildGrid(List<UUID> companyIds, String functionCategory) {
         if (companyIds == null || companyIds.isEmpty()) {
             GuideLevelGridResponse empty = new GuideLevelGridResponse();
             empty.setStandardLevels(List.of());
@@ -141,8 +145,11 @@ public class GuideLevelService {
         // Cap at 5 companies — enforced here as a safety guard
         List<UUID> capped = companyIds.size() > 5 ? companyIds.subList(0, 5) : companyIds;
 
-        // Single JOIN query — no N+1
-        List<GuideMapping> mappings = mappingRepo.findByCompanyIds(capped);
+        // Single JOIN query — no N+1. Filter by function if provided.
+        boolean hasFunction = functionCategory != null && !functionCategory.isBlank() && !functionCategory.equalsIgnoreCase("All");
+        List<GuideMapping> mappings = hasFunction
+                ? mappingRepo.findByCompanyIdsAndFunction(capped, functionCategory)
+                : mappingRepo.findByCompanyIds(capped);
 
         // Collect companies that actually have mappings, preserving request order
         Map<String, GuideLevelGridResponse.CompanyCol> companyMap = new LinkedHashMap<>();
@@ -155,7 +162,7 @@ public class GuideLevelService {
         Map<String, GuideLevelGridResponse.StandardLevelRow> stdMap = new LinkedHashMap<>();
 
         // grid[standardLevelId][companyId] = internal title
-        Map<String, Map<String, String>> grid = new LinkedHashMap<>();
+        Map<String, Map<String, GuideLevelGridResponse.GridCell>> grid = new LinkedHashMap<>();
 
         for (GuideMapping gm : mappings) {
             GuideStandardLevel gsl = gm.getGuideStandardLevel();
@@ -186,7 +193,10 @@ public class GuideLevelService {
             }
 
             // Fill grid cell
-            grid.computeIfAbsent(stdId, k -> new LinkedHashMap<>()).put(coId, gcl.getTitle());
+            GuideLevelGridResponse.GridCell cell = new GuideLevelGridResponse.GridCell();
+            cell.setTitle(gcl.getTitle());
+            cell.setFunctionCategory(gcl.getFunctionCategory() != null ? gcl.getFunctionCategory() : "Engineering");
+            grid.computeIfAbsent(stdId, k -> new LinkedHashMap<>()).put(coId, cell);
         }
 
         // Standard levels sorted by rank (query already orders but LinkedHashMap preserves)
@@ -224,6 +234,7 @@ public class GuideLevelService {
         r.setCompanyName(cl.getCompany().getName());
         r.setTitle(cl.getTitle());
         r.setDescription(cl.getDescription());
+        r.setFunctionCategory(cl.getFunctionCategory() != null ? cl.getFunctionCategory() : "Engineering");
         if (cl.getGuideMapping() != null && cl.getGuideMapping().getGuideStandardLevel() != null) {
             GuideStandardLevel sl = cl.getGuideMapping().getGuideStandardLevel();
             r.setMappedStandardLevelId(sl.getId());

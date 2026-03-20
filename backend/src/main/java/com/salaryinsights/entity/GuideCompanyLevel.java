@@ -20,6 +20,14 @@ public class GuideCompanyLevel extends BaseEntity {
     @Column(name = "description", length = 500)
     private String description;
 
+    /**
+     * Job function this level belongs to — e.g. "Engineering", "Product", "Program".
+     * Used to filter the public Level Guide grid by function track.
+     * Defaults to "Engineering" for backward-compat with existing rows.
+     */
+    @Column(name = "function_category", length = 50)
+    private String functionCategory;
+
     // Eager mapping — always needed when displaying company levels
     @OneToOne(mappedBy = "guideCompanyLevel", cascade = CascadeType.ALL,
               orphanRemoval = true, fetch = FetchType.LAZY)

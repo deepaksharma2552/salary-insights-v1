@@ -16,4 +16,10 @@ public class GuideCompanyLevelRequest {
     private String title;
 
     private String description;
+
+    /**
+     * Job function track — e.g. "Engineering", "Product", "Program".
+     * Defaults to "Engineering" if not supplied.
+     */
+    private String functionCategory;
 }

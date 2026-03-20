@@ -18,8 +18,8 @@ public class GuideLevelGridResponse {
 
     private List<StandardLevelRow> standardLevels;
     private List<CompanyCol>       companies;
-    // key1 = standardLevelId, key2 = companyId, value = internal title
-    private Map<String, Map<String, String>> grid;
+    // key1 = standardLevelId, key2 = companyId, value = GridCell (title + functionCategory)
+    private Map<String, Map<String, GridCell>> grid;
 
     @Data
     public static class StandardLevelRow {
@@ -35,5 +35,12 @@ public class GuideLevelGridResponse {
         private String name;
         private String logoUrl;
         private String website;
+    }
+
+    /** A single cell in the grid — the company's internal title for a given standard level. */
+    @Data
+    public static class GridCell {
+        private String title;
+        private String functionCategory; // "Engineering" | "Product" | "Program"
     }
 }
