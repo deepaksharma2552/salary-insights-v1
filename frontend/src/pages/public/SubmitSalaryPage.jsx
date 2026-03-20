@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { useAppData } from '../../context/AppDataContext';
 
 export default function SubmitSalaryPage() {
   const navigate  = useNavigate();
+  const { functions, getLevelsForFunction, functionsReady } = useAppData();
   const [submitting, setSubmitting] = useState(false);
   const [success,    setSuccess]    = useState(false);
   const [error,      setError]      = useState('');
@@ -21,6 +23,8 @@ export default function SubmitSalaryPage() {
     companyId: '',
     companyName: '',
     jobTitle: '',
+    jobFunctionId: '',
+    functionLevelId: '',
     companyInternalLevel: '',
     location: '',
     baseSalary: '',
@@ -89,37 +93,21 @@ export default function SubmitSalaryPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Levels available for the currently selected function — derived, no extra state
+  const availableLevels = useMemo(
+    () => getLevelsForFunction(form.jobFunctionId),
+    [form.jobFunctionId, getLevelsForFunction]
+  );
+
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm(f => ({ ...f, [name]: value }));
-    // If user manually changes experienceLevel, clear the auto flag
-    if (name === 'experienceLevel') setLevelAutoSet(false);
-  }
-
-  // ── Experience Level auto-population ──────────────────────────────────────
-  const [levelAutoSet, setLevelAutoSet] = useState(false);
-
-  function deriveLevel(years) {
-    const y = Number(years);
-    if (isNaN(y) || years === '') return '';
-    if (y <= 1)  return 'INTERN';
-    if (y <= 2)  return 'ENTRY';
-    if (y <= 5)  return 'MID';
-    if (y <= 8)  return 'SENIOR';
-    if (y <= 12) return 'LEAD';
-    if (y <= 16) return 'MANAGER';
-    if (y <= 20) return 'DIRECTOR';
-    return 'VP';
-  }
-
-  useEffect(() => {
-    if (form.yearsOfExperience === '') return;
-    const derived = deriveLevel(form.yearsOfExperience);
-    if (derived) {
-      setForm(f => ({ ...f, experienceLevel: derived }));
-      setLevelAutoSet(true);
+    // Reset functionLevelId whenever function changes
+    if (name === 'jobFunctionId') {
+      setForm(f => ({ ...f, jobFunctionId: value, functionLevelId: '' }));
+      return;
     }
-  }, [form.yearsOfExperience]); // eslint-disable-line react-hooks/exhaustive-deps
+    setForm(f => ({ ...f, [name]: value }));
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -132,8 +120,12 @@ export default function SubmitSalaryPage() {
       setError('Please select an experience level.');
       return;
     }
-    if (!form.companyInternalLevel) {
-      setError('Please select an internal level.');
+    if (!form.jobFunctionId) {
+      setError('Please select a function.');
+      return;
+    }
+    if (!form.functionLevelId) {
+      setError('Please select a level.');
       return;
     }
     if (!form.location) {
@@ -147,6 +139,8 @@ export default function SubmitSalaryPage() {
         ...(form.companyId  ? { companyId: form.companyId }   : {}),
         ...(form.companyName ? { companyName: form.companyName } : {}),
         jobTitle:           form.jobTitle,
+        jobFunctionId:      form.jobFunctionId      || null,
+        functionLevelId:    form.functionLevelId    || null,
         companyInternalLevel: form.companyInternalLevel || null,
         location:           form.location,
         experienceLevel:    form.experienceLevel,
@@ -181,15 +175,6 @@ export default function SubmitSalaryPage() {
 
   return (
     <section className="section" style={{ background: 'var(--ink-2)' }}>
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes progressCrawl {
-          0%   { width: 0%;  }
-          40%  { width: 65%; }
-          70%  { width: 82%; }
-          100% { width: 90%; }
-        }
-      `}</style>
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
         <div className="section-header" style={{ textAlign: 'center' }}>
           <span className="section-tag">Contribute</span>
@@ -344,21 +329,41 @@ export default function SubmitSalaryPage() {
                 <input className="form-input" name="jobTitle" placeholder="e.g. Software Engineer II" value={form.jobTitle} onChange={handleChange} required />
               </div>
 
+              {/* Job Function */}
               <div className="form-group">
-                <label className="form-label">Internal Level *</label>
-                <select className="form-input" name="companyInternalLevel" required value={form.companyInternalLevel} onChange={handleChange} style={{ cursor: 'pointer' }}>
-                  <option value="">Select internal level</option>
-                  <option value="SDE_1">SDE 1</option>
-                  <option value="SDE_2">SDE 2</option>
-                  <option value="SDE_3">SDE 3</option>
-                  <option value="STAFF_ENGINEER">Staff Engineer</option>
-                  <option value="PRINCIPAL_ENGINEER">Principal Engineer</option>
-                  <option value="ARCHITECT">Architect</option>
-                  <option value="ENGINEERING_MANAGER">Engineering Manager</option>
-                  <option value="SR_ENGINEERING_MANAGER">Sr. Engineering Manager</option>
-                  <option value="DIRECTOR">Director</option>
-                  <option value="SR_DIRECTOR">Sr. Director</option>
-                  <option value="VP">VP</option>
+                <label className="form-label">Function *</label>
+                <select
+                  className="form-input"
+                  name="jobFunctionId"
+                  required
+                  value={form.jobFunctionId}
+                  onChange={handleChange}
+                  style={{ cursor: 'pointer' }}
+                  disabled={!functionsReady}
+                >
+                  <option value="">{functionsReady ? 'Select function' : 'Loading…'}</option>
+                  {functions.map(fn => (
+                    <option key={fn.id} value={fn.id}>{fn.displayName}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Function Level — populated reactively from selected function */}
+              <div className="form-group">
+                <label className="form-label">Level *</label>
+                <select
+                  className="form-input"
+                  name="functionLevelId"
+                  required
+                  value={form.functionLevelId}
+                  onChange={handleChange}
+                  style={{ cursor: 'pointer' }}
+                  disabled={!form.jobFunctionId}
+                >
+                  <option value="">{form.jobFunctionId ? 'Select level' : 'Select a function first'}</option>
+                  {availableLevels.map(lv => (
+                    <option key={lv.id} value={lv.id}>{lv.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -398,31 +403,16 @@ export default function SubmitSalaryPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">
-                  Experience Level
-                  {levelAutoSet && (
-                    <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--teal)', fontFamily: "'JetBrains Mono',monospace", fontWeight: 500 }}>
-                      ✓ auto-filled
-                    </span>
-                  )}
-                </label>
+                <label className="form-label">Experience Level</label>
                 <select className="form-input" name="experienceLevel" value={form.experienceLevel} onChange={handleChange} style={{ cursor: 'pointer' }}>
                   <option value="">Select level</option>
-                  <option value="INTERN">Intern (0–1 yr)</option>
-                  <option value="ENTRY">Junior / Entry (1–2 yrs)</option>
-                  <option value="MID">Mid-level (2–5 yrs)</option>
+                  <option value="ENTRY">Junior / Entry (0–2 yrs)</option>
+                  <option value="MID">Mid (2–5 yrs)</option>
                   <option value="SENIOR">Senior (5–8 yrs)</option>
-                  <option value="LEAD">Lead / Staff (8–12 yrs)</option>
-                  <option value="MANAGER">Manager (12–16 yrs)</option>
-                  <option value="DIRECTOR">Director (16–20 yrs)</option>
-                  <option value="VP">VP / SVP (20+ yrs)</option>
-                  <option value="C_LEVEL">C-Level (manual only)</option>
+                  <option value="LEAD">Lead (8+ yrs)</option>
+                  <option value="DIRECTOR">Director</option>
+                  <option value="VP">VP</option>
                 </select>
-                {levelAutoSet && (
-                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontFamily: "'JetBrains Mono',monospace" }}>
-                    Auto-filled from years of experience · you can override this
-                  </div>
-                )}
               </div>
 
               <div className="form-group">
@@ -441,46 +431,13 @@ export default function SubmitSalaryPage() {
 
             </div>
 
-            <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                <button type="button" className="btn-ghost" style={{ padding: '13px 28px', fontSize: 15 }} onClick={() => navigate(-1)} disabled={submitting}>
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={submitting}
-                  style={{
-                    padding: '13px 32px', fontSize: 15, borderRadius: 10,
-                    opacity: submitting ? 0.65 : 1,
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    transition: 'opacity 0.2s ease',
-                  }}
-                >
-                  {submitting ? (
-                    <>
-                      <div style={{
-                        width: 15, height: 15, borderRadius: '50%',
-                        border: '2px solid rgba(255,255,255,0.3)',
-                        borderTopColor: 'white',
-                        animation: 'spin 0.7s linear infinite', flexShrink: 0,
-                      }} />
-                      Submitting…
-                    </>
-                  ) : 'Submit for Review →'}
-                </button>
-              </div>
-              {submitting && (
-                <div style={{ width: '100%', height: 3, background: 'rgba(14,165,233,0.15)', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%',
-                    background: 'linear-gradient(90deg, #38bdf8, #0ea5e9)',
-                    borderRadius: 99,
-                    animation: 'progressCrawl 3s cubic-bezier(0.05,0.6,0.4,1) forwards',
-                  }} />
-                </div>
-              )}
+            <div style={{ marginTop: 32, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button type="button" className="btn-ghost" style={{ padding: '13px 28px', fontSize: 15 }} onClick={() => navigate(-1)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary" style={{ padding: '13px 32px', fontSize: 15, borderRadius: 10 }} disabled={submitting}>
+                {submitting ? 'Submitting…' : 'Submit for Review →'}
+              </button>
             </div>
           </form>
         </div>

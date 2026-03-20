@@ -1,12 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
 
 const NAV = [
-  { label: 'Dashboard',        path: '/admin',              icon: '📊' },
-  { label: 'Pending Salaries', path: '/admin/salaries',     icon: '⏳' },
-  { label: 'Companies',        path: '/admin/companies',    icon: '🏢' },
-  { label: 'Level Guide',      path: '/admin/guide-levels', icon: '🗂' },
-  { label: 'Referrals',        path: '/admin/referrals',    icon: '🔗' },
-  { label: 'Audit Logs',       path: '/admin/audit',        icon: '📋' },
+  { label: 'Dashboard',        path: '/admin',                icon: '📊' },
+  { label: 'Pending Salaries', path: '/admin/salaries',       icon: '⏳' },
+  { label: 'Companies',        path: '/admin/companies',      icon: '🏢' },
+  { label: 'Job Functions',    path: '/admin/job-functions',  icon: '⚙️' },
+  { label: 'Level Guide',      path: '/admin/guide-levels',   icon: '🗂' },
+  { label: 'Referrals',        path: '/admin/referrals',      icon: '🔗' },
+  { label: 'Audit Logs',       path: '/admin/audit',          icon: '📋' },
 ];
 
 export default function AdminSidebar() {

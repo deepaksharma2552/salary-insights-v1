@@ -23,6 +23,8 @@ import AdminPendingSalaries from './pages/admin/AdminPendingSalaries';
 import AdminAuditLogs       from './pages/admin/AdminAuditLogs';
 import AdminReferrals       from './pages/admin/AdminReferrals';
 import AdminGuideLevels     from './pages/admin/AdminGuideLevels';
+import AdminJobFunctions    from './pages/admin/AdminJobFunctions';
+import { AppDataProvider }  from './context/AppDataContext';
 import AdminSidebar         from './components/admin/AdminSidebar';
 
 function PrivateRoute({ children, adminOnly = false }) {
@@ -44,6 +46,7 @@ function AdminLayout({ children }) {
 export default function App() {
   return (
     <AuthProvider>
+      <AppDataProvider>
       <BrowserRouter>
         <Navbar />
         <div style={{ paddingTop: 56 }}>
@@ -99,11 +102,17 @@ export default function App() {
                 <AdminLayout><AdminGuideLevels /></AdminLayout>
               </PrivateRoute>
             }/>
+            <Route path="/admin/job-functions" element={
+              <PrivateRoute adminOnly>
+                <AdminLayout><AdminJobFunctions /></AdminLayout>
+              </PrivateRoute>
+            }/>
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </BrowserRouter>
+      </AppDataProvider>
     </AuthProvider>
   );
 }
