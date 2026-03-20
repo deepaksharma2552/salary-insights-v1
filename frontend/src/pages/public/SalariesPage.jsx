@@ -61,6 +61,8 @@ function getPageRange(current, total) {
 }
 
 export default function SalariesPage() {
+  const [view, setView] = useState('salaries'); // 'salaries' | 'levels'
+
   const [rows,          setRows]          = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState(null);
