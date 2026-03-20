@@ -55,6 +55,26 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- STEP 2b — Clean up any partial data from previous failed runs
+-- Removes guide_mappings and guide_company_levels for the 8 seed companies
+-- so the inserts below can run cleanly even on a re-run.
+-- guide_standard_levels and companies are safe — they use ON CONFLICT (id).
+-- ─────────────────────────────────────────────────────────────────────────────
+
+DELETE FROM guide_mappings
+WHERE guide_company_level_id IN (
+    SELECT gcl.id FROM guide_company_levels gcl
+    JOIN companies c ON gcl.company_id = c.id
+    WHERE c.name IN ('Google','Microsoft','Amazon','Flipkart','Swiggy','Razorpay','Atlassian','PhonePe')
+);
+
+DELETE FROM guide_company_levels
+WHERE company_id IN (
+    SELECT id FROM companies
+    WHERE name IN ('Google','Microsoft','Amazon','Flipkart','Swiggy','Razorpay','Atlassian','PhonePe')
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- STEP 3 — Company Levels (function_category: Engineering / Product / Program)
 -- ─────────────────────────────────────────────────────────────────────────────
 
