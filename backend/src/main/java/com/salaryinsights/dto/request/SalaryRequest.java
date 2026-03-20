@@ -8,6 +8,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+
 @Data
 public class SalaryRequest {
 
@@ -41,6 +42,10 @@ public class SalaryRequest {
 
     @DecimalMin("0.0")
     private BigDecimal equity;
+
+    // Job function + level (DB-driven, optional — existing entries have Engineering inferred)
+    private UUID jobFunctionId;
+    private UUID functionLevelId;
 
     @NotNull
     private EmploymentType employmentType;

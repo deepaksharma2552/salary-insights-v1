@@ -81,6 +81,16 @@ public class SalaryEntry extends BaseEntity {
     @JoinColumn(name = "submitted_by_id")
     private User submittedBy;
 
+    // Job Function — nullable, backfilled via migration for existing Engineering entries
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "job_function_id")
+    private JobFunction jobFunction;
+
+    // Function-specific level — nullable, set on new submissions
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "function_level_id")
+    private FunctionLevel functionLevel;
+
     @PrePersist
     @PreUpdate
     private void calculateTotalCompensation() {

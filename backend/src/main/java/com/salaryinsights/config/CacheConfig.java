@@ -10,22 +10,15 @@ import org.springframework.context.annotation.Configuration;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Caffeine cache — replaces ConcurrentMapCacheManager.
+ * Two caches with different TTL profiles:
  *
- * Why Caffeine over the old ConcurrentMapCacheManager:
- *   - TTL: entries expire after 1 hour so stale analytics data doesn't
- *     persist indefinitely if @CacheEvict is missed (e.g. direct DB edits).
- *   - Size bound: max 1000 entries prevents unbounded heap growth.
- *     With the dashboard location filter we now cache per-location combinations
- *     (up to 255 for 8 locations) — the old unbounded cache would grow forever.
- *   - Thread-safe W-TinyLFU eviction — better hit rate than LRU at same size.
+ * "analytics"     — salary aggregation results. Changes on every salary review.
+ *                   TTL 1 hour. Max 1000 entries (covers all location combos).
  *
- * pom.xml dependency required:
- *   <dependency>
- *     <groupId>com.github.ben-manes.caffeine</groupId>
- *     <artifactId>caffeine</artifactId>
- *     <!-- version managed by spring-boot-dependencies -->
- *   </dependency>
+ * "referenceData" — job functions + levels. Changes only when admin edits them.
+ *                   TTL 24 hours. Max 50 entries (tiny reference dataset).
+ *                   Cache evicted immediately on any admin write via @CacheEvict.
+ *                   24h TTL is a safety net for missed evictions (e.g. direct DB edits).
  */
 @Configuration
 @EnableCaching
@@ -33,13 +26,23 @@ public class CacheConfig {
 
     @Bean
     public CacheManager cacheManager() {
-        CaffeineCacheManager manager = new CaffeineCacheManager("analytics");
-        manager.setCaffeine(
+        CaffeineCacheManager manager = new CaffeineCacheManager();
+
+        // Each cache gets its own Caffeine spec via a named config
+        manager.registerCustomCache("analytics",
             Caffeine.newBuilder()
-                .maximumSize(1000)               // hard cap — evicts LFU entries beyond this
-                .expireAfterWrite(1, TimeUnit.HOURS) // TTL: stale at most 1 hr even without @CacheEvict
-                .recordStats()                   // enables cache hit/miss metrics via /actuator/metrics
-        );
+                .maximumSize(1000)
+                .expireAfterWrite(1, TimeUnit.HOURS)
+                .recordStats()
+                .build());
+
+        manager.registerCustomCache("referenceData",
+            Caffeine.newBuilder()
+                .maximumSize(50)
+                .expireAfterWrite(24, TimeUnit.HOURS)
+                .recordStats()
+                .build());
+
         return manager;
     }
 }

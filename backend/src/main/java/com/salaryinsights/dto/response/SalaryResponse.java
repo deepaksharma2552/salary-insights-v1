@@ -28,6 +28,11 @@ public class SalaryResponse {
     private EmploymentType employmentType;
     private ReviewStatus reviewStatus;
     private String rejectionReason;
+    // Job function fields
+    private UUID   jobFunctionId;
+    private String jobFunctionName;
+    private UUID   functionLevelId;
+    private String functionLevelName;
     private String submittedByEmail;
     private LocalDateTime createdAt;
     private String logoUrl;
