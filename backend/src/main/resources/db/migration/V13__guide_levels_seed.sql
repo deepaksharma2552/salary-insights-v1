@@ -5,6 +5,20 @@
 -- Company Levels:  real internal titles for 8 prominent Indian tech companies,
 --                  split across Engineering, Product, and Program function tracks.
 -- Mappings:        each company title mapped to the appropriate standard level.
+--
+-- NOTE: The function_category column is added here (not in a separate V14) so
+-- that the INSERT statements below can reference it in the same migration.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- STEP 0 — Add function_category column to guide_company_levels
+-- (safe to run even if column already exists — guard added below)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+ALTER TABLE guide_company_levels
+    ADD COLUMN IF NOT EXISTS function_category VARCHAR(50) DEFAULT 'Engineering';
+
+CREATE INDEX IF NOT EXISTS idx_guide_co_level_function
+    ON guide_company_levels(function_category);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- STEP 1 — Standard Levels (universal benchmark ladder, shared across functions)
