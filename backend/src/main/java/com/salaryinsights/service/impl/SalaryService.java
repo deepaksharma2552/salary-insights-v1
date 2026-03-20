@@ -39,27 +39,41 @@ public class SalaryService {
 
     @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getApprovedSalaries(
-            UUID companyId, String companyName, String jobTitle, String location,
-            ExperienceLevel experienceLevel, Pageable pageable) {
+            UUID companyId, String companyName, String jobTitle,
+            java.util.List<String> locations, java.util.List<String> experienceLevelStrs,
+            Pageable pageable) {
 
-        // Build a single Specification that handles all filters in ONE lambda.
-        // This avoids the dual-join problem: fetch("company") in one lambda + get("company")
-        // in another creates two separate joins on the same association, breaking filters.
-        final String companyNameFilter  = (companyName  != null && !companyName.isBlank())  ? companyName.toLowerCase()  : null;
-        final String jobTitleFilter     = (jobTitle     != null && !jobTitle.isBlank())      ? jobTitle.toLowerCase()     : null;
-        final String locationFilter     = (location     != null && !location.isBlank())      ? location.toLowerCase()     : null;
-        final UUID   companyIdFilter    = companyId;
-        final ExperienceLevel levelFilter = experienceLevel;
+        final String companyNameFilter = (companyName != null && !companyName.isBlank()) ? companyName.toLowerCase() : null;
+        final String jobTitleFilter    = (jobTitle    != null && !jobTitle.isBlank())    ? jobTitle.toLowerCase()    : null;
+        final UUID   companyIdFilter   = companyId;
+
+        // Convert display names ("Bengaluru") or enum names ("BENGALURU") → DB enum names
+        final java.util.List<String> locationEnumNames = (locations != null && !locations.isEmpty())
+            ? locations.stream()
+                .map(l -> {
+                    for (com.salaryinsights.enums.Location loc : com.salaryinsights.enums.Location.values()) {
+                        if (loc.getDisplayName().equalsIgnoreCase(l) || loc.name().equalsIgnoreCase(l)) return loc.name();
+                    }
+                    return l;
+                })
+                .collect(java.util.stream.Collectors.toList())
+            : null;
+
+        // Convert raw strings → ExperienceLevel enums, silently skipping unknowns
+        final java.util.List<ExperienceLevel> levelFilters = (experienceLevelStrs != null && !experienceLevelStrs.isEmpty())
+            ? experienceLevelStrs.stream()
+                .map(s -> { try { return ExperienceLevel.valueOf(s.toUpperCase()); } catch (IllegalArgumentException e) { return null; } })
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toList())
+            : null;
 
         org.springframework.data.jpa.domain.Specification<SalaryEntry> spec =
             (root, query, cb) -> {
                 boolean isCountQuery = query.getResultType() == Long.class || query.getResultType() == long.class;
 
-                // Always use a plain join for filtering — safe and reliable
                 jakarta.persistence.criteria.Join<Object, Object> companyJoin =
                     root.join("company", jakarta.persistence.criteria.JoinType.LEFT);
 
-                // Only add fetch joins on the main SELECT query, not the COUNT query
                 if (!isCountQuery) {
                     root.fetch("company", jakarta.persistence.criteria.JoinType.LEFT);
                     root.fetch("standardizedLevel", jakarta.persistence.criteria.JoinType.LEFT);
@@ -72,21 +86,20 @@ public class SalaryService {
                 if (companyIdFilter != null) {
                     predicates.add(cb.equal(companyJoin.get("id"), companyIdFilter));
                 }
-                // companyName and jobTitle come from the same search box —
-                // use OR so typing "Google" matches entries where company name OR job title contains it
                 if (companyNameFilter != null || jobTitleFilter != null) {
                     String searchTerm = companyNameFilter != null ? companyNameFilter : jobTitleFilter;
-                    jakarta.persistence.criteria.Predicate byCompany =
-                        cb.like(cb.lower(companyJoin.get("name")), "%" + searchTerm + "%");
-                    jakarta.persistence.criteria.Predicate byTitle =
-                        cb.like(cb.lower(root.get("jobTitle")), "%" + searchTerm + "%");
-                    predicates.add(cb.or(byCompany, byTitle));
+                    predicates.add(cb.or(
+                        cb.like(cb.lower(companyJoin.get("name")), "%" + searchTerm + "%"),
+                        cb.like(cb.lower(root.get("jobTitle")), "%" + searchTerm + "%")
+                    ));
                 }
-                if (locationFilter != null) {
-                    predicates.add(cb.like(cb.lower(root.get("location")), "%" + locationFilter + "%"));
+                // Multi-location IN predicate
+                if (locationEnumNames != null && !locationEnumNames.isEmpty()) {
+                    predicates.add(root.get("location").in(locationEnumNames));
                 }
-                if (levelFilter != null) {
-                    predicates.add(cb.equal(root.get("experienceLevel"), levelFilter));
+                // Multi-level IN predicate
+                if (levelFilters != null && !levelFilters.isEmpty()) {
+                    predicates.add(root.get("experienceLevel").in(levelFilters));
                 }
 
                 return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
@@ -423,35 +436,43 @@ public class SalaryService {
     @Transactional(readOnly = true)
     @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'byCompanyLevel'")
     public List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevel() {
-        return salaryEntryRepository.avgSalaryByCompanyAndLevelRaw().stream().map(row -> {
-            // col order: company_name[0], company_id_str[1], logo_url[2], website[3],
-            //            internalLevel[4], avgBaseSalary[5], avgBonus[6], avgEquity[7], avgTotalCompensation[8],
-            //            cnt[9], company_total_entries[10], most_recent_entry[11]
-            String companyName         = row[0] != null ? row[0].toString() : null;
-            String companyId           = row[1] != null ? row[1].toString() : null;
-            String logoUrl             = row[2] != null ? row[2].toString() : null;
-            String website             = row[3] != null ? row[3].toString() : null;
-            String internalLevel       = row[4] != null ? row[4].toString() : null;
-            Double avgBase             = row[5] != null ? ((Number) row[5]).doubleValue() : null;
-            Double avgBonus            = row[6] != null ? ((Number) row[6]).doubleValue() : null;
-            Double avgEquity           = row[7] != null ? ((Number) row[7]).doubleValue() : null;
-            Double avgTotalComp        = row[8] != null ? ((Number) row[8]).doubleValue() : null;
-            Long   count               = row[9] != null ? ((Number) row[9]).longValue()   : 0L;
-            Long   companyTotalEntries = row[10] != null ? ((Number) row[10]).longValue()  : 0L;
-            LocalDateTime recent       = row[11] != null ? ((java.sql.Timestamp) row[11]).toLocalDateTime() : null;
-            String[] conf              = computeConfidence(companyTotalEntries, recent);
-            com.salaryinsights.dto.response.CompanyLevelSalaryDTO dto =
-                new com.salaryinsights.dto.response.CompanyLevelSalaryDTO();
-            dto.setCompanyName(companyName);
-            dto.setCompanyId(companyId);
-            dto.setLogoUrl(logoUrl);
-            dto.setWebsite(website);
-            dto.setInternalLevel(internalLevel);
-            dto.setAvgBaseSalary(avgBase);
-            dto.setAvgBonus(avgBonus);
-            dto.setAvgEquity(avgEquity);
-            dto.setAvgTotalCompensation(avgTotalComp);
-            dto.setCount(count);
+        return mapCompanyLevelRows(salaryEntryRepository.avgSalaryByCompanyAndLevelRaw());
+    }
+
+    @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(
+        value = "analytics",
+        key = "'byCompanyLevel_' + T(java.util.Arrays).toString(#locationDisplayNames.stream().sorted().toArray())"
+    )
+    public List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevelFiltered(
+            List<String> locationDisplayNames) {
+        List<String> locationEnumNames = locationDisplayNames.stream()
+            .map(name -> {
+                for (com.salaryinsights.enums.Location loc : com.salaryinsights.enums.Location.values()) {
+                    if (loc.getDisplayName().equalsIgnoreCase(name) || loc.name().equalsIgnoreCase(name)) return loc.name();
+                }
+                return name;
+            })
+            .collect(java.util.stream.Collectors.toList());
+        return mapCompanyLevelRows(salaryEntryRepository.avgSalaryByCompanyAndLevelFilteredRaw(locationEnumNames));
+    }
+
+    private List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> mapCompanyLevelRows(List<Object[]> rows) {
+        return rows.stream().map(row -> {
+            Long companyTotalEntries = row[10] != null ? ((Number) row[10]).longValue() : 0L;
+            LocalDateTime recent     = row[11] != null ? ((java.sql.Timestamp) row[11]).toLocalDateTime() : null;
+            String[] conf            = computeConfidence(companyTotalEntries, recent);
+            com.salaryinsights.dto.response.CompanyLevelSalaryDTO dto = new com.salaryinsights.dto.response.CompanyLevelSalaryDTO();
+            dto.setCompanyName(row[0] != null ? row[0].toString() : null);
+            dto.setCompanyId(row[1] != null ? row[1].toString() : null);
+            dto.setLogoUrl(row[2] != null ? row[2].toString() : null);
+            dto.setWebsite(row[3] != null ? row[3].toString() : null);
+            dto.setInternalLevel(row[4] != null ? row[4].toString() : null);
+            dto.setAvgBaseSalary(row[5] != null ? ((Number) row[5]).doubleValue() : null);
+            dto.setAvgBonus(row[6] != null ? ((Number) row[6]).doubleValue() : null);
+            dto.setAvgEquity(row[7] != null ? ((Number) row[7]).doubleValue() : null);
+            dto.setAvgTotalCompensation(row[8] != null ? ((Number) row[8]).doubleValue() : null);
+            dto.setCount(row[9] != null ? ((Number) row[9]).longValue() : 0L);
             dto.setCompanyTotalEntries(companyTotalEntries);
             dto.setMostRecentEntry(recent);
             dto.setConfidenceTier(conf[0]);
@@ -460,6 +481,8 @@ public class SalaryService {
         }).collect(java.util.stream.Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public AdminDashboardResponse getAdminDashboard()
     @Transactional(readOnly = true)
     public AdminDashboardResponse getAdminDashboard() {
         List<Object[]> trends = salaryEntryRepository.submissionTrendLast12Months();
