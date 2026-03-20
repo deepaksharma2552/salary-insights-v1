@@ -482,8 +482,6 @@ public class SalaryService {
     }
 
     @Transactional(readOnly = true)
-    public AdminDashboardResponse getAdminDashboard()
-    @Transactional(readOnly = true)
     public AdminDashboardResponse getAdminDashboard() {
         List<Object[]> trends = salaryEntryRepository.submissionTrendLast12Months();
         List<java.util.Map<String, Object>> trendData = trends.stream().map(row -> {
