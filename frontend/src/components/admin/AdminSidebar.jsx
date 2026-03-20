@@ -6,6 +6,7 @@ const NAV = [
   { label: 'Companies',        path: '/admin/companies', icon: '🏢' },
   { label: 'Level Mappings',   path: '/admin/levels',    icon: '🗂' },
   { label: 'Referrals',        path: '/admin/referrals', icon: '🔗' },
+  { label: 'Level Guide',       path: '/admin/guide-levels', icon: '🗂' },
   { label: 'Audit Logs',       path: '/admin/audit',     icon: '📋' },
 ];
 

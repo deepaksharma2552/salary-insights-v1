@@ -22,6 +22,7 @@ import AdminCompanies       from './pages/admin/AdminCompanies';
 import AdminPendingSalaries from './pages/admin/AdminPendingSalaries';
 import AdminAuditLogs       from './pages/admin/AdminAuditLogs';
 import AdminReferrals       from './pages/admin/AdminReferrals';
+import AdminGuideLevels     from './pages/admin/AdminGuideLevels';
 import AdminSidebar         from './components/admin/AdminSidebar';
 
 function PrivateRoute({ children, adminOnly = false }) {
@@ -90,6 +91,12 @@ export default function App() {
             <Route path="/admin/referrals" element={
               <PrivateRoute adminOnly>
                 <AdminLayout><AdminReferrals /></AdminLayout>
+              </PrivateRoute>
+            }/>
+
+            <Route path="/admin/guide-levels" element={
+              <PrivateRoute adminOnly>
+                <AdminLayout><AdminGuideLevels /></AdminLayout>
               </PrivateRoute>
             }/>
 
