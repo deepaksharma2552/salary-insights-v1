@@ -154,7 +154,8 @@ function ComparisonGrid({ grid, standardLevels, companies }) {
                 </td>
                 {/* Company cells */}
                 {companies.map((c, ci) => {
-                  const title = rowCells[c.id];
+                  const cell = rowCells[c.id];
+                  const title = cell?.title ?? cell; // handle both GridCell obj and plain string
                   return (
                     <td key={c.id} style={{ padding: '14px 16px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>
                       {title ? (
@@ -185,12 +186,15 @@ function ComparisonGrid({ grid, standardLevels, companies }) {
 
 /* ─── Main Level Guide View ──────────────────────────────────────────────── */
 export default function LevelGuideView() {
-  const [selected,       setSelected]       = useState([]);
-  const [gridData,       setGridData]       = useState(null);
-  const [allStdLevels,   setAllStdLevels]   = useState([]);
-  const [loading,        setLoading]        = useState(false);
-  const [error,          setError]          = useState(null);
+  const [selected,         setSelected]         = useState([]);
+  const [functionCategory, setFunctionCategory] = useState('Engineering');
+  const [gridData,         setGridData]         = useState(null);
+  const [allStdLevels,     setAllStdLevels]     = useState([]);
+  const [loading,          setLoading]          = useState(false);
+  const [error,            setError]            = useState(null);
   const debounceRef = useRef(null);
+
+  const FUNCTIONS = ['Engineering', 'Product', 'Program'];
 
   // Fetch standard levels once for header labels
   useEffect(() => {
@@ -204,7 +208,7 @@ export default function LevelGuideView() {
     if (companies.length === 0) { setGridData(null); return; }
     setLoading(true); setError(null);
     const ids = companies.map(c => c.id);
-    api.get('/public/guide-levels/grid', { params: { companyIds: ids } })
+    api.get('/public/guide-levels/grid', { params: { companyIds: ids, functionCategory } })
       .then(r => setGridData(r.data?.data ?? null))
       .catch(() => setError('Failed to load level data.'))
       .finally(() => setLoading(false));
@@ -214,7 +218,7 @@ export default function LevelGuideView() {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetchGrid(selected), 400);
     return () => clearTimeout(debounceRef.current);
-  }, [selected, fetchGrid]);
+  }, [selected, fetchGrid, functionCategory]);
 
   const hasData = gridData && gridData.standardLevels?.length > 0;
 
@@ -231,6 +235,26 @@ export default function LevelGuideView() {
           </div>
         </div>
         <CompanySelector selected={selected} onChange={setSelected} />
+
+        {/* Function track selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 500, marginRight: 4 }}>Function:</span>
+          {FUNCTIONS.map(fn => (
+            <button
+              key={fn}
+              onClick={() => setFunctionCategory(fn)}
+              style={{
+                padding: '4px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600,
+                cursor: 'pointer', transition: 'all 0.15s',
+                background: functionCategory === fn ? '#3b82f6' : 'var(--bg-3)',
+                color: functionCategory === fn ? '#fff' : 'var(--text-3)',
+                border: functionCategory === fn ? '1px solid #3b82f6' : '1px solid var(--border)',
+              }}
+            >
+              {fn}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Empty state */}
@@ -270,8 +294,8 @@ export default function LevelGuideView() {
               <div style={{ fontSize: 32, marginBottom: 12 }}>📭</div>
               <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>No level data yet</div>
               <div style={{ fontSize: 13, color: 'var(--text-3)' }}>
-                Level mappings for {selected.map(c => c.name).join(', ')} haven't been added yet.<br/>
-                Data is contributed progressively — check back soon.
+                No <strong>{functionCategory}</strong> level mappings found for {selected.map(c => c.name).join(', ')}.<br/>
+                Try a different function track or check back later.
               </div>
             </div>
           )}

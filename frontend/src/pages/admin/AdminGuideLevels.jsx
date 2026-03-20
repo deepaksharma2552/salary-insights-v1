@@ -183,8 +183,9 @@ function CompanyLevelsTab({ standardLevels }) {
   const [loading, setLoading] = useState(false);
   const [addModal, setAddModal] = useState(false);
   const [mapModal, setMapModal] = useState(null); // company level obj
-  const [newTitle, setNewTitle] = useState('');
-  const [newDesc,  setNewDesc]  = useState('');
+  const [newTitle, setNewTitle]   = useState('');
+  const [newDesc,  setNewDesc]    = useState('');
+  const [newFn,    setNewFn]      = useState('Engineering');
   const [selStdId, setSelStdId] = useState('');
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState('');
@@ -236,8 +237,9 @@ function CompanyLevelsTab({ standardLevels }) {
         companyId: selCompany.id,
         title: newTitle.trim(),
         description: newDesc.trim() || null,
+        functionCategory: newFn,
       });
-      setAddModal(false); setNewTitle(''); setNewDesc('');
+      setAddModal(false); setNewTitle(''); setNewDesc(''); setNewFn('Engineering');
       loadLevels(selCompany.id);
     } catch (e) { setError(e.response?.data?.message ?? 'Add failed'); }
     finally { setSaving(false); }
@@ -329,6 +331,7 @@ function CompanyLevelsTab({ standardLevels }) {
                 <thead>
                   <tr>
                     <th>Internal Title</th>
+                    <th>Function</th>
                     <th>Description</th>
                     <th>Mapped To</th>
                     <th style={{ width: 150 }}>Actions</th>
@@ -338,6 +341,16 @@ function CompanyLevelsTab({ standardLevels }) {
                   {levels.map(l => (
                     <tr key={l.id}>
                       <td style={{ fontWeight: 600, color: 'var(--text-1)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>{l.title}</td>
+                      <td>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99,
+                          background: l.functionCategory === 'Product' ? '#8b5cf618' : l.functionCategory === 'Program' ? '#06b6d418' : '#3b82f618',
+                          color:      l.functionCategory === 'Product' ? '#8b5cf6'   : l.functionCategory === 'Program' ? '#06b6d4'   : '#3b82f6',
+                          border:     `1px solid ${l.functionCategory === 'Product' ? '#8b5cf640' : l.functionCategory === 'Program' ? '#06b6d440' : '#3b82f640'}`,
+                          fontFamily: "'JetBrains Mono',monospace",
+                        }}>
+                          {l.functionCategory || 'Engineering'}
+                        </span>
+                      </td>
                       <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{l.description || '—'}</td>
                       <td>
                         {l.mappedStandardLevelName ? (
@@ -373,8 +386,22 @@ function CompanyLevelsTab({ standardLevels }) {
           {error && <div style={{ padding: '10px 14px', background: 'var(--rose-dim)', borderRadius: 8, color: 'var(--rose)', fontSize: 13, marginBottom: 16 }}>{error}</div>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
+              <label className="form-label">Function Track *</label>
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                {['Engineering', 'Product', 'Program'].map(fn => (
+                  <button key={fn} type="button" onClick={() => setNewFn(fn)} style={{
+                    flex: 1, padding: '7px 0', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', transition: 'all 0.12s',
+                    background: newFn === fn ? '#3b82f6' : 'var(--bg-2)',
+                    color: newFn === fn ? '#fff' : 'var(--text-3)',
+                    border: newFn === fn ? '1px solid #3b82f6' : '1px solid var(--border)',
+                  }}>{fn}</button>
+                ))}
+              </div>
+            </div>
+            <div>
               <label className="form-label">Internal Title *</label>
-              <input className="form-input" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="e.g. MTS, SDE II, L5" autoFocus />
+              <input className="form-input" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="e.g. MTS, SDE II, L5, PM II, TPM" autoFocus />
             </div>
             <div>
               <label className="form-label">Description <span style={{ fontWeight: 400, color: 'var(--text-3)', fontSize: 11 }}>(optional)</span></label>
