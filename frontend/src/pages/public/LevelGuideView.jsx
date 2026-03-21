@@ -5,34 +5,21 @@ import TopProgressBar from '../../components/shared/TopProgressBar';
 
 const MAX_COMPANIES = 5;
 
-/* ── Perceptually distinct palette — maximally spaced on the colour wheel ── */
-const ACCENT = [
-  '#3b82f6',  // 1 — blue      (viz-1)
-  '#8b5cf6',  // 2 — violet    (viz-2 / purple)
-  '#06b6d4',  // 3 — cyan      (viz-3)
-  '#e11d48',  // 4 — rose      (--rose)
-  '#d97706',  // 5 — amber     (--gold)
+/**
+ * 5-slot ramp palette — each company gets a full colour ramp.
+ * fill  : light background (50-stop) for chip/dot fill
+ * dot   : mid accent (400-stop) for borders, badges, indicators
+ * text  : dark (800-stop) — readable on fill, used inside dots and chips
+ * dim   : very light fill for combo panel checked rows
+ * border: semi-transparent for chip outlines
+ */
+const PALETTE = [
+  { fill:'#EAF3DE', dot:'#3B6D11', text:'#27500A', dim:'rgba(59,109,17,.08)', border:'rgba(59,109,17,.3)'  }, // green
+  { fill:'#E6F1FB', dot:'#185FA5', text:'#0C447C', dim:'rgba(24,95,165,.08)', border:'rgba(24,95,165,.3)'  }, // blue
+  { fill:'#EEEDFE', dot:'#534AB7', text:'#3C3489', dim:'rgba(83,74,183,.08)', border:'rgba(83,74,183,.3)'  }, // purple
+  { fill:'#FAECE7', dot:'#993C1D', text:'#712B13', dim:'rgba(153,60,29,.08)', border:'rgba(153,60,29,.3)'  }, // coral
+  { fill:'#FAEEDA', dot:'#854F0B', text:'#633806', dim:'rgba(133,79,11,.08)', border:'rgba(133,79,11,.3)'  }, // amber
 ];
-
-/* ── Dim fills for chips and hover states ─────────────────────────────────── */
-const ACCENT_DIM = [
-  'rgba(59,130,246,0.10)',
-  'rgba(139,92,246,0.10)',
-  'rgba(6,182,212,0.10)',
-  'rgba(225,29,72,0.10)',
-  'rgba(217,119,6,0.10)',
-];
-const ACCENT_BORDER = [
-  'rgba(59,130,246,0.35)',
-  'rgba(139,92,246,0.35)',
-  'rgba(6,182,212,0.35)',
-  'rgba(225,29,72,0.35)',
-  'rgba(217,119,6,0.35)',
-];
-
-function hexRgb(hex) {
-  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
-}
 
 /* ─── Tooltip ─────────────────────────────────────────────────────────────── */
 function Tooltip({ text, detail, style }) {
@@ -51,69 +38,62 @@ function Tooltip({ text, detail, style }) {
   );
 }
 
-/* ─── Overlap Dot — redesigned ────────────────────────────────────────────── */
-function OverlapDot({ color, short, title, overlapPct, onHover, onLeave }) {
+/* ─── Overlap Dot — ramp-based, title inside ─────────────────────────────── */
+function OverlapDot({ palette, title, overlapPct, onHover, onLeave }) {
   const isExact = overlapPct === 100;
-  const [r, g, b] = hexRgb(color);
+  const p       = palette;
 
-  /* Exact: full-opacity border + medium fill — crisp, confident */
-  /* Partial: solid border, lighter fill — still legible, not "broken" */
-  const size     = isExact ? 36 : Math.round(22 + (overlapPct / 100) * 16);
-  const fillAlpha = isExact ? 0.18 : 0.10 + (overlapPct / 100) * 0.14;
-  const borderW  = isExact ? '2px' : '1.5px';
-  const borderA  = isExact ? 1.0  : 0.55 + (overlapPct / 100) * 0.35;
+  // Exact: full size + full ramp fill. Partial: smaller + reduced opacity.
+  const size    = isExact ? 44 : Math.round(30 + (overlapPct / 100) * 16);
+  const opacity = isExact ? 1  : 0.5 + (overlapPct / 100) * 0.42;
+
+  // Font size scales with dot — keeps title readable at all sizes
+  const fs = Math.max(Math.round(size * 0.28), 9);
 
   return (
     <div
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'default' }}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, cursor: 'default' }}
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
     >
       <div style={{ position: 'relative', width: size, height: size }}>
-        {/* Main circle */}
+        {/* Circle with title inside */}
         <div style={{
           width: size, height: size, borderRadius: '50%',
-          background: `rgba(${r},${g},${b},${fillAlpha})`,
-          border: `${borderW} solid rgba(${r},${g},${b},${borderA})`,
+          background: p.fill,
+          border: `2px solid ${p.dot}`,
           boxSizing: 'border-box',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: Math.max(Math.round(size * 0.27), 8),
-          fontWeight: 700,
-          color: `rgb(${r},${g},${b})`,
-          fontFamily: "'JetBrains Mono',monospace",
-          letterSpacing: '-0.02em',
+          opacity,
         }}>
-          {short}
+          <span style={{
+            fontSize: fs, fontWeight: 700,
+            color: p.text,
+            fontFamily: "'JetBrains Mono',monospace",
+            letterSpacing: '-0.03em',
+            lineHeight: 1,
+            textAlign: 'center',
+            maxWidth: size - 8,
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+          }}>
+            {title}
+          </span>
         </div>
 
-        {/* Percentage badge — only on partial overlaps */}
+        {/* Percentage badge on partial overlaps */}
         {!isExact && (
           <div style={{
-            position: 'absolute', top: -5, right: -7,
-            background: `rgb(${r},${g},${b})`,
-            color: '#fff',
-            fontSize: 8, fontWeight: 700,
-            padding: '1px 4px', borderRadius: 4,
+            position: 'absolute', top: -4, right: -9,
+            background: p.dot, color: '#fff',
+            fontSize: 9, fontWeight: 700,
+            padding: '2px 5px', borderRadius: 4,
             fontFamily: "'JetBrains Mono',monospace",
-            whiteSpace: 'nowrap',
-            lineHeight: 1.4,
+            whiteSpace: 'nowrap', lineHeight: 1.3,
           }}>
             {overlapPct}%
           </div>
         )}
-      </div>
-
-      {/* Title label */}
-      <div style={{
-        fontSize: 9, fontWeight: 600,
-        color: `rgb(${r},${g},${b})`,
-        maxWidth: 64, textAlign: 'center',
-        overflow: 'hidden', textOverflow: 'ellipsis',
-        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-        lineHeight: 1.3,
-        fontFamily: "'JetBrains Mono',monospace",
-      }}>
-        {title}
       </div>
     </div>
   );
@@ -125,45 +105,60 @@ function ComparisonGrid({ grid, standardLevels, companies }) {
 
   if (!standardLevels.length || !companies.length) return null;
 
-  const companyShort = {};
-  companies.forEach(c => {
-    // Smart short: initials if multi-word, else first 2 chars
-    const words = c.name.trim().split(/\s+/);
-    companyShort[c.id] = words.length >= 2
-      ? (words[0][0] + words[1][0]).toUpperCase()
-      : c.name.slice(0, 2).toUpperCase();
-  });
+  // Assign each company a palette slot by its position in the response
+  const palettes = companies.map((_, i) => PALETTE[i % PALETTE.length]);
 
   return (
     <div style={{ overflowX: 'auto' }}>
-      {/* Legend */}
+      {/* Legend + company key */}
       <div style={{
-        display: 'flex', gap: 20, flexWrap: 'wrap',
-        padding: '12px 18px', borderBottom: '1px solid var(--border)',
-        background: 'var(--bg-2)', alignItems: 'center',
+        display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center',
+        padding: '11px 20px', borderBottom: '1px solid var(--border)',
+        background: 'var(--bg-2)',
       }}>
-        <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase' }}>Key</span>
+        {/* Exact match example */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, color: 'var(--text-3)' }}>
-          <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(59,130,246,.16)', border: '2px solid rgba(59,130,246,1)', boxSizing: 'border-box' }} />
+          <div style={{
+            width: 28, height: 28, borderRadius: '50%',
+            background: '#EAF3DE', border: '2px solid #3B6D11',
+            boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 9, fontWeight: 700, color: '#27500A',
+            fontFamily: "'JetBrains Mono',monospace",
+          }}>L4</div>
           Exact match
         </div>
+        {/* Partial match example */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, color: 'var(--text-3)' }}>
-          <div style={{ position: 'relative', width: 20, height: 20 }}>
-            <div style={{ width: 16, height: 16, borderRadius: '50%', background: 'rgba(59,130,246,.10)', border: '1.5px solid rgba(59,130,246,.7)', boxSizing: 'border-box', marginTop: 2 }} />
-            <div style={{ position: 'absolute', top: -1, right: -4, background: '#3b82f6', color: '#fff', fontSize: 7, fontWeight: 700, padding: '0 2px', borderRadius: 3 }}>60%</div>
+          <div style={{ position: 'relative', width: 32, height: 24 }}>
+            <div style={{
+              width: 22, height: 22, borderRadius: '50%',
+              background: '#EAF3DE', border: '2px solid #3B6D11',
+              boxSizing: 'border-box', opacity: 0.65,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 8, fontWeight: 700, color: '#27500A',
+              fontFamily: "'JetBrains Mono',monospace",
+            }}>L5</div>
+            <div style={{
+              position: 'absolute', top: -3, right: 0,
+              background: '#3B6D11', color: '#fff',
+              fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 4,
+            }}>60%</div>
           </div>
           Partial span
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, color: 'var(--text-3)' }}>
-          Larger dot = higher % at this level
-        </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {companies.map((c, i) => (
-            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: ACCENT[i % ACCENT.length] }} />
-              <span style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 500 }}>{c.name}</span>
-            </div>
-          ))}
+        <div style={{ fontSize: 11, color: 'var(--text-3)' }}>Smaller = lower %</div>
+
+        {/* Company colour key */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          {companies.map((co, i) => {
+            const p = palettes[i];
+            return (
+              <div key={co.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 12, height: 12, borderRadius: '50%', background: p.dot }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: p.text }}>{co.name}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -172,47 +167,47 @@ function ComparisonGrid({ grid, standardLevels, companies }) {
         <thead>
           <tr>
             <th style={{
-              padding: '10px 18px', textAlign: 'left',
-              fontSize: 10, fontWeight: 700, color: 'var(--text-3)',
-              fontFamily: "'JetBrains Mono',monospace",
-              textTransform: 'uppercase', letterSpacing: '0.09em',
+              padding: '10px 20px', textAlign: 'left',
+              fontSize: 10, fontWeight: 600, color: 'var(--text-3)',
+              textTransform: 'uppercase', letterSpacing: '0.08em',
               borderBottom: '1px solid var(--border)', background: 'var(--bg-2)',
-              whiteSpace: 'nowrap', minWidth: 160,
+              whiteSpace: 'nowrap', minWidth: 200,
             }}>
               Standard level
             </th>
-            {companies.map((c, i) => (
-              <th key={c.id} style={{
-                padding: '10px 12px', textAlign: 'center',
-                borderBottom: '1px solid var(--border)', background: 'var(--bg-2)',
-                minWidth: 110,
-              }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-                  <CompanyLogo companyId={c.id} companyName={c.name} logoUrl={c.logoUrl} website={c.website} size={24} radius={6} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: ACCENT[i % ACCENT.length], whiteSpace: 'nowrap' }}>{c.name}</span>
-                </div>
-              </th>
-            ))}
+            {companies.map((co, i) => {
+              const p = palettes[i];
+              return (
+                <th key={co.id} style={{
+                  padding: '10px 12px', textAlign: 'center',
+                  borderBottom: '1px solid var(--border)', background: 'var(--bg-2)',
+                  minWidth: 120, borderLeft: '1px solid var(--border)',
+                }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: p.dot }}>{co.name}</span>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
           {standardLevels.map((sl, rowIdx) => {
             const rowCells = grid[sl.id] ?? {};
-            const hasAny = companies.some(c => (rowCells[c.id] ?? []).length > 0);
+            const hasAny = companies.some(co => (rowCells[co.id] ?? []).length > 0);
             if (!hasAny) return null;
 
+            const rowBg = rowIdx % 2 === 0 ? 'transparent' : 'var(--bg-2)';
+
             return (
-              <tr key={sl.id} style={{ background: rowIdx % 2 === 0 ? 'transparent' : 'var(--bg-2)' }}>
-                {/* Standard level */}
-                <td style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <tr key={sl.id} style={{ background: rowBg }}>
+                {/* Standard level label */}
+                <td style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', verticalAlign: 'middle' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{
-                      width: 5, height: 28, borderRadius: 99,
-                      background: 'linear-gradient(180deg,#3b82f6,#8b5cf6)',
-                      flexShrink: 0,
+                      width: 3, height: 32, borderRadius: 2, flexShrink: 0,
+                      background: 'var(--border-2,var(--border))',
                     }} />
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{sl.name}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{sl.name}</div>
                       {sl.description && (
                         <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{sl.description}</div>
                       )}
@@ -221,39 +216,40 @@ function ComparisonGrid({ grid, standardLevels, companies }) {
                 </td>
 
                 {/* Company cells */}
-                {companies.map((c, ci) => {
-                  const cells = rowCells[c.id] ?? [];
-                  const color = ACCENT[ci % ACCENT.length];
-                  const short = companyShort[c.id];
+                {companies.map((co, ci) => {
+                  const cells = rowCells[co.id] ?? [];
+                  const p     = palettes[ci];
 
                   return (
-                    <td key={c.id} style={{
+                    <td key={co.id} style={{
                       padding: '10px 8px', textAlign: 'center',
                       borderBottom: '1px solid var(--border)',
+                      borderLeft: '1px solid var(--border)',
                       verticalAlign: 'middle',
                     }}>
                       {cells.length === 0 ? (
-                        <span style={{ color: 'var(--border)', fontSize: 16, lineHeight: 1 }}>—</span>
+                        <span style={{ color: 'var(--border)', fontSize: 18, lineHeight: 1, fontWeight: 300 }}>—</span>
                       ) : (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', alignItems: 'flex-end' }}>
-                          {cells.map((cell, ci2) => (
-                            <OverlapDot
-                              key={ci2}
-                              color={color}
-                              short={short}
-                              title={cell.title}
-                              overlapPct={cell.overlapPct ?? 100}
-                              onHover={e => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                const pct = cell.overlapPct ?? 100;
-                                const detail = pct < 100
-                                  ? `${pct}% of ${c.name}'s "${cell.title}" sits at ${sl.name} level`
-                                  : `"${cell.title}" maps exactly to ${sl.name}`;
-                                setTooltip({ x: rect.right + 8, y: rect.top, text: `${c.name} · ${cell.title}`, detail });
-                              }}
-                              onLeave={() => setTooltip(null)}
-                            />
-                          ))}
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                          {cells.map((cell, ci2) => {
+                            const pct = cell.overlapPct ?? 100;
+                            return (
+                              <OverlapDot
+                                key={ci2}
+                                palette={p}
+                                title={cell.title}
+                                overlapPct={pct}
+                                onHover={e => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const detail = pct < 100
+                                    ? `${pct}% of ${co.name}'s "${cell.title}" sits at ${sl.name}`
+                                    : `"${cell.title}" maps exactly to ${sl.name}`;
+                                  setTooltip({ x: rect.right + 8, y: rect.top, text: `${co.name} · ${cell.title}`, detail });
+                                }}
+                                onLeave={() => setTooltip(null)}
+                              />
+                            );
+                          })}
                         </div>
                       )}
                     </td>
@@ -328,14 +324,14 @@ function CompanyCombo({ selected, onChange }) {
             <div key={c.id} style={{
               display: 'inline-flex', alignItems: 'center', gap: 7,
               padding: '5px 10px 5px 7px', borderRadius: 99,
-              background: ACCENT_DIM[i % ACCENT_DIM.length],
-              border: `1px solid ${ACCENT_BORDER[i % ACCENT_BORDER.length]}`,
+              background: PALETTE[i % PALETTE.length].dim,
+              border: `1.5px solid ${PALETTE[i % PALETTE.length].border}`,
             }}>
               <CompanyLogo companyId={c.id} companyName={c.name} logoUrl={c.logoUrl} website={c.website} size={18} radius={4} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: ACCENT[i % ACCENT.length] }}>{c.name}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: PALETTE[i % PALETTE.length].text }}>{c.name}</span>
               <span
                 onClick={() => removeChip(c.id)}
-                style={{ cursor: 'pointer', color: ACCENT[i % ACCENT.length], opacity: 0.55, fontSize: 15, lineHeight: 1, fontWeight: 300 }}
+                style={{ cursor: 'pointer', color: PALETTE[i % PALETTE.length].dot, opacity: 0.65, fontSize: 15, lineHeight: 1, fontWeight: 300 }}
               >×</span>
             </div>
           ))}
@@ -387,7 +383,7 @@ function CompanyCombo({ selected, onChange }) {
             <div key={i} style={{
               width: 7, height: 7, borderRadius: '50%',
               background: i < selected.length
-                ? ACCENT[i % ACCENT.length]
+                ? PALETTE[i % PALETTE.length].dot
                 : 'var(--border)',
               transition: 'background .2s',
             }} />
@@ -425,7 +421,8 @@ function CompanyCombo({ selected, onChange }) {
             const checked   = !!selected.find(s => s.id === company.id);
             const checkedIdx = selected.findIndex(s => s.id === company.id);
             const disabled  = !checked && selected.length >= MAX_COMPANIES;
-            const accentColor = checked ? ACCENT[checkedIdx % ACCENT.length] : '#3b82f6';
+            const ramp = checked ? PALETTE[checkedIdx % PALETTE.length] : PALETTE[0];
+            const accentColor = checked ? ramp.dot : '#3b82f6';
 
             return (
               <div
@@ -437,11 +434,11 @@ function CompanyCombo({ selected, onChange }) {
                   cursor: disabled ? 'not-allowed' : 'pointer',
                   opacity: disabled ? 0.4 : 1,
                   borderBottom: i < results.length - 1 ? '1px solid var(--border)' : 'none',
-                  background: checked ? `${ACCENT_DIM[checkedIdx % ACCENT_DIM.length]}` : 'transparent',
+                  background: checked ? ramp.dim : 'transparent',
                   transition: 'background .1s',
                 }}
                 onMouseEnter={e => { if (!disabled && !checked) e.currentTarget.style.background = 'var(--bg-2)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = checked ? ACCENT_DIM[checkedIdx % ACCENT_DIM.length] : 'transparent'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = checked ? ramp.dim : 'transparent'; }}
               >
                 {/* Checkbox */}
                 <div style={{
@@ -461,7 +458,7 @@ function CompanyCombo({ selected, onChange }) {
                 <CompanyLogo companyId={company.id} companyName={company.name} logoUrl={company.logoUrl} website={company.website} size={26} radius={6} />
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: checked ? 600 : 500, color: checked ? accentColor : 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontSize: 13, fontWeight: checked ? 600 : 500, color: checked ? ramp.text : 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {company.name}
                   </div>
                   {company.industry && (
@@ -473,7 +470,7 @@ function CompanyCombo({ selected, onChange }) {
                 {checked && (
                   <div style={{
                     width: 20, height: 20, borderRadius: '50%',
-                    background: accentColor, color: '#fff',
+                    background: ramp.dot, color: '#fff',
                     fontSize: 10, fontWeight: 700,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0,
