@@ -1,15 +1,21 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import SalaryTable from '../../components/shared/SalaryTable';
 import api from '../../services/api';
+import TopProgressBar from '../../components/shared/TopProgressBar';
+import LevelGuideView from './LevelGuideView';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
-const DEFAULT_SIZE = 10;
+const DEFAULT_SIZE      = 10;
+const SEARCH_MIN_CHARS  = 3;   // minimum chars before auto-search triggers
+const SEARCH_DEBOUNCE   = 600; // ms idle after last keystroke before auto-search
+
+// ── Viz palette — consistent with DashboardPage ──
+const VIZ_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#6366f1','#a78bfa','#818cf8'];
 
 function mapSalary(s) {
-  const abbr = s.companyName ? s.companyName.slice(0, 2).toUpperCase() : '?';
-  const colors = ['#3ecfb0','#d4a853','#e05c7a','#a08ff0','#c07df0','#e89050'];
-  const colorIdx = s.companyName ? s.companyName.charCodeAt(0) % colors.length : 0;
-  const color = colors[colorIdx];
+  const abbr     = s.companyName ? s.companyName.slice(0, 2).toUpperCase() : '?';
+  const colorIdx = s.companyName ? s.companyName.charCodeAt(0) % VIZ_COLORS.length : 0;
+  const color    = VIZ_COLORS[colorIdx];
   const levelMap = {
     INTERN: 'junior', ENTRY: 'junior', MID: 'mid',
     SENIOR: 'senior', LEAD: 'lead', MANAGER: 'lead',
@@ -29,20 +35,25 @@ function mapSalary(s) {
   return {
     id: s.id, company: s.companyName ?? '—', compAbbr: abbr,
     compColor: color, compBg: `${color}26`, compInd: '',
-    role: s.jobTitle ?? '—', internalLevel: s.standardizedLevelName ?? s.companyInternalLevel ?? '—',
-    level: levelMap[s.experienceLevel] ?? 'mid', location: s.location ?? '—',
+    companyId: s.companyId ?? null,
+    logoUrl:   s.logoUrl   ?? null,
+    website:   s.website   ?? null,
+    role: s.jobTitle ?? '—',
+    internalLevel: s.standardizedLevelName ?? s.companyInternalLevel ?? '—',
+    level: levelMap[s.experienceLevel] ?? 'mid',
+    location: s.location ?? '—',
     exp: s.yearsOfExperience != null ? `${s.yearsOfExperience} yr` : '—',
     yoe: s.yearsOfExperience != null ? `${s.yearsOfExperience} year${s.yearsOfExperience !== 1 ? 's' : ''}` : '—',
     empType: s.employmentType ?? 'Full-time',
     base: fmt(s.baseSalary), bonus: fmt(s.bonus), equity: fmt(s.equity),
-    tc: fmt(s.totalCompensation), status: (s.reviewStatus ?? 'APPROVED').toLowerCase(),
+    tc: fmt(s.totalCompensation),
+    status: (s.reviewStatus ?? 'APPROVED').toLowerCase(),
     recordedAt: formatDate(s.createdAt), notes: '',
   };
 }
 
 const LEVEL_MAP = { junior: 'ENTRY', mid: 'MID', senior: 'SENIOR', lead: 'LEAD' };
 
-// Clamp page buttons to max 7 visible
 function getPageRange(current, total) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i);
   if (current < 4) return [0,1,2,3,4,'...',total-1];
@@ -51,12 +62,20 @@ function getPageRange(current, total) {
 }
 
 export default function SalariesPage() {
+  const [view, setView] = useState('salaries'); // 'salaries' | 'levels'
+
   const [rows,          setRows]          = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState(null);
 
-  // Filters
-  const [search,   setSearch]   = useState('');
+  // ── Search: two-state approach ──
+  // inputValue  = what the user sees in the box (updates on every keystroke)
+  // search      = committed value that actually triggers the API call
+  const [inputValue, setInputValue] = useState('');
+  const [search,     setSearch]     = useState('');
+  const debounceRef  = useRef(null);
+
+  // Other filters
   const [level,    setLevel]    = useState('');
   const [location, setLocation] = useState('');
   const [empType,  setEmpType]  = useState('');
@@ -67,11 +86,64 @@ export default function SalariesPage() {
   const [totalPages,    setTotalPages]    = useState(1);
   const [totalElements, setTotalElements] = useState(0);
 
-  // Debounce search input
-  const searchTimer = useRef(null);
+  const isFiltering   = search || level || location || empType;
+  const isDirty       = inputValue !== search; // typed but not yet committed
+  const showHint      = inputValue.length > 0 && inputValue.length < SEARCH_MIN_CHARS;
 
-  // Track whether any filter is active
-  const isFiltering = search || level || location || empType;
+  // ── Commit the current inputValue as the search query ──
+  function commitSearch(value) {
+    clearTimeout(debounceRef.current);
+    setSearch(value);
+    setPage(0);
+  }
+
+  // ── Handle keystroke ──
+  function handleSearchChange(e) {
+    const val = e.target.value;
+    setInputValue(val);
+    clearTimeout(debounceRef.current);
+
+    if (val.length === 0) {
+      // Cleared — reset immediately
+      commitSearch('');
+      return;
+    }
+    if (val.length < SEARCH_MIN_CHARS) {
+      // Too short — do nothing yet
+      return;
+    }
+    // 3+ chars — start debounce timer
+    debounceRef.current = setTimeout(() => commitSearch(val), SEARCH_DEBOUNCE);
+  }
+
+  // ── Enter key — commit immediately ──
+  function handleSearchKeyDown(e) {
+    if (e.key === 'Enter' && inputValue.length >= SEARCH_MIN_CHARS) {
+      commitSearch(inputValue);
+    }
+  }
+
+  function handleFilterChange(setter) {
+    return (e) => { setter(e.target.value); setPage(0); };
+  }
+
+  function handlePageSizeChange(e) {
+    setPageSize(Number(e.target.value));
+    setPage(0);
+  }
+
+  function clearFilters() {
+    clearTimeout(debounceRef.current);
+    setInputValue('');
+    setSearch('');
+    setLevel('');
+    setLocation('');
+    setEmpType('');
+    setPage(0);
+  }
+
+  // Cleanup debounce on unmount
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
 
   const fetchSalaries = useCallback(() => {
     setLoading(true);
@@ -79,7 +151,7 @@ export default function SalariesPage() {
     const params = {
       page,
       size: pageSize,
-      sort: 'createdAt,desc',          // always newest first
+      sort: 'createdAt,desc',
       ...(location && { location }),
       ...(level    && { experienceLevel: LEVEL_MAP[level] }),
       ...(search   && { companyName: search, jobTitle: search }),
@@ -100,51 +172,88 @@ export default function SalariesPage() {
 
   useEffect(() => { fetchSalaries(); }, [fetchSalaries]);
 
-  function handleSearchChange(e) {
-    const val = e.target.value;
-    setSearch(val);
-    clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => { setPage(0); }, 400);
-  }
-
-  function handleFilterChange(setter) {
-    return (e) => { setter(e.target.value); setPage(0); };
-  }
-
-  function handlePageSizeChange(e) {
-    setPageSize(Number(e.target.value));
-    setPage(0);
-  }
-
-  function clearFilters() {
-    setSearch(''); setLevel(''); setLocation(''); setEmpType('');
-    setPage(0);
-  }
-
-  const from = totalElements === 0 ? 0 : page * pageSize + 1;
-  const to   = Math.min((page + 1) * pageSize, totalElements);
+  const from     = totalElements === 0 ? 0 : page * pageSize + 1;
+  const to       = Math.min((page + 1) * pageSize, totalElements);
   const pageRange = getPageRange(page, totalPages);
 
   return (
     <section className="section" style={{ background: 'var(--ink-2)' }}>
-      <div className="section-header">
+      <style>{`@keyframes progressCrawl{0%{width:0%}40%{width:65%}70%{width:82%}100%{width:90%}}`}</style>
+      <div className="section-header" style={{ marginBottom: 20 }}>
         <span className="section-tag">Browse Data</span>
         <h2 className="section-title">Salary <em>Database</em></h2>
       </div>
 
+      {/* ── View toggle ── */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 28, background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
+        {[
+          { id: 'salaries', label: '📄 Salary Database' },
+          { id: 'levels',   label: '🗂 Level Guide' },
+        ].map(t => (
+          <button key={t.id} onClick={() => { TopProgressBar.start(); setView(t.id); setTimeout(() => TopProgressBar.done(), 150); }} style={{
+            padding: '7px 18px', borderRadius: 7, border: 'none', cursor: 'pointer',
+            fontSize: 13, fontWeight: view === t.id ? 600 : 400,
+            background: view === t.id ? 'var(--panel)' : 'transparent',
+            color: view === t.id ? 'var(--text-1)' : 'var(--text-3)',
+            boxShadow: view === t.id ? '0 1px 4px rgba(0,0,0,0.12)' : 'none',
+            transition: 'all 0.15s',
+          }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Level Guide view ── */}
+      {view === 'levels' && <LevelGuideView />}
+
+      {/* ── Salary Database view ── */}
+      {view === 'salaries' && (<>
+
       {/* ── FILTER BAR ── */}
       <div className="filter-bar">
-        <div className="search-box">
-          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
-          <input
-            className="input-field"
-            type="text"
-            placeholder="Search by company or role..."
-            value={search}
-            onChange={handleSearchChange}
-          />
+        {/* Search box with hint */}
+        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+          <div className="search-box" style={{ width: '100%' }}>
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              className="input-field"
+              type="text"
+              placeholder="Search by company or role…"
+              value={inputValue}
+              onChange={handleSearchChange}
+              onKeyDown={handleSearchKeyDown}
+              style={{ paddingRight: isDirty ? 60 : 10 }}
+            />
+            {/* Enter hint — shown when 3+ chars typed but not yet committed */}
+            {inputValue.length >= SEARCH_MIN_CHARS && isDirty && (
+              <span
+                onClick={() => commitSearch(inputValue)}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  fontSize: 10, color: 'var(--viz-1, #3b82f6)',
+                  fontFamily: "'IBM Plex Mono',monospace",
+                  cursor: 'pointer', userSelect: 'none',
+                  background: 'var(--bg-2)', padding: '1px 5px',
+                  borderRadius: 4, border: '1px solid var(--border)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ↵ Search
+              </span>
+            )}
+          </div>
+          {/* Too-short hint */}
+          {showHint && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 4px)', left: 0,
+              fontSize: 10, color: 'var(--text-3)',
+              fontFamily: "'IBM Plex Mono',monospace",
+            }}>
+              Type {SEARCH_MIN_CHARS - inputValue.length} more character{SEARCH_MIN_CHARS - inputValue.length !== 1 ? 's' : ''} to search
+            </div>
+          )}
         </div>
 
         <select className="select-field" value={level} onChange={handleFilterChange(setLevel)}>
@@ -178,9 +287,9 @@ export default function SalariesPage() {
             onClick={clearFilters}
             style={{
               padding: '0 14px', height: 38, fontSize: 12, cursor: 'pointer',
-              background: 'var(--rose-dim)', color: 'var(--rose)',
-              border: '1px solid rgba(224,92,122,0.25)', borderRadius: 8,
-              fontFamily: "'JetBrains Mono',monospace", whiteSpace: 'nowrap', flexShrink: 0,
+              background: 'var(--viz-2-dim, #f5f3ff)', color: 'var(--viz-2, #8b5cf6)',
+              border: '1px solid #8b5cf640', borderRadius: 8,
+              fontFamily: "'IBM Plex Mono',monospace", whiteSpace: 'nowrap', flexShrink: 0,
             }}
           >
             ✕ Clear
@@ -190,25 +299,32 @@ export default function SalariesPage() {
 
       {/* ── STATES ── */}
       {loading && (
-        <div style={{ textAlign:'center', padding:'60px 0', color:'var(--text-3)', fontFamily:"'JetBrains Mono',monospace", fontSize:13 }}>
-          Loading salaries…
+        <div style={{ padding: '60px 0 58px' }}>
+          <div style={{ width: '100%', height: 3, background: 'var(--bg-3)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              background: 'linear-gradient(90deg,#38bdf8,#0ea5e9)',
+              borderRadius: 99,
+              animation: 'progressCrawl 2s cubic-bezier(0.05,0.6,0.4,1) forwards',
+            }} />
+          </div>
         </div>
       )}
       {!loading && error && (
-        <div style={{ textAlign:'center', padding:'60px 0', color:'var(--rose)', fontSize:14 }}>
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--rose)', fontSize: 14 }}>
           {error}<br/>
-          <button onClick={fetchSalaries} style={{ marginTop:12, padding:'8px 20px', cursor:'pointer' }}>Retry</button>
+          <button onClick={fetchSalaries} style={{ marginTop: 12, padding: '8px 20px', cursor: 'pointer' }}>Retry</button>
         </div>
       )}
       {!loading && !error && rows.length === 0 && (
-        <div style={{ textAlign:'center', padding:'60px 20px' }}>
-          <div style={{ fontSize:40, marginBottom:16 }}>🔍</div>
-          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, color:'var(--text-1)', marginBottom:8 }}>No salaries found</div>
-          <div style={{ fontSize:14, color:'var(--text-3)', marginBottom:16 }}>
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>🔍</div>
+          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: 'var(--text-1)', marginBottom: 8 }}>No salaries found</div>
+          <div style={{ fontSize: 14, color: 'var(--text-3)', marginBottom: 16 }}>
             {isFiltering ? 'Try adjusting your filters' : 'No approved salary entries yet'}
           </div>
           {isFiltering && (
-            <button onClick={clearFilters} style={{ padding:'8px 20px', cursor:'pointer', fontSize:13 }}>Clear filters</button>
+            <button onClick={clearFilters} style={{ padding: '8px 20px', cursor: 'pointer', fontSize: 13 }}>Clear filters</button>
           )}
         </div>
       )}
@@ -217,43 +333,36 @@ export default function SalariesPage() {
         <>
           <SalaryTable rows={rows} />
 
-          {/* ── PAGINATION BAR ── */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            flexWrap: 'wrap', gap: 12, marginTop: 24,
-          }}>
-            {/* Left: entry count + page size picker */}
-            <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-              <span style={{ fontSize:13, color:'var(--text-3)', fontFamily:"'JetBrains Mono',monospace" }}>
+          {/* ── PAGINATION ── */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginTop: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <span style={{ fontSize: 13, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
                 {totalElements === 0 ? 'No entries' : `Showing ${from}–${to} of ${totalElements} entries`}
               </span>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <span style={{ fontSize:12, color:'var(--text-3)' }}>Rows:</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Rows:</span>
                 <select
                   value={pageSize}
                   onChange={handlePageSizeChange}
                   style={{
                     fontSize: 12, padding: '4px 24px 4px 10px',
-                    background: 'var(--ink-3)', border: '1px solid var(--border)',
+                    background: 'var(--bg-2)', border: '1px solid var(--border)',
                     borderRadius: 7, color: 'var(--text-1)', cursor: 'pointer',
-                    fontFamily: "'JetBrains Mono',monospace",
+                    fontFamily: "'IBM Plex Mono',monospace",
                   }}
                 >
-                  {PAGE_SIZE_OPTIONS.map(n => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
+                  {PAGE_SIZE_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
             </div>
 
-            {/* Right: page buttons */}
             {totalPages > 1 && (
               <div className="page-btns">
                 <button className="page-btn" disabled={page === 0} onClick={() => setPage(0)} title="First">«</button>
                 <button className="page-btn" disabled={page === 0} onClick={() => setPage(p => p - 1)}>←</button>
                 {pageRange.map((p, i) =>
                   p === '...'
-                    ? <span key={`ellipsis-${i}`} style={{ padding:'0 4px', color:'var(--text-3)', fontSize:13 }}>…</span>
+                    ? <span key={`e-${i}`} style={{ padding: '0 4px', color: 'var(--text-3)', fontSize: 13 }}>…</span>
                     : <button key={p} className={`page-btn${p === page ? ' active' : ''}`} onClick={() => setPage(p)}>{p + 1}</button>
                 )}
                 <button className="page-btn" disabled={page === totalPages - 1} onClick={() => setPage(p => p + 1)}>→</button>
@@ -263,6 +372,8 @@ export default function SalariesPage() {
           </div>
         </>
       )}
+    </>
+    )}
     </section>
   );
 }

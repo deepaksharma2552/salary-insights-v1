@@ -3,7 +3,8 @@ import api from '../../services/api';
 
 export default function AdminAuditLogs() {
   const [logs,    setLogs]    = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading,   setLoading]   = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [page,    setPage]    = useState(0);
   const [total,   setTotal]   = useState(0);
 
@@ -12,10 +13,13 @@ export default function AdminAuditLogs() {
     api.get('/admin/audit-logs', { params: { page, size: 20 } })
       .then(r => {
         const paged = r.data?.data;
-        setLogs(paged?.content ?? []);
+        const logs = paged?.content ?? [];
+        console.log('[AdminAuditLogs] loaded:', logs.length, 'logs, total:', paged?.totalElements);
+        setLogs(logs);
         setTotal(paged?.totalElements ?? 0);
+        setLoadError(null);
       })
-      .catch(console.error)
+      .catch(err => setLoadError(`${err.response?.status ?? 'Network error'}: ${err.response?.data?.message ?? err.message}`))
       .finally(() => setLoading(false));
   }, [page]);
 
@@ -38,9 +42,16 @@ export default function AdminAuditLogs() {
         </h2>
       </div>
 
+      {loadError && (
+        <div style={{ padding: '14px 18px', background: 'var(--rose-dim)', border: '1px solid rgba(224,92,122,0.2)', borderRadius: 12, color: 'var(--rose)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 16 }}>⚠</span>
+          <span>{loadError}</span>
+          <button onClick={load} style={{ marginLeft: 'auto', padding: '4px 12px', fontSize: 12, fontWeight: 600, background: 'rgba(224,92,122,0.15)', color: 'var(--rose)', border: '1px solid rgba(224,92,122,0.3)', borderRadius: 6, cursor: 'pointer' }}>Retry</button>
+        </div>
+      )}
       {loading ? (
         <div style={{ color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>Loading…</div>
-      ) : logs.length === 0 ? (
+      ) : !loadError && logs.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)' }}>No audit logs yet.</div>
       ) : (
         <>
