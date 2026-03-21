@@ -26,6 +26,7 @@ public class GuideMapping extends BaseEntity {
      * All mapping rows for the same company level must sum to 100.
      * 100 = exact match. Values like 60+40 indicate the role spans two levels.
      */
+    @Builder.Default
     @Column(name = "overlap_pct", nullable = false)
     private Integer overlapPct = 100;
 }

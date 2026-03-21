@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "guide_company_levels",
     indexes = @Index(name = "idx_guide_co_level_company", columnList = "company_id"))
@@ -29,7 +32,8 @@ public class GuideCompanyLevel extends BaseEntity {
     private String functionCategory;
 
     // 1:many mappings — a level can span multiple standard levels with overlap percentages
+    @Builder.Default
     @OneToMany(mappedBy = "guideCompanyLevel", cascade = CascadeType.ALL,
                orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<GuideMapping> guideMappings = new java.util.ArrayList<>();
+    private List<GuideMapping> guideMappings = new ArrayList<>();
 }
