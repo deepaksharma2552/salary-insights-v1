@@ -50,4 +50,13 @@ public class Referral extends BaseEntity {
      */
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
+
+    /**
+     * Admin-controlled visibility flag.
+     * false = hidden from public board ("Paused") but not permanently rejected.
+     * Only meaningful on ACCEPTED referrals — PENDING/REJECTED are never shown publicly.
+     */
+    @Builder.Default
+    @Column(name = "active", nullable = false)
+    private Boolean active = true;
 }

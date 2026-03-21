@@ -24,11 +24,14 @@ public interface ReferralRepository extends JpaRepository<Referral, UUID> {
     Page<Referral> findByStatusOrderByCreatedAtDesc(ReferralStatus status, Pageable pageable);
 
     /**
-     * Public board: ACCEPTED and not yet expired.
+     * Public board: ACCEPTED, not yet expired, and not paused by admin.
      * Only these appear on the Referral Board page.
      */
-    @Query("SELECT r FROM Referral r WHERE r.status = 'ACCEPTED' AND r.expiresAt > :now ORDER BY r.createdAt DESC")
+    @Query("SELECT r FROM Referral r WHERE r.status = 'ACCEPTED' AND r.active = true AND r.expiresAt > :now ORDER BY r.createdAt DESC")
     Page<Referral> findActiveAccepted(LocalDateTime now, Pageable pageable);
+
+    /** Admin: filter by active flag — used for the Paused view. */
+    Page<Referral> findByStatusAndActiveOrderByCreatedAtDesc(ReferralStatus status, boolean active, Pageable pageable);
 
     long countByStatus(ReferralStatus status);
 }

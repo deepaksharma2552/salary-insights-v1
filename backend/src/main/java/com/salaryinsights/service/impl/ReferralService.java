@@ -109,10 +109,17 @@ public class ReferralService {
     // ── Admin-facing ───────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public PagedResponse<ReferralResponse> getAllReferrals(ReferralStatus statusFilter, Pageable pageable) {
-        Page<Referral> page = statusFilter != null
-                ? referralRepository.findByStatusOrderByCreatedAtDesc(statusFilter, pageable)
-                : referralRepository.findAllByOrderByCreatedAtDesc(pageable);
+    public PagedResponse<ReferralResponse> getAllReferrals(ReferralStatus statusFilter, Boolean pausedOnly, Pageable pageable) {
+        Page<Referral> page;
+        if (Boolean.TRUE.equals(pausedOnly)) {
+            // Paused = ACCEPTED but admin-hidden
+            page = referralRepository.findByStatusAndActiveOrderByCreatedAtDesc(
+                    ReferralStatus.ACCEPTED, false, pageable);
+        } else if (statusFilter != null) {
+            page = referralRepository.findByStatusOrderByCreatedAtDesc(statusFilter, pageable);
+        } else {
+            page = referralRepository.findAllByOrderByCreatedAtDesc(pageable);
+        }
         return PagedResponse.of(page.map(this::toResponse));
     }
 
@@ -140,6 +147,27 @@ public class ReferralService {
         return toResponse(referral);
     }
 
+    @Transactional
+    public ReferralResponse toggleActive(UUID id) {
+        Referral referral = referralRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Referral not found"));
+
+        if (referral.getStatus() != ReferralStatus.ACCEPTED) {
+            throw new BadRequestException(
+                    "Only ACCEPTED referrals can be paused or reactivated (current status: " + referral.getStatus() + ")");
+        }
+
+        boolean wasActive = referral.getActive() != null ? referral.getActive() : true;
+        referral.setActive(!wasActive);
+        referral = referralRepository.save(referral);
+
+        String action = wasActive ? "PAUSED" : "REACTIVATED";
+        log.info("Referral {} {} by admin", id, action);
+        auditLogService.log("REFERRAL", id.toString(), action, null);
+
+        return toResponse(referral);
+    }
+
     // ── Mapping ────────────────────────────────────────────────────────────────
 
     private ReferralResponse toResponse(Referral r) {
@@ -160,6 +188,7 @@ public class ReferralService {
                 .referralLink(r.getReferralLink())
                 .status(r.getStatus())
                 .adminNote(r.getAdminNote())
+                .active(r.getActive() != null ? r.getActive() : true)
                 .referredByName(referredByName)
                 .referredByEmail(by != null ? by.getEmail() : null)
                 .expiresAt(r.getExpiresAt())

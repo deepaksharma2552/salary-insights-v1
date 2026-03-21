@@ -25,4 +25,8 @@ public class ReferralResponse {
     private LocalDateTime expiresAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    /** Whether this accepted referral is currently visible on the public board. */
+    @Builder.Default
+    private boolean active = true;
 }

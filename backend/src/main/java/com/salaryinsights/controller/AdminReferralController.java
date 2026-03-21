@@ -27,15 +27,29 @@ public class AdminReferralController {
     /**
      * GET /admin/referrals
      * All referrals, optionally filtered by status.
+     * Use ?paused=true to see ACCEPTED referrals that are currently hidden from the public board.
      */
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<ReferralResponse>>> getAll(
             @RequestParam(required = false) ReferralStatus status,
+            @RequestParam(required = false) Boolean paused,
             @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "50") int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return ResponseEntity.ok(
-                ApiResponse.success(referralService.getAllReferrals(status, pageable)));
+                ApiResponse.success(referralService.getAllReferrals(status, paused, pageable)));
+    }
+
+    /**
+     * PATCH /admin/referrals/{id}/toggle-active
+     * Pause (hide from public board) or reactivate an ACCEPTED referral.
+     * Does not change the referral's ACCEPTED status — purely a visibility toggle.
+     */
+    @PatchMapping("/{id}/toggle-active")
+    public ResponseEntity<ApiResponse<ReferralResponse>> toggleActive(@PathVariable UUID id) {
+        ReferralResponse response = referralService.toggleActive(id);
+        String msg = response.isActive() ? "Referral reactivated" : "Referral paused";
+        return ResponseEntity.ok(ApiResponse.success(msg, response));
     }
 
     /**
