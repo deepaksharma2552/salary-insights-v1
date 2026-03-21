@@ -38,17 +38,14 @@ function Tooltip({ text, detail, style }) {
   );
 }
 
-/* ─── Overlap Dot — ramp-based, title inside ─────────────────────────────── */
+/* ─── Overlap Dot — solid circle above, title label below ────────────────── */
 function OverlapDot({ palette, title, overlapPct, onHover, onLeave }) {
   const isExact = overlapPct === 100;
   const p       = palette;
 
-  // Exact: full size + full ramp fill. Partial: smaller + reduced opacity.
-  const size    = isExact ? 44 : Math.round(30 + (overlapPct / 100) * 16);
-  const opacity = isExact ? 1  : 0.5 + (overlapPct / 100) * 0.42;
-
-  // Font size scales with dot — keeps title readable at all sizes
-  const fs = Math.max(Math.round(size * 0.28), 9);
+  // Exact: 22px solid dot. Partial: smaller + faded — size scales with %.
+  const dotSize = isExact ? 22 : Math.round(10 + (overlapPct / 100) * 13);
+  const opacity = isExact ? 1  : 0.35 + (overlapPct / 100) * 0.55;
 
   return (
     <div
@@ -56,44 +53,41 @@ function OverlapDot({ palette, title, overlapPct, onHover, onLeave }) {
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
     >
-      <div style={{ position: 'relative', width: size, height: size }}>
-        {/* Circle with title inside */}
+      {/* Dot + optional % badge */}
+      <div style={{ position: 'relative', width: dotSize + (isExact ? 0 : 10), height: dotSize, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{
-          width: size, height: size, borderRadius: '50%',
-          background: p.fill,
-          border: `2px solid ${p.dot}`,
-          boxSizing: 'border-box',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: dotSize, height: dotSize,
+          borderRadius: '50%',
+          background: p.dot,
           opacity,
-        }}>
-          <span style={{
-            fontSize: fs, fontWeight: 700,
-            color: p.text,
-            fontFamily: "'JetBrains Mono',monospace",
-            letterSpacing: '-0.03em',
-            lineHeight: 1,
-            textAlign: 'center',
-            maxWidth: size - 8,
-            overflow: 'hidden',
-            whiteSpace: 'nowrap',
-          }}>
-            {title}
-          </span>
-        </div>
-
-        {/* Percentage badge on partial overlaps */}
+          flexShrink: 0,
+        }} />
         {!isExact && (
           <div style={{
-            position: 'absolute', top: -4, right: -9,
+            position: 'absolute', top: -6, right: -2,
             background: p.dot, color: '#fff',
-            fontSize: 9, fontWeight: 700,
-            padding: '2px 5px', borderRadius: 4,
+            fontSize: 8, fontWeight: 700,
+            padding: '1px 4px', borderRadius: 3,
             fontFamily: "'JetBrains Mono',monospace",
-            whiteSpace: 'nowrap', lineHeight: 1.3,
+            whiteSpace: 'nowrap', lineHeight: 1.4,
+            opacity: 1,
           }}>
             {overlapPct}%
           </div>
         )}
+      </div>
+
+      {/* Title label — always fully readable, never clipped */}
+      <div style={{
+        fontSize: 11, fontWeight: 600,
+        color: p.text,
+        opacity,
+        whiteSpace: 'nowrap',
+        fontFamily: "'JetBrains Mono',monospace",
+        letterSpacing: '-0.02em',
+        textAlign: 'center',
+      }}>
+        {title}
       </div>
     </div>
   );
@@ -117,36 +111,26 @@ function ComparisonGrid({ grid, standardLevels, companies }) {
         background: 'var(--bg-2)',
       }}>
         {/* Exact match example */}
+        {/* Exact match example */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, color: 'var(--text-3)' }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: '50%',
-            background: '#EAF3DE', border: '2px solid #3B6D11',
-            boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 9, fontWeight: 700, color: '#27500A',
-            fontFamily: "'JetBrains Mono',monospace",
-          }}>L4</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#3B6D11' }} />
+            <span style={{ fontSize: 10, fontWeight: 600, color: '#27500A', fontFamily: "'JetBrains Mono',monospace" }}>L4</span>
+          </div>
           Exact match
         </div>
         {/* Partial match example */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, color: 'var(--text-3)' }}>
-          <div style={{ position: 'relative', width: 32, height: 24 }}>
-            <div style={{
-              width: 22, height: 22, borderRadius: '50%',
-              background: '#EAF3DE', border: '2px solid #3B6D11',
-              boxSizing: 'border-box', opacity: 0.65,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 8, fontWeight: 700, color: '#27500A',
-              fontFamily: "'JetBrains Mono',monospace",
-            }}>L5</div>
-            <div style={{
-              position: 'absolute', top: -3, right: 0,
-              background: '#3B6D11', color: '#fff',
-              fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 4,
-            }}>60%</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#3B6D11', opacity: 0.55 }} />
+              <div style={{ position: 'absolute', top: -6, right: -10, background: '#3B6D11', color: '#fff', fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 3 }}>60%</div>
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 600, color: '#27500A', opacity: 0.55, fontFamily: "'JetBrains Mono',monospace" }}>SDE III</span>
           </div>
           Partial span
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text-3)' }}>Smaller = lower %</div>
+        <div style={{ fontSize: 11, color: 'var(--text-3)' }}>Smaller dot = lower %</div>
 
         {/* Company colour key */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -154,7 +138,7 @@ function ComparisonGrid({ grid, standardLevels, companies }) {
             const p = palettes[i];
             return (
               <div key={co.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 12, height: 12, borderRadius: '50%', background: p.dot }} />
+                <CompanyLogo companyId={co.id} companyName={co.name} logoUrl={co.logoUrl} website={co.website} size={18} radius={4} />
                 <span style={{ fontSize: 11, fontWeight: 600, color: p.text }}>{co.name}</span>
               </div>
             );
@@ -181,9 +165,16 @@ function ComparisonGrid({ grid, standardLevels, companies }) {
                 <th key={co.id} style={{
                   padding: '10px 12px', textAlign: 'center',
                   borderBottom: '1px solid var(--border)', background: 'var(--bg-2)',
-                  minWidth: 120, borderLeft: '1px solid var(--border)',
+                  minWidth: 130, borderLeft: '1px solid var(--border)',
                 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: p.dot }}>{co.name}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                    <CompanyLogo
+                      companyId={co.id} companyName={co.name}
+                      logoUrl={co.logoUrl} website={co.website}
+                      size={28} radius={7}
+                    />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: p.dot, whiteSpace: 'nowrap' }}>{co.name}</span>
+                  </div>
                 </th>
               );
             })}
