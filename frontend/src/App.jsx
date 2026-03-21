@@ -31,6 +31,15 @@ import AdminGuideLevels     from './pages/admin/AdminGuideLevels';
 import AdminJobFunctions    from './pages/admin/AdminJobFunctions';
 import { AppDataProvider }  from './context/AppDataContext';
 import AdminSidebar         from './components/admin/AdminSidebar';
+import Footer              from './components/shared/Footer';
+import LevelGuideView      from './pages/public/LevelGuideView';
+
+// Static pages
+import AboutPage           from './pages/public/AboutPage';
+import FAQPage             from './pages/public/FAQPage';
+import ContactPage         from './pages/public/ContactPage';
+import PrivacyPage         from './pages/public/PrivacyPage';
+import TermsPage           from './pages/public/TermsPage';
 
 function PrivateRoute({ children, adminOnly = false }) {
   const { user } = useContext(AuthContext);
@@ -125,7 +134,15 @@ export default function App() {
             }/>
 
             <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Static pages */}
+            <Route path="/about"       element={<AboutPage />} />
+            <Route path="/faq"         element={<FAQPage />} />
+            <Route path="/contact"     element={<ContactPage />} />
+            <Route path="/privacy"     element={<PrivacyPage />} />
+            <Route path="/terms"       element={<TermsPage />} />
+            <Route path="/level-guide" element={<LevelGuideView />} />
           </Routes>
+        <Footer />
         </div>
       </BrowserRouter>
       </LaunchpadProvider>
