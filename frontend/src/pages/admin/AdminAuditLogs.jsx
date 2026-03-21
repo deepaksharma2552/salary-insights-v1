@@ -13,7 +13,9 @@ export default function AdminAuditLogs() {
     api.get('/admin/audit-logs', { params: { page, size: 20 } })
       .then(r => {
         const paged = r.data?.data;
-        setLogs(paged?.content ?? []);
+        const logs = paged?.content ?? [];
+        console.log('[AdminAuditLogs] loaded:', logs.length, 'logs, total:', paged?.totalElements);
+        setLogs(logs);
         setTotal(paged?.totalElements ?? 0);
         setLoadError(null);
       })

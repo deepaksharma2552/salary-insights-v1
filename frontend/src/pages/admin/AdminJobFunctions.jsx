@@ -61,7 +61,7 @@ export default function AdminJobFunctions() {
   const load = useCallback(() => {
     setLoading(true);
     api.get('/admin/job-functions')
-      .then(r => { setFunctions(r.data?.data ?? []); setLoadError(null); })
+      .then(r => { const fns = r.data?.data ?? []; console.log('[AdminJobFunctions] loaded:', fns.length, 'functions'); setFunctions(fns); setLoadError(null); })
       .catch(err => setLoadError(`${err.response?.status ?? 'Network error'}: ${err.response?.data?.message ?? err.message}`))
       .finally(() => setLoading(false));
   }, []);

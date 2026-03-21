@@ -15,7 +15,7 @@ export default function AdminCompanies() {
   const load = useCallback(() => {
     setLoading(true);
     api.get('/admin/companies')
-      .then(r => { setCompanies(r.data?.data?.content ?? []); setLoadError(null); })
+      .then(r => { const data = r.data?.data?.content ?? []; console.log('[AdminCompanies] loaded:', data.length, 'companies'); setCompanies(data); setLoadError(null); })
       .catch(err => setLoadError(`${err.response?.status ?? 'Network error'}: ${err.response?.data?.message ?? err.message}`))
       .finally(() => setLoading(false));
   }, []);
@@ -84,6 +84,9 @@ export default function AdminCompanies() {
               </tr>
             </thead>
             <tbody>
+              {companies.length === 0 && (
+                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-3)', fontStyle: 'italic' }}>No companies found.</td></tr>
+              )}
               {companies.map(c => (
                 <tr key={c.id}>
                   <td><div className="company-name">{c.name}</div></td>

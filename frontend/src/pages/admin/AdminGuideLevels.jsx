@@ -54,8 +54,8 @@ function StandardLevelsTab() {
   const load = useCallback(() => {
     setLoading(true);
     api.get('/admin/guide-levels/standard')
-      .then(r => setLevels(r.data?.data ?? []))
-      .catch(err => setError(err.response?.data?.message ?? `Load failed (${err.response?.status ?? 'network error'})`))
+      .then(r => { const lvls = r.data?.data ?? []; console.log('[AdminGuideLevels/standard] loaded:', lvls.length, 'levels'); setLevels(lvls); })
+      .catch(err => { console.error('[AdminGuideLevels/standard] error:', err.response?.status, err.response?.data); setError(err.response?.data?.message ?? `Load failed (${err.response?.status ?? 'network error'})`); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -225,8 +225,8 @@ function CompanyLevelsTab({ standardLevels }) {
   const loadLevels = useCallback((companyId) => {
     setLoading(true);
     api.get(`/admin/guide-levels/company/${companyId}`)
-      .then(r => setLevels(r.data?.data ?? []))
-      .catch(err => setError(err.response?.data?.message ?? `Load failed (${err.response?.status ?? 'network error'})`))
+      .then(r => { const lvls = r.data?.data ?? []; console.log('[AdminGuideLevels/company] loaded:', lvls.length, 'levels'); setLevels(lvls); })
+      .catch(err => { console.error('[AdminGuideLevels/company] error:', err.response?.status); setError(err.response?.data?.message ?? `Load failed (${err.response?.status ?? 'network error'})`); })
       .finally(() => setLoading(false));
   }, []);
 

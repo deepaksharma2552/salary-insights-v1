@@ -39,7 +39,7 @@ export default function AdminReferrals() {
     const params = { page: 0, size: 50 };
     if (statusFilter) params.status = statusFilter;
     api.get('/admin/referrals', { params })
-      .then(r => setReferrals(r.data?.data?.content ?? []))
+      .then(r => { const refs = r.data?.data?.content ?? []; console.log('[AdminReferrals] loaded:', refs.length, 'referrals'); setReferrals(refs); })
       .catch(err => setFetchError(`${err.response?.status ?? 'Network error'}: ${err.response?.data?.message ?? err.message}`))
       .finally(() => setLoading(false));
   }, [statusFilter]);
