@@ -4,15 +4,222 @@ import CompanyLogo from '../../components/shared/CompanyLogo';
 import TopProgressBar from '../../components/shared/TopProgressBar';
 
 const MAX_COMPANIES = 5;
-const ACCENT = ['#3b82f6','#8b5cf6','#06b6d4','#6366f1','#a78bfa'];
+const ACCENT = ['#4285f4','#0078d4','#f7a600','#e8892b','#8b5cf6'];
 
-/* ─── Company autocomplete chip selector ─────────────────────────────────── */
+/* ─── Tooltip ─────────────────────────────────────────────────────────────── */
+function Tooltip({ text, detail, style }) {
+  return (
+    <div style={{
+      position: 'absolute', zIndex: 50, pointerEvents: 'none',
+      background: 'var(--panel)', border: '1px solid var(--border)',
+      borderRadius: 10, padding: '8px 12px',
+      boxShadow: '0 4px 20px rgba(0,0,0,.13)',
+      minWidth: 160, maxWidth: 240,
+      ...style,
+    }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', marginBottom: detail ? 4 : 0 }}>{text}</div>
+      {detail && <div style={{ fontSize: 11, color: 'var(--text-3)', lineHeight: 1.5 }}>{detail}</div>}
+    </div>
+  );
+}
+
+/* ─── Overlap Dot ─────────────────────────────────────────────────────────── */
+function OverlapDot({ color, short, title, overlapPct, onHover, onLeave }) {
+  const isExact = overlapPct === 100;
+  const alpha   = 0.22 + (overlapPct / 100) * 0.65;
+  const size    = isExact ? 36 : 24 + Math.round((overlapPct / 100) * 14);
+  const [r, g, b] = hexRgb(color);
+
+  return (
+    <div
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'default', position: 'relative' }}
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+    >
+      <div style={{ position: 'relative', width: size, height: size }}>
+        <div style={{
+          width: size, height: size, borderRadius: '50%',
+          background: `rgba(${r},${g},${b},${alpha})`,
+          border: isExact ? 'none' : `2px dashed rgba(${r},${g},${b},0.7)`,
+          boxSizing: 'border-box',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: Math.round(size * 0.28), fontWeight: 700,
+          color: `rgba(${r},${g},${b},1)`,
+          fontFamily: "'JetBrains Mono',monospace",
+        }}>
+          {short}
+        </div>
+        {!isExact && (
+          <div style={{
+            position: 'absolute', top: -4, right: -6,
+            background: `rgba(${r},${g},${b},0.9)`,
+            color: 'white', fontSize: 8, fontWeight: 700,
+            padding: '1px 4px', borderRadius: 4,
+            fontFamily: "'JetBrains Mono',monospace",
+            whiteSpace: 'nowrap',
+          }}>
+            {overlapPct}%
+          </div>
+        )}
+      </div>
+      <div style={{
+        fontSize: 9, fontWeight: 600,
+        color: `rgba(${r},${g},${b},0.9)`,
+        whiteSpace: 'nowrap', maxWidth: 56,
+        overflow: 'hidden', textOverflow: 'ellipsis',
+        textAlign: 'center',
+        fontFamily: "'JetBrains Mono',monospace",
+      }}>
+        {title}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Comparison Grid ─────────────────────────────────────────────────────── */
+function ComparisonGrid({ grid, standardLevels, companies }) {
+  const [tooltip, setTooltip] = useState(null);
+
+  if (!standardLevels.length || !companies.length) return null;
+
+  const companyColors = {};
+  companies.forEach((c, i) => { companyColors[c.id] = ACCENT[i % ACCENT.length]; });
+
+  const companyShort = {};
+  companies.forEach(c => {
+    companyShort[c.id] = c.name.slice(0, 2).toUpperCase();
+  });
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '14px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg-2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-3)' }}>
+          <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(100,116,139,.35)' }} />
+          Exact match (100%)
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-3)' }}>
+          <div style={{ width: 16, height: 16, borderRadius: '50%', background: 'rgba(100,116,139,.2)', border: '2px dashed rgba(100,116,139,.5)', boxSizing: 'border-box' }} />
+          Partial span — badge = %
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-3)' }}>
+          <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", background: 'rgba(100,116,139,.15)', padding: '1px 5px', borderRadius: 3 }}>60%</div>
+          Dot size reflects overlap %
+        </div>
+      </div>
+
+      {/* Table */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 400 }}>
+        <thead>
+          <tr>
+            <th style={{
+              padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600,
+              color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace",
+              textTransform: 'uppercase', letterSpacing: '0.08em',
+              borderBottom: '1px solid var(--border)', background: 'var(--bg-2)',
+              whiteSpace: 'nowrap', minWidth: 160,
+            }}>
+              Level
+            </th>
+            {companies.map((c, i) => (
+              <th key={c.id} style={{
+                padding: '10px 16px', textAlign: 'center',
+                borderBottom: '1px solid var(--border)', background: 'var(--bg-2)',
+                minWidth: 120,
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                  <CompanyLogo companyId={c.id} companyName={c.name} logoUrl={c.logoUrl} website={c.website} size={26} radius={6} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: ACCENT[i % ACCENT.length] }}>{c.name}</span>
+                </div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {standardLevels.map((sl, rowIdx) => {
+            const rowCells = grid[sl.id] ?? {};
+            const hasAny = companies.some(c => (rowCells[c.id] ?? []).length > 0);
+            if (!hasAny) return null;
+
+            return (
+              <tr key={sl.id} style={{ background: rowIdx % 2 === 0 ? 'transparent' : 'var(--bg-2)' }}>
+                {/* Standard level label */}
+                <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{sl.name}</div>
+                      {sl.description && (
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{sl.description}</div>
+                      )}
+                    </div>
+                  </div>
+                </td>
+
+                {/* Company cells */}
+                {companies.map((c, ci) => {
+                  const cells = rowCells[c.id] ?? [];
+                  const color = ACCENT[ci % ACCENT.length];
+                  const short = companyShort[c.id];
+
+                  return (
+                    <td key={c.id} style={{
+                      padding: '10px 8px', textAlign: 'center',
+                      borderBottom: '1px solid var(--border)',
+                      position: 'relative',
+                    }}>
+                      {cells.length === 0 ? (
+                        <span style={{ color: 'var(--border)', fontSize: 18 }}>—</span>
+                      ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', alignItems: 'flex-end' }}>
+                          {cells.map((cell, ci2) => (
+                            <div key={ci2} style={{ position: 'relative' }}>
+                              <OverlapDot
+                                color={color}
+                                short={short}
+                                title={cell.title}
+                                overlapPct={cell.overlapPct ?? 100}
+                                onHover={e => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const detail = cell.overlapPct < 100
+                                    ? `${cell.overlapPct}% of ${cell.title} sits at ${sl.name}`
+                                    : `${cell.title} maps exactly to ${sl.name}`;
+                                  setTooltip({ x: rect.left, y: rect.top, text: `${c.name} · ${cell.title}`, detail });
+                                }}
+                                onLeave={() => setTooltip(null)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      {/* Floating tooltip */}
+      {tooltip && (
+        <Tooltip
+          text={tooltip.text}
+          detail={tooltip.detail}
+          style={{ position: 'fixed', left: tooltip.x + 14, top: tooltip.y - 8 }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ─── Company Selector ────────────────────────────────────────────────────── */
 function CompanySelector({ selected, onChange }) {
-  const [query,       setQuery]       = useState('');
+  const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
-  const [showSug,     setShowSug]     = useState(false);
+  const [showSug, setShowSug] = useState(false);
   const debounceRef = useRef(null);
-  const wrapRef     = useRef(null);
+  const wrapRef = useRef(null);
 
   useEffect(() => {
     function h(e) { if (wrapRef.current && !wrapRef.current.contains(e.target)) setShowSug(false); }
@@ -28,10 +235,8 @@ function CompanySelector({ selected, onChange }) {
     debounceRef.current = setTimeout(() => {
       api.get('/public/companies', { params: { name: v, size: 8, page: 0 } })
         .then(r => {
-          const results = (r.data?.data?.content ?? [])
-            .filter(c => !selected.find(s => s.id === c.id));
-          setSuggestions(results);
-          setShowSug(true);
+          const results = (r.data?.data?.content ?? []).filter(c => !selected.find(s => s.id === c.id));
+          setSuggestions(results); setShowSug(true);
         }).catch(console.error);
     }, 300);
   }
@@ -46,7 +251,6 @@ function CompanySelector({ selected, onChange }) {
 
   return (
     <div>
-      {/* Selected chips */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: selected.length ? 12 : 0 }}>
         {selected.map((c, i) => (
           <div key={c.id} style={{
@@ -61,8 +265,6 @@ function CompanySelector({ selected, onChange }) {
           </div>
         ))}
       </div>
-
-      {/* Search input */}
       {selected.length < MAX_COMPANIES && (
         <div ref={wrapRef} style={{ position: 'relative', maxWidth: 340 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10 }}>
@@ -100,111 +302,21 @@ function CompanySelector({ selected, onChange }) {
   );
 }
 
-/* ─── Comparison grid ────────────────────────────────────────────────────── */
-function ComparisonGrid({ grid, standardLevels, companies }) {
-  if (!standardLevels.length || !companies.length) return null;
-
-  return (
-    <div style={{ overflowX: 'auto', marginTop: 8 }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 400 }}>
-        <thead>
-          <tr>
-            {/* Standard level header column */}
-            <th style={{
-              padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600,
-              color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace",
-              textTransform: 'uppercase', letterSpacing: '0.08em',
-              borderBottom: '1px solid var(--border)', background: 'var(--bg-2)',
-              whiteSpace: 'nowrap', minWidth: 160,
-            }}>
-              Level
-            </th>
-            {companies.map((c, i) => (
-              <th key={c.id} style={{
-                padding: '10px 16px', textAlign: 'center',
-                borderBottom: '1px solid var(--border)', background: 'var(--bg-2)',
-                minWidth: 140,
-              }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-                  <CompanyLogo companyId={c.id} companyName={c.name} logoUrl={c.logoUrl} website={c.website} size={28} radius={6} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: ACCENT[i % ACCENT.length] }}>{c.name}</span>
-                </div>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {standardLevels.map((sl, rowIdx) => {
-            const rowCells = grid[sl.id] ?? {};
-            const hasAny = companies.some(c => rowCells[c.id]);
-            if (!hasAny) return null; // skip rows with no data across selected companies
-
-            return (
-              <tr key={sl.id} style={{ background: rowIdx % 2 === 0 ? 'transparent' : 'var(--bg-2)' }}>
-                {/* Standard level cell */}
-                <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{sl.name}</div>
-                      {sl.description && (
-                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{sl.description}</div>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                {/* Company cells */}
-                {companies.map((c, ci) => {
-                  const cell = rowCells[c.id];
-                  const title = cell?.title ?? cell; // handle both GridCell obj and plain string
-                  return (
-                    <td key={c.id} style={{ padding: '14px 16px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>
-                      {title ? (
-                        <span style={{
-                          display: 'inline-block', padding: '4px 12px', borderRadius: 99,
-                          background: `${ACCENT[ci % ACCENT.length]}12`,
-                          border: `1px solid ${ACCENT[ci % ACCENT.length]}35`,
-                          fontSize: 12, fontWeight: 600,
-                          color: ACCENT[ci % ACCENT.length],
-                          fontFamily: "'JetBrains Mono',monospace",
-                        }}>
-                          {title}
-                        </span>
-                      ) : (
-                        <span style={{ color: 'var(--text-4,var(--text-3))', fontSize: 20 }}>—</span>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
+/* ─── Hex helper ──────────────────────────────────────────────────────────── */
+function hexRgb(hex) {
+  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
 }
 
-/* ─── Main Level Guide View ──────────────────────────────────────────────── */
+/* ─── Main View ───────────────────────────────────────────────────────────── */
 export default function LevelGuideView() {
   const [selected,         setSelected]         = useState([]);
   const [functionCategory, setFunctionCategory] = useState('Engineering');
   const [gridData,         setGridData]         = useState(null);
-  const [allStdLevels,     setAllStdLevels]     = useState([]);
   const [loading,          setLoading]          = useState(false);
   const [error,            setError]            = useState(null);
   const debounceRef = useRef(null);
-
   const FUNCTIONS = ['Engineering', 'Product', 'Program'];
 
-  // Fetch standard levels once for header labels
-  useEffect(() => {
-    api.get('/public/guide-levels/standard')
-      .then(r => setAllStdLevels(r.data?.data ?? []))
-      .catch(console.error);
-  }, []);
-
-  // Fetch grid whenever selection changes — debounced 400ms
   const fetchGrid = useCallback((companies) => {
     if (companies.length === 0) { setGridData(null); return; }
     setLoading(true); setError(null); TopProgressBar.start();
@@ -245,28 +357,22 @@ export default function LevelGuideView() {
             Compare Level Titles Across Companies
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-3)' }}>
-            Add up to {MAX_COMPANIES} companies to see how their internal titles map to each other. For example, how Flipkart's "MTS" compares to Google's "L5".
+            Add up to {MAX_COMPANIES} companies. Dot size and % badge show how much a role overlaps each standard level.
           </div>
         </div>
         <CompanySelector selected={selected} onChange={setSelected} />
-
-        {/* Function track selector */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 500, marginRight: 4 }}>Function:</span>
           {FUNCTIONS.map(fn => (
-            <button
-              key={fn}
-              onClick={() => { TopProgressBar.start(); setFunctionCategory(fn); }}
+            <button key={fn} onClick={() => { TopProgressBar.start(); setFunctionCategory(fn); }}
               style={{
                 padding: '4px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', transition: 'all 0.15s',
                 background: functionCategory === fn ? '#3b82f6' : 'var(--bg-3)',
-                color: functionCategory === fn ? '#fff' : 'var(--text-3)',
-                border: functionCategory === fn ? '1px solid #3b82f6' : '1px solid var(--border)',
+                color:      functionCategory === fn ? '#fff'    : 'var(--text-3)',
+                border:     functionCategory === fn ? '1px solid #3b82f6' : '1px solid var(--border)',
               }}
-            >
-              {fn}
-            </button>
+            >{fn}</button>
           ))}
         </div>
       </div>
@@ -282,8 +388,11 @@ export default function LevelGuideView() {
 
       {/* Loading */}
       {selected.length > 0 && loading && (
-        <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>
-          Loading level data…
+        <div style={{ padding: '32px 0 30px' }}>
+          <div style={{ width: '100%', height: 3, background: 'var(--bg-3)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{ height: '100%', background: 'linear-gradient(90deg,#38bdf8,#0ea5e9)', borderRadius: 99, animation: 'progressCrawl 2s cubic-bezier(0.05,0.6,0.4,1) forwards' }} />
+          </div>
+          <style>{`@keyframes progressCrawl{0%{width:0%}40%{width:65%}70%{width:82%}100%{width:90%}}`}</style>
         </div>
       )}
 

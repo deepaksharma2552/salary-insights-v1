@@ -182,14 +182,15 @@ function CompanyLevelsTab({ standardLevels }) {
   // Company levels state
   const [levels,  setLevels]  = useState([]);
   const [loading, setLoading] = useState(false);
-  const [addModal, setAddModal] = useState(false);
-  const [mapModal, setMapModal] = useState(null); // company level obj
-  const [newTitle, setNewTitle]   = useState('');
-  const [newDesc,  setNewDesc]    = useState('');
-  const [newFn,    setNewFn]      = useState('Engineering');
-  const [selStdId, setSelStdId] = useState('');
-  const [saving,   setSaving]   = useState(false);
-  const [error,    setError]    = useState('');
+  const [addModal,  setAddModal]  = useState(false);
+  const [mapModal,  setMapModal]  = useState(null); // company level obj
+  const [newTitle,  setNewTitle]  = useState('');
+  const [newDesc,   setNewDesc]   = useState('');
+  const [newFn,     setNewFn]     = useState('Engineering');
+  // overlap mapping state: [{stdId, pct}]
+  const [entries,   setEntries]   = useState([]);
+  const [saving,    setSaving]    = useState(false);
+  const [error,     setError]     = useState('');
 
   // Close autocomplete on outside click
   useEffect(() => {
@@ -252,22 +253,44 @@ function CompanyLevelsTab({ standardLevels }) {
     loadLevels(selCompany.id);
   }
 
-  async function saveMapping() {
-    if (!selStdId) return;
+  function remainingPct() {
+    return 100 - entries.reduce((s, e) => s + e.pct, 0);
+  }
+
+  function addEntry(stdId) {
+    const rem = remainingPct();
+    if (rem <= 0) return;
+    setEntries(prev => [...prev, { stdId, pct: Math.min(rem, 20) }]);
+  }
+
+  function removeEntry(idx) {
+    setEntries(prev => prev.filter((_, i) => i !== idx));
+  }
+
+  function updateEntry(idx, field, val) {
+    setEntries(prev => prev.map((e, i) => i === idx ? { ...e, [field]: val } : e));
+  }
+
+  async function saveOverlapMappings() {
+    const rem = remainingPct();
+    if (rem !== 0) { setError(`Percentages must sum to 100. Currently ${100 - rem}% allocated.`); return; }
+    if (entries.length === 0) { setError('Add at least one level mapping.'); return; }
     setSaving(true); setError(''); TopProgressBar.start();
     try {
       await api.post('/admin/guide-levels/mappings', {
         guideCompanyLevelId: mapModal.id,
-        guideStandardLevelId: selStdId,
+        entries: entries.map(e => ({ guideStandardLevelId: e.stdId, overlapPct: e.pct })),
       });
-      setMapModal(null); setSelStdId('');
+      setMapModal(null); setEntries([]);
       loadLevels(selCompany.id);
     } catch (e) { setError(e.response?.data?.message ?? 'Mapping failed'); }
     finally { setSaving(false); TopProgressBar.done(); }
   }
 
-  async function removeMapping(companyLevelId) {
+  async function removeAllMappings(companyLevelId) {
+    TopProgressBar.start();
     await api.delete(`/admin/guide-levels/mappings/company-level/${companyLevelId}`);
+    TopProgressBar.done();
     loadLevels(selCompany.id);
   }
 
@@ -354,10 +377,15 @@ function CompanyLevelsTab({ standardLevels }) {
                       </td>
                       <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{l.description || '—'}</td>
                       <td>
-                        {l.mappedStandardLevelName ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Tag label={`#${l.mappedStandardLevelRank} ${l.mappedStandardLevelName}`} />
-                            <button onClick={() => removeMapping(l.id)} style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>✕</button>
+                        {l.mappings && l.mappings.length > 0 ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                            {l.mappings.map((m, mi) => (
+                              <span key={mi} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 99, fontSize: 10, fontWeight: 600, background: 'var(--teal-dim,rgba(2,132,199,.1))', color: 'var(--teal,#0284c7)', border: '1px solid rgba(2,132,199,.2)', fontFamily: "'JetBrains Mono',monospace" }}>
+                                {m.overlapPct < 100 && <span style={{ opacity: .7 }}>{m.overlapPct}%</span>}
+                                {m.standardLevelName}
+                              </span>
+                            ))}
+                            <button onClick={() => removeAllMappings(l.id)} style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>✕</button>
                           </div>
                         ) : (
                           <span style={{ fontSize: 12, color: 'var(--rose)', fontStyle: 'italic' }}>Not mapped</span>
@@ -365,9 +393,13 @@ function CompanyLevelsTab({ standardLevels }) {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={() => { setMapModal(l); setSelStdId(l.mappedStandardLevelId ?? ''); setError(''); }}
+                          <button onClick={() => {
+                              setMapModal(l);
+                              setEntries((l.mappings ?? []).map(m => ({ stdId: m.standardLevelId, pct: m.overlapPct })));
+                              setError('');
+                            }}
                             style={{ padding: '4px 12px', fontSize: 12, fontWeight: 600, background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 6, cursor: 'pointer' }}>
-                            {l.mappedStandardLevelName ? 'Remap' : 'Map'}
+                            {l.mappings && l.mappings.length > 0 ? 'Remap' : 'Map'}
                           </button>
                           <button onClick={() => delLevel(l.id)} style={{ padding: '4px 12px', fontSize: 12, fontWeight: 600, background: 'var(--rose-dim)', color: 'var(--rose)', border: '1px solid rgba(224,92,122,0.2)', borderRadius: 6, cursor: 'pointer' }}>Del</button>
                         </div>
@@ -418,35 +450,92 @@ function CompanyLevelsTab({ standardLevels }) {
         </Modal>
       )}
 
-      {/* Map level modal */}
-      {mapModal && (
-        <Modal title={`Map "${mapModal.title}"`} onClose={() => setMapModal(null)}>
-          <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 16 }}>
-            Select the standard benchmark level that best matches <strong style={{ color: 'var(--text-1)' }}>{selCompany?.name} · {mapModal.title}</strong>
-          </p>
-          {error && <div style={{ padding: '10px 14px', background: 'var(--rose-dim)', borderRadius: 8, color: 'var(--rose)', fontSize: 13, marginBottom: 16 }}>{error}</div>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-            {standardLevels.length === 0 && (
-              <div style={{ color: 'var(--text-3)', fontSize: 13 }}>No standard levels defined yet. Add them in the Standard Levels tab first.</div>
+      {/* Map level modal — overlap percentages */}
+      {mapModal && (() => {
+        const rem = remainingPct();
+        const usedIds = new Set(entries.map(e => e.stdId));
+        const availLevels = standardLevels.filter(sl => !usedIds.has(sl.id));
+        return (
+          <Modal title={`Map "${mapModal.title}"`} onClose={() => { setMapModal(null); setEntries([]); }} width={520}>
+            <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 16 }}>
+              Set how <strong style={{ color: 'var(--text-1)' }}>{selCompany?.name} · {mapModal.title}</strong> maps across standard levels.
+              Percentages must sum to <strong style={{ color: 'var(--text-1)' }}>100%</strong>.
+            </p>
+            {error && <div style={{ padding: '10px 14px', background: 'var(--rose-dim)', borderRadius: 8, color: 'var(--rose)', fontSize: 13, marginBottom: 12 }}>{error}</div>}
+
+            {/* Allocated progress bar */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: rem === 0 ? '#16a34a' : rem < 0 ? 'var(--rose)' : 'var(--text-3)', marginBottom: 4 }}>
+                <span>{100 - rem}% allocated</span>
+                <span style={{ fontWeight: 600 }}>{rem === 0 ? '✓ Ready to save' : rem > 0 ? `${rem}% remaining` : `${Math.abs(rem)}% over`}</span>
+              </div>
+              <div style={{ height: 4, background: 'var(--border)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.min(100 - rem, 100)}%`, background: rem === 0 ? '#16a34a' : rem < 0 ? 'var(--rose)' : '#3b82f6', borderRadius: 99, transition: 'width .2s, background .2s' }} />
+              </div>
+            </div>
+
+            {/* Mapping entries */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+              {entries.length === 0 && (
+                <div style={{ fontSize: 13, color: 'var(--text-3)', fontStyle: 'italic', textAlign: 'center', padding: '12px 0' }}>No mappings yet — add one below.</div>
+              )}
+              {entries.map((entry, idx) => {
+                const sl = standardLevels.find(s => s.id === entry.stdId);
+                return (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--bg-2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <select
+                      value={entry.stdId}
+                      onChange={e => updateEntry(idx, 'stdId', e.target.value)}
+                      className="form-input"
+                      style={{ flex: 1, padding: '6px 10px', fontSize: 12 }}
+                    >
+                      {standardLevels.filter(sl => !usedIds.has(sl.id) || sl.id === entry.stdId).map(sl => (
+                        <option key={sl.id} value={sl.id}>#{sl.rank} {sl.name}</option>
+                      ))}
+                    </select>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      <input
+                        type="range" min={5} max={100} step={5}
+                        value={entry.pct}
+                        onChange={e => updateEntry(idx, 'pct', Number(e.target.value))}
+                        style={{ width: 88 }}
+                      />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', minWidth: 36, textAlign: 'right', fontFamily: "'JetBrains Mono',monospace" }}>{entry.pct}%</span>
+                    </div>
+                    <button onClick={() => removeEntry(idx)} style={{ fontSize: 16, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Add another level */}
+            {availLevels.length > 0 && rem > 0 && (
+              <select
+                value=""
+                onChange={e => { if (e.target.value) addEntry(e.target.value); }}
+                className="form-input"
+                style={{ width: '100%', fontSize: 12, color: 'var(--text-3)', marginBottom: 16 }}
+              >
+                <option value="">+ add another level overlap…</option>
+                {availLevels.map(sl => (
+                  <option key={sl.id} value={sl.id}>#{sl.rank} {sl.name}</option>
+                ))}
+              </select>
             )}
-            {standardLevels.map(sl => (
-              <label key={sl.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1px solid ${selStdId === sl.id ? '#3b82f6' : 'var(--border)'}`, background: selStdId === sl.id ? 'rgba(59,130,246,0.06)' : 'transparent', cursor: 'pointer', transition: 'all 0.12s' }}>
-                <input type="radio" name="stdLevel" value={sl.id} checked={selStdId === sl.id} onChange={() => setSelStdId(sl.id)} style={{ accentColor: '#3b82f6' }} />
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>#{sl.rank} {sl.name}</div>
-                  {sl.description && <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{sl.description}</div>}
-                </div>
-              </label>
-            ))}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-            <button className="btn-ghost" onClick={() => setMapModal(null)}>Cancel</button>
-            <button onClick={saveMapping} disabled={saving || !selStdId} style={{ padding: '9px 22px', fontSize: 13, fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer', opacity: (!selStdId || saving) ? 0.5 : 1 }}>
-              {saving ? 'Saving…' : 'Save Mapping'}
-            </button>
-          </div>
-        </Modal>
-      )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button className="btn-ghost" onClick={() => { setMapModal(null); setEntries([]); }}>Cancel</button>
+              <button
+                onClick={saveOverlapMappings}
+                disabled={saving || rem !== 0 || entries.length === 0}
+                style={{ padding: '9px 22px', fontSize: 13, fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, cursor: (saving || rem !== 0) ? 'not-allowed' : 'pointer', opacity: (saving || rem !== 0 || entries.length === 0) ? 0.5 : 1 }}
+              >
+                {saving ? 'Saving…' : 'Save Mapping'}
+              </button>
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 }
