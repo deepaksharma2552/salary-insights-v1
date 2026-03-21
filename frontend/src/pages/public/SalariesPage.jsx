@@ -178,6 +178,7 @@ export default function SalariesPage() {
 
   return (
     <section className="section" style={{ background: 'var(--ink-2)' }}>
+      <style>{`@keyframes progressCrawl{0%{width:0%}40%{width:65%}70%{width:82%}100%{width:90%}}`}</style>
       <div className="section-header" style={{ marginBottom: 20 }}>
         <span className="section-tag">Browse Data</span>
         <h2 className="section-title">Salary <em>Database</em></h2>
@@ -298,8 +299,15 @@ export default function SalariesPage() {
 
       {/* ── STATES ── */}
       {loading && (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 13 }}>
-          Loading salaries…
+        <div style={{ padding: '60px 0 58px' }}>
+          <div style={{ width: '100%', height: 3, background: 'var(--bg-3)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              background: 'linear-gradient(90deg,#38bdf8,#0ea5e9)',
+              borderRadius: 99,
+              animation: 'progressCrawl 2s cubic-bezier(0.05,0.6,0.4,1) forwards',
+            }} />
+          </div>
         </div>
       )}
       {!loading && error && (

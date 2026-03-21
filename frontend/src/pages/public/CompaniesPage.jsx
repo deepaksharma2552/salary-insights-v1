@@ -277,6 +277,7 @@ export default function CompaniesPage() {
 
   return (
     <section className="section">
+      <style>{`@keyframes progressCrawl{0%{width:0%}40%{width:65%}70%{width:82%}100%{width:90%}}`}</style>
       <div className="section-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:16, marginBottom:32 }}>
         <div>
           <span className="section-tag">Company Directory</span>
@@ -329,7 +330,18 @@ export default function CompaniesPage() {
         </select>
       </div>
 
-      {loading && <div style={{ textAlign:'center', padding:'60px 0', color:'var(--text-3)', fontFamily:"'JetBrains Mono',monospace", fontSize:13 }}>Loading companies…</div>}
+      {loading && (
+        <div style={{ padding: '60px 0 58px' }}>
+          <div style={{ width: '100%', height: 3, background: 'var(--bg-3)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              background: 'linear-gradient(90deg,#38bdf8,#0ea5e9)',
+              borderRadius: 99,
+              animation: 'progressCrawl 2s cubic-bezier(0.05,0.6,0.4,1) forwards',
+            }} />
+          </div>
+        </div>
+      )}
       {!loading && error && <div style={{ padding:'16px 20px', background:'var(--rose-dim)', border:'1px solid rgba(224,92,122,0.2)', borderRadius:12, color:'var(--rose)', fontSize:13 }}>{error}</div>}
       {!loading && !error && items.length === 0 && (
         <div style={{ textAlign:'center', padding:'60px 20px' }}>
