@@ -30,6 +30,10 @@ public interface CompanyRepository extends JpaRepository<Company, UUID> {
     Pageable pageable
 );
 
+    @Query("SELECT c FROM Company c WHERE " +
+       "(cast(:name as string) IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', cast(:name as string), '%')))")
+    Page<Company> searchAllCompanies(@Param("name") String name, Pageable pageable);
+
     boolean existsByName(String name);
 
     Optional<Company> findByNameIgnoreCase(String name);

@@ -53,8 +53,10 @@ public class CompanyService {
         return response;
     }
 
-    public PagedResponse<CompanyResponse> getAllCompaniesAdmin(Pageable pageable) {
-        Page<Company> page = companyRepository.findAll(pageable);
+    public PagedResponse<CompanyResponse> getAllCompaniesAdmin(String name, Pageable pageable) {
+        Page<Company> page = (name != null && !name.isBlank())
+                ? companyRepository.searchAllCompanies(name.trim(), pageable)
+                : companyRepository.findAll(pageable);
         return PagedResponse.of(page.map(companyMapper::toResponse));
     }
 

@@ -24,11 +24,12 @@ public class AdminCompanyController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<CompanyResponse>>> getAllCompanies(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) String name,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "10") int size) {
 
         PageRequest pageable = PageRequest.of(page, size, Sort.by("name").ascending());
-        return ResponseEntity.ok(ApiResponse.success(companyService.getAllCompaniesAdmin(pageable)));
+        return ResponseEntity.ok(ApiResponse.success(companyService.getAllCompaniesAdmin(name, pageable)));
     }
 
     @PostMapping
