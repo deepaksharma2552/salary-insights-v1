@@ -61,10 +61,10 @@ function JourneyCard({ emoji, title, desc, stats, actions, amber, featured }) {
 
       {/* Title — locked to 2 lines */}
       <div style={{
-        fontSize: 12, fontWeight: 700,
+        fontSize: 14, fontWeight: 700,
         color: amber ? '#78350f' : featured ? '#0284c7' : 'var(--text-1)',
         lineHeight: 1.35,
-        minHeight: 34,
+        minHeight: 38,
         marginBottom: 8,
       }}>
         {title}
@@ -72,10 +72,10 @@ function JourneyCard({ emoji, title, desc, stats, actions, amber, featured }) {
 
       {/* Description — locked height = 3 lines so stat strip always same Y */}
       <div style={{
-        fontSize: 10,
+        fontSize: 12,
         color: amber ? '#92400e' : 'var(--text-2)',
         lineHeight: 1.65,
-        height: 50,
+        height: 60,
         overflow: 'hidden',
         marginBottom: 14,
       }}>
@@ -111,7 +111,7 @@ function JourneyCard({ emoji, title, desc, stats, actions, amber, featured }) {
             }}>
               {s.value ?? <span style={{ opacity: 0.3 }}>—</span>}
             </div>
-            <div style={{ fontSize: 9, color: amber ? '#92400e' : 'var(--text-3)', marginTop: 3, textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: amber ? '#92400e' : 'var(--text-3)', marginTop: 3, textAlign: 'center' }}>
               {s.label}
             </div>
           </div>
@@ -126,9 +126,9 @@ function JourneyCard({ emoji, title, desc, stats, actions, amber, featured }) {
         {actions.map((a, i) => (
           <Link key={i} to={a.to} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            height: 32,
+            height: 34,
             borderRadius: 6,
-            fontSize: 10, fontWeight: 600,
+            fontSize: 12, fontWeight: 600,
             textDecoration: 'none',
             background: a.bg, color: a.color,
             ...(a.border ? { border: a.border } : {}),
@@ -150,7 +150,6 @@ export default function HomePage() {
   const [totalEntries,   setTotalEntries]   = useState(null);
   const [totalCompanies, setTotalCompanies] = useState(null);
   const [totalReferrals, setTotalReferrals] = useState(null);
-  const [topCompanies,   setTopCompanies]   = useState([]);
 
   useEffect(() => {
     // Recent salaries + totalEntries
@@ -160,11 +159,6 @@ export default function HomePage() {
         setRecentSalaries((paged?.content ?? []).map(mapSalary));
         setTotalEntries(paged?.totalElements ?? null);
       }).catch(console.error);
-
-    // Top companies (for ticker)
-    api.get('/public/salaries/analytics/by-company')
-      .then(res => setTopCompanies(res.data?.data ?? []))
-      .catch(console.error);
 
     // Companies count
     api.get('/public/companies', { params: { page: 0, size: 1 } })
@@ -238,7 +232,6 @@ export default function HomePage() {
     amber: true,
   };
 
-  const COMPANY_COLORS = ['#0ea5e9','#8b5cf6','#10b981','#f59e0b','#ef4444','#ec4899','#06b6d4','#84cc16','#f97316','#6366f1'];
 
   return (
     <>
@@ -246,98 +239,54 @@ export default function HomePage() {
           ① HERO — tagline left + live ticker right
       ══════════════════════════════════════════════════════ */}
       <section className="hero" style={{ padding: '56px 24px 48px', background: 'var(--panel)', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', display: 'grid', gridTemplateColumns: '1.05fr 0.95fr', gap: 32, alignItems: 'center' }}>
-
-          {/* Left: tagline + CTAs */}
-          <div>
-            <div className="hero-eyebrow" style={{ display: 'inline-block', marginBottom: 14 }}>
-              🇮🇳 India's tech salary community
-            </div>
-            <h1 className="hero-title" style={{ marginBottom: 10 }}>
-              Make every career<br />decision with <em>confidence.</em>
-            </h1>
-            <p className="hero-subtitle" style={{ margin: '0 0 22px' }}>
-              India's community-powered platform for salary data, referrals, interview prep
-              and career growth — 100% anonymous, 100% real.
-            </p>
-            <div className="hero-cta" style={{ justifyContent: 'flex-start' }}>
-              <Link to="/salaries" className="btn-hero btn-hero-primary">
-                <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                </svg>
-                Explore Salaries
-              </Link>
-              <Link to="/submit" className="btn-hero btn-hero-secondary">Share My Salary →</Link>
-            </div>
+        <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+          <div className="hero-eyebrow" style={{ display: 'inline-block', marginBottom: 14 }}>
+            🇮🇳 India's tech salary community
           </div>
-
-          {/* Right: live ticker */}
-          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-            {/* Ticker header */}
-            <div style={{ padding: '9px 14px', background: 'var(--panel)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', animation: 'tickerBlink 1.5s ease-in-out infinite' }} />
-                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-1)' }}>Live salary submissions</span>
-              </div>
-              {totalEntries != null && (
-                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
-                  {totalEntries.toLocaleString('en-IN')} total
-                </span>
-              )}
-            </div>
-
-            {/* Ticker rows — uses CompanyLogo just like top-companies did */}
-            {topCompanies.length === 0 ? (
-              <div style={{ padding: '20px 14px', textAlign: 'center', fontSize: 12, color: 'var(--text-4)' }}>Loading…</div>
-            ) : (
-              topCompanies.slice(0, 5).map((co, i) => (
-                <div key={co.groupKey} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: i < 4 ? '1px solid var(--border)' : 'none' }}>
-                  <CompanyLogo companyId={co.companyId} companyName={co.groupKey ?? ''} logoUrl={co.logoUrl} website={co.website} size={24} radius={6} />
-                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-1)', flex: 1 }}>{co.groupKey}</span>
-                  <span style={{ fontSize: 10, color: 'var(--text-3)', flex: 1.2 }}>
-                    {co.topRole ?? 'Software Engineer'}
-                  </span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#0ea5e9', fontFamily: "'IBM Plex Mono',monospace" }}>
-                    {fmtSalary(co.avgBaseSalary)}
-                  </span>
-                </div>
-              ))
-            )}
-
-            <div style={{ padding: '7px 14px', background: 'var(--panel)', borderTop: '1px solid var(--border)', fontSize: 10, color: 'var(--text-4)', textAlign: 'center' }}>
-              Updated continuously · <span style={{ color: '#0ea5e9', fontWeight: 600 }}>100% anonymous</span>
-            </div>
+          <h1 className="hero-title" style={{ marginBottom: 12, maxWidth: 700 }}>
+            Make every career<br />decision with <em>confidence.</em>
+          </h1>
+          <p className="hero-subtitle" style={{ margin: '0 0 28px', maxWidth: 560 }}>
+            India's community-powered platform for salary data, referrals, interview prep
+            and career growth — 100% anonymous, 100% real.
+          </p>
+          <div className="hero-cta" style={{ justifyContent: 'flex-start' }}>
+            <Link to="/salaries" className="btn-hero btn-hero-primary">
+              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+              Explore Salaries
+            </Link>
+            <Link to="/submit" className="btn-hero btn-hero-secondary">Share My Salary →</Link>
           </div>
         </div>
       </section>
-
-      {/* Blink animation for live dot */}
-      <style>{`
-        @keyframes tickerBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
-      `}</style>
 
 
 
       {/* ══════════════════════════════════════════════════════
           ③ JOURNEY CARDS — equal height, pixel-aligned
       ══════════════════════════════════════════════════════ */}
-      <section className="section" style={{ paddingTop: 36, paddingBottom: 36, background: 'var(--bg-2)' }}>
-        <div style={{ marginBottom: 20 }}>
-          <span className="section-tag" style={{ display: 'block' }}>Find your path</span>
-          <h2 className="section-title">What brings you here today?</h2>
+      <section style={{ padding: '36px 24px', background: 'var(--bg-2)' }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+        <div style={{ marginBottom: 24 }}>
+          <span className="section-tag" style={{ display: 'block', fontSize: 12, letterSpacing: '0.08em' }}>Find your path</span>
+          <h2 className="section-title" style={{ fontSize: 28, marginTop: 4 }}>What brings you here today?</h2>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
           {[...journeyCards, { ...launchpadCard }].map((card, i) => (
             <JourneyCard key={i} {...card} featured={card.featured ?? false} />
           ))}
+        </div>
         </div>
       </section>
 
       {/* ══════════════════════════════════════════════════════
           ④ RECENT SUBMISSIONS — uses full SalaryTable with logos
       ══════════════════════════════════════════════════════ */}
-      <section className="section salaries-section" style={{ paddingTop: 0 }}>
+      <section style={{ padding: '0 24px 40px', background: 'var(--bg-2)' }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
           <div>
             <span className="section-tag">Recent Submissions</span>
@@ -349,6 +298,7 @@ export default function HomePage() {
         </div>
         {/* SalaryTable is untouched — company logos still render as before */}
         <SalaryTable rows={recentSalaries} />
+        </div>
       </section>
 
       {/* ══════════════════════════════════════════════════════
