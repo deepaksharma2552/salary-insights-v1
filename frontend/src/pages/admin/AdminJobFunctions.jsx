@@ -41,6 +41,7 @@ export default function AdminJobFunctions() {
 
   const [functions, setFunctions] = useState([]);
   const [loading,   setLoading]   = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   // Function modal state
   const [fnModal,  setFnModal]  = useState(null); // null | 'create' | fn-obj
@@ -60,8 +61,8 @@ export default function AdminJobFunctions() {
   const load = useCallback(() => {
     setLoading(true);
     api.get('/admin/job-functions')
-      .then(r => setFunctions(r.data?.data ?? []))
-      .catch(console.error)
+      .then(r => { setFunctions(r.data?.data ?? []); setLoadError(null); })
+      .catch(err => setLoadError(`${err.response?.status ?? 'Network error'}: ${err.response?.data?.message ?? err.message}`))
       .finally(() => setLoading(false));
   }, []);
 
@@ -153,9 +154,16 @@ export default function AdminJobFunctions() {
         These power the Function + Level dropdowns on the salary submission form.
       </p>
 
+      {loadError && (
+        <div style={{ padding: '14px 18px', background: 'var(--rose-dim)', border: '1px solid rgba(224,92,122,0.2)', borderRadius: 12, color: 'var(--rose)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 16 }}>⚠</span>
+          <span>{loadError}</span>
+          <button onClick={load} style={{ marginLeft: 'auto', padding: '4px 12px', fontSize: 12, fontWeight: 600, background: 'rgba(224,92,122,0.15)', color: 'var(--rose)', border: '1px solid rgba(224,92,122,0.3)', borderRadius: 6, cursor: 'pointer' }}>Retry</button>
+        </div>
+      )}
       {loading ? (
         <div style={{ color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>Loading…</div>
-      ) : functions.length === 0 ? (
+      ) : !loadError && functions.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-3)' }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>⚙️</div>
           <div>No job functions yet. The migration should have seeded Engineering, Product and Program — check that V12 ran successfully.</div>

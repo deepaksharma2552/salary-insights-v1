@@ -55,7 +55,7 @@ function StandardLevelsTab() {
     setLoading(true);
     api.get('/admin/guide-levels/standard')
       .then(r => setLevels(r.data?.data ?? []))
-      .catch(console.error)
+      .catch(err => setError(err.response?.data?.message ?? `Load failed (${err.response?.status ?? 'network error'})`))
       .finally(() => setLoading(false));
   }, []);
 
@@ -226,7 +226,7 @@ function CompanyLevelsTab({ standardLevels }) {
     setLoading(true);
     api.get(`/admin/guide-levels/company/${companyId}`)
       .then(r => setLevels(r.data?.data ?? []))
-      .catch(console.error)
+      .catch(err => setError(err.response?.data?.message ?? `Load failed (${err.response?.status ?? 'network error'})`))
       .finally(() => setLoading(false));
   }, []);
 
@@ -467,7 +467,7 @@ export default function AdminGuideLevels() {
   useEffect(() => {
     api.get('/admin/guide-levels/standard')
       .then(r => setStandardLevels(r.data?.data ?? []))
-      .catch(console.error);
+      .catch(err => console.error('Standard levels load failed:', err.response?.status, err.response?.data?.message ?? err.message));
   }, []);
 
   return (

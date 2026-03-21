@@ -6,6 +6,7 @@ const EMPTY = { name: '', industry: '', website: '', description: '' };
 export default function AdminCompanies() {
   const [companies, setCompanies] = useState([]);
   const [loading,   setLoading]   = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [modal,     setModal]     = useState(null); // null | 'create' | {id,..}
   const [form,      setForm]      = useState(EMPTY);
   const [saving,    setSaving]    = useState(false);
@@ -14,8 +15,8 @@ export default function AdminCompanies() {
   const load = useCallback(() => {
     setLoading(true);
     api.get('/admin/companies')
-      .then(r => setCompanies(r.data?.data?.content ?? []))
-      .catch(console.error)
+      .then(r => { setCompanies(r.data?.data?.content ?? []); setLoadError(null); })
+      .catch(err => setLoadError(`${err.response?.status ?? 'Network error'}: ${err.response?.data?.message ?? err.message}`))
       .finally(() => setLoading(false));
   }, []);
 
@@ -62,7 +63,14 @@ export default function AdminCompanies() {
         <button className="btn-primary" style={{ padding: '10px 22px' }} onClick={openCreate}>+ Add Company</button>
       </div>
 
-      {loading ? (
+      {loadError && (
+        <div style={{ padding: '14px 18px', background: 'var(--rose-dim)', border: '1px solid rgba(224,92,122,0.2)', borderRadius: 12, color: 'var(--rose)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 16 }}>⚠</span>
+          <span>{loadError}</span>
+          <button onClick={load} style={{ marginLeft: 'auto', padding: '4px 12px', fontSize: 12, fontWeight: 600, background: 'rgba(224,92,122,0.15)', color: 'var(--rose)', border: '1px solid rgba(224,92,122,0.3)', borderRadius: 6, cursor: 'pointer' }}>Retry</button>
+        </div>
+      )}
+      {!loadError && (loading ? (
         <div style={{ color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>Loading…</div>
       ) : (
         <div className="salary-table-wrap">
@@ -107,7 +115,7 @@ export default function AdminCompanies() {
             </tbody>
           </table>
         </div>
-      )}
+      ))}
 
       {/* Create / Edit Modal */}
       {modal !== null && (
