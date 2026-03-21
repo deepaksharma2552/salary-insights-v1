@@ -238,27 +238,81 @@ export default function HomePage() {
       {/* ══════════════════════════════════════════════════════
           ① HERO — tagline left + live ticker right
       ══════════════════════════════════════════════════════ */}
+      <style>{`
+        @keyframes rippleStat { 0%{transform:scale(1);opacity:.5} 100%{transform:scale(2.4);opacity:0} }
+        @keyframes fadeUpStat { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes countFlash { 0%{opacity:.4;transform:translateY(-4px)} 100%{opacity:1;transform:translateY(0)} }
+      `}</style>
+
       <section className="hero" style={{ padding: '56px 24px 48px', background: 'var(--panel)', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}>
-          <div className="hero-eyebrow" style={{ display: 'inline-block', marginBottom: 14 }}>
-            🇮🇳 India's tech salary community
+        <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, alignItems: 'center' }}>
+
+          {/* Left: tagline + CTAs */}
+          <div>
+            <div className="hero-eyebrow" style={{ display: 'inline-block', marginBottom: 14 }}>
+              🇮🇳 India's tech salary community
+            </div>
+            <h1 className="hero-title" style={{ marginBottom: 12 }}>
+              Make every career<br />decision with <em>confidence.</em>
+            </h1>
+            <p className="hero-subtitle" style={{ margin: '0 0 28px' }}>
+              India's community-powered platform for salary data, referrals, interview prep
+              and career growth — 100% anonymous, 100% real.
+            </p>
+            <div className="hero-cta" style={{ justifyContent: 'flex-start' }}>
+              <Link to="/salaries" className="btn-hero btn-hero-primary">
+                <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                Explore Salaries
+              </Link>
+              <Link to="/submit" className="btn-hero btn-hero-secondary">Share My Salary →</Link>
+            </div>
           </div>
-          <h1 className="hero-title" style={{ marginBottom: 12, maxWidth: 700 }}>
-            Make every career<br />decision with <em>confidence.</em>
-          </h1>
-          <p className="hero-subtitle" style={{ margin: '0 0 28px', maxWidth: 560 }}>
-            India's community-powered platform for salary data, referrals, interview prep
-            and career growth — 100% anonymous, 100% real.
-          </p>
-          <div className="hero-cta" style={{ justifyContent: 'flex-start' }}>
-            <Link to="/salaries" className="btn-hero btn-hero-primary">
-              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-              </svg>
-              Explore Salaries
-            </Link>
-            <Link to="/submit" className="btn-hero btn-hero-secondary">Share My Salary →</Link>
+
+          {/* Right: Palette 3 stat cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, width: '100%' }}>
+            {[
+              { label: '💰 Salary entries', val: totalEntries != null ? fmtCount(totalEntries) : '14.8k+', sub: 'verified & live', live: true, delay: 0 },
+              { label: '🏢 Companies',      val: totalCompanies != null ? fmtCount(totalCompanies) : '—',    sub: 'tracked',        live: false, delay: 70 },
+              { label: '🤝 Active referrals', val: totalReferrals != null ? fmtCount(totalReferrals) : '—', sub: 'live now',       live: true, delay: 140 },
+              { label: '🔒 Anonymous',      val: '100%',                                                     sub: 'always',         live: false, delay: 210 },
+            ].map(({ label, val, sub, live, delay }) => (
+              <div key={label} style={{
+                background: 'var(--panel)',
+                border: '1px solid var(--border)',
+                borderRadius: 10,
+                padding: '13px 14px',
+                position: 'relative',
+                overflow: 'hidden',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                animation: `fadeUpStat .35s ${delay}ms ease both`,
+              }}>
+                {/* Sky blue top accent bar */}
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2.5, background: '#0ea5e9', borderRadius: '10px 10px 0 0' }} />
+
+                <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.07em', color: 'var(--text-3)', marginBottom: 6 }}>
+                  {label}
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '-.03em', lineHeight: 1, color: 'var(--text-1)', marginBottom: 5 }}>
+                  {val}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {live ? (
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 8, height: 8, flexShrink: 0 }}>
+                      <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22c55e', animation: 'rippleStat 1.8s ease-out infinite' }} />
+                      <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22c55e', animation: 'rippleStat 1.8s .6s ease-out infinite' }} />
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', position: 'relative', zIndex: 1 }} />
+                    </div>
+                  ) : (
+                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
+                  )}
+                  <span style={{ fontSize: 8.5, fontWeight: 500, color: 'var(--text-3)' }}>{sub}</span>
+                </div>
+              </div>
+            ))}
           </div>
+
         </div>
       </section>
 
