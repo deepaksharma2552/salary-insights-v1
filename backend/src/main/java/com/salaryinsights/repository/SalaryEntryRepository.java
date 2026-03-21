@@ -240,6 +240,9 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         nativeQuery = true)
     List<Object[]> avgSalaryByLocationAndLevelRaw();
 
+    @Query(value = "SELECT COUNT(*) FROM salary_entries WHERE review_status = 'APPROVED' AND created_at >= DATE_TRUNC('month', NOW())", nativeQuery = true)
+    Long countApprovedThisMonth();
+
     long countByReviewStatus(ReviewStatus status);
 
     @Query("SELECT AVG(s.baseSalary) FROM SalaryEntry s WHERE s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED")
