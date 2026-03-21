@@ -14,8 +14,12 @@ import RegisterPage     from './pages/public/RegisterPage';
 import OAuth2RedirectPage from './pages/public/OAuth2RedirectPage';
 import SubmitSalaryPage from './pages/public/SubmitSalaryPage';
 import SubmitReferralPage  from './pages/public/SubmitReferralPage';
-import MyReferralLinksPage from './pages/public/MyReferralLinksPage';
-import ViewReferralsPage   from './pages/public/ViewReferralsPage';
+import MyReferralLinksPage     from './pages/public/MyReferralLinksPage';
+import ViewReferralsPage       from './pages/public/ViewReferralsPage';
+import LaunchpadPage           from './pages/public/LaunchpadPage';
+import SubmitExperiencePage    from './pages/public/SubmitExperiencePage';
+import AdminLaunchpad          from './pages/admin/AdminLaunchpad';
+import { LaunchpadProvider }   from './context/LaunchpadContext';
 
 // Admin pages
 import AdminDashboard       from './pages/admin/AdminDashboard';
@@ -48,6 +52,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppDataProvider>
+      <LaunchpadProvider>
       <BrowserRouter>
         <Navbar />
         <RouterProgressBar />
@@ -70,6 +75,10 @@ export default function App() {
             }/>
             <Route path="/my-referral-links" element={
               <PrivateRoute><MyReferralLinksPage /></PrivateRoute>
+            }/>
+            <Route path="/launchpad" element={<LaunchpadPage />} />
+            <Route path="/launchpad/submit" element={
+              <PrivateRoute><SubmitExperiencePage /></PrivateRoute>
             }/>
 
             {/* Admin */}
@@ -109,11 +118,17 @@ export default function App() {
                 <AdminLayout><AdminJobFunctions /></AdminLayout>
               </PrivateRoute>
             }/>
+            <Route path="/admin/launchpad" element={
+              <PrivateRoute adminOnly>
+                <AdminLayout><AdminLaunchpad /></AdminLayout>
+              </PrivateRoute>
+            }/>
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </BrowserRouter>
+      </LaunchpadProvider>
       </AppDataProvider>
     </AuthProvider>
   );

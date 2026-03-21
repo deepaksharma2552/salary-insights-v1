@@ -134,7 +134,8 @@ export default function Navbar() {
         <li><Link to="/salaries"  className={isActive('/salaries')}>Salaries</Link></li>
         <li><Link to="/companies" className={isActive('/companies')}>Companies</Link></li>
         <li><Link to="/dashboard" className={isActive('/dashboard')}>Analytics</Link></li>
-        <li><Link to="/referrals" className={isActive('/referrals')}>Referral Board</Link></li>
+        <li><Link to="/referrals"  className={isActive('/referrals')}>Referral Board</Link></li>
+        <li><Link to="/launchpad" className={isActive('/launchpad')}>Launchpad</Link></li>
         {user?.role === 'ADMIN' && (
           <li><Link to="/admin" className={isActive('/admin')}>Admin</Link></li>
         )}
