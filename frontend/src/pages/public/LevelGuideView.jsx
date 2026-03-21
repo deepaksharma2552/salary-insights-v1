@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
+import TopProgressBar from '../../components/shared/TopProgressBar';
 
 const MAX_COMPANIES = 5;
 const ACCENT = ['#3b82f6','#8b5cf6','#06b6d4','#6366f1','#a78bfa'];
@@ -206,13 +207,26 @@ export default function LevelGuideView() {
   // Fetch grid whenever selection changes — debounced 400ms
   const fetchGrid = useCallback((companies) => {
     if (companies.length === 0) { setGridData(null); return; }
-    setLoading(true); setError(null);
+    setLoading(true); setError(null); TopProgressBar.start();
     const ids = companies.map(c => c.id);
-    api.get('/public/guide-levels/grid', { params: { companyIds: ids, functionCategory } })
+    api.get('/public/guide-levels/grid', {
+      params: { companyIds: ids, functionCategory },
+      paramsSerializer: params => {
+        const parts = [];
+        (params.companyIds ?? []).forEach(id => parts.push(`companyIds=${encodeURIComponent(id)}`));
+        if (params.functionCategory) parts.push(`functionCategory=${encodeURIComponent(params.functionCategory)}`);
+        return parts.join('&');
+      },
+    })
       .then(r => setGridData(r.data?.data ?? null))
-      .catch(() => setError('Failed to load level data.'))
-      .finally(() => setLoading(false));
-  }, []);
+      .catch(err => {
+        const status = err.response?.status;
+        const msg    = err.response?.data?.message ?? err.message ?? 'Unknown error';
+        console.error('Grid fetch failed:', status, msg);
+        setError(`Failed to load level data${status ? ` (${status})` : ''}: ${msg}`);
+      })
+      .finally(() => { setLoading(false); TopProgressBar.done(); });
+  }, [functionCategory]);
 
   useEffect(() => {
     clearTimeout(debounceRef.current);
@@ -242,7 +256,7 @@ export default function LevelGuideView() {
           {FUNCTIONS.map(fn => (
             <button
               key={fn}
-              onClick={() => setFunctionCategory(fn)}
+              onClick={() => { TopProgressBar.start(); setFunctionCategory(fn); }}
               style={{
                 padding: '4px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', transition: 'all 0.15s',

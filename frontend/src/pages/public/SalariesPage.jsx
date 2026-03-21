@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import SalaryTable from '../../components/shared/SalaryTable';
 import api from '../../services/api';
+import TopProgressBar from '../../components/shared/TopProgressBar';
 import LevelGuideView from './LevelGuideView';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -188,7 +189,7 @@ export default function SalariesPage() {
           { id: 'salaries', label: '📄 Salary Database' },
           { id: 'levels',   label: '🗂 Level Guide' },
         ].map(t => (
-          <button key={t.id} onClick={() => setView(t.id)} style={{
+          <button key={t.id} onClick={() => { TopProgressBar.start(); setView(t.id); setTimeout(() => TopProgressBar.done(), 150); }} style={{
             padding: '7px 18px', borderRadius: 7, border: 'none', cursor: 'pointer',
             fontSize: 13, fontWeight: view === t.id ? 600 : 400,
             background: view === t.id ? 'var(--panel)' : 'transparent',

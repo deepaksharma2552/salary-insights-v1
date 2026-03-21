@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
+import TopProgressBar from '../../components/shared/TopProgressBar';
 
 /* ─── tiny helpers ───────────────────────────────────────────────────────── */
 function Tag({ label, color = 'var(--teal)', bg = 'var(--teal-dim)', border = 'rgba(62,207,176,0.2)' }) {
@@ -64,14 +65,14 @@ function StandardLevelsTab() {
   function openEdit(l)  { setForm({ name: l.name, rank: l.rank, description: l.description ?? '' }); setModal(l); setError(''); }
 
   async function save() {
-    setSaving(true); setError('');
+    setSaving(true); setError(''); TopProgressBar.start();
     try {
       const payload = { name: form.name.trim(), rank: Number(form.rank), description: form.description || null };
       if (modal === 'create') await api.post('/admin/guide-levels/standard', payload);
       else                    await api.put(`/admin/guide-levels/standard/${modal.id}`, payload);
       setModal(null); load();
     } catch (e) { setError(e.response?.data?.message ?? 'Save failed'); }
-    finally { setSaving(false); }
+    finally { setSaving(false); TopProgressBar.done(); }
   }
 
   async function del(id) {
@@ -231,7 +232,7 @@ function CompanyLevelsTab({ standardLevels }) {
 
   async function addLevel() {
     if (!newTitle.trim()) return;
-    setSaving(true); setError('');
+    setSaving(true); setError(''); TopProgressBar.start();
     try {
       await api.post('/admin/guide-levels/company', {
         companyId: selCompany.id,
@@ -242,7 +243,7 @@ function CompanyLevelsTab({ standardLevels }) {
       setAddModal(false); setNewTitle(''); setNewDesc(''); setNewFn('Engineering');
       loadLevels(selCompany.id);
     } catch (e) { setError(e.response?.data?.message ?? 'Add failed'); }
-    finally { setSaving(false); }
+    finally { setSaving(false); TopProgressBar.done(); }
   }
 
   async function delLevel(id) {
@@ -253,7 +254,7 @@ function CompanyLevelsTab({ standardLevels }) {
 
   async function saveMapping() {
     if (!selStdId) return;
-    setSaving(true); setError('');
+    setSaving(true); setError(''); TopProgressBar.start();
     try {
       await api.post('/admin/guide-levels/mappings', {
         guideCompanyLevelId: mapModal.id,
@@ -262,7 +263,7 @@ function CompanyLevelsTab({ standardLevels }) {
       setMapModal(null); setSelStdId('');
       loadLevels(selCompany.id);
     } catch (e) { setError(e.response?.data?.message ?? 'Mapping failed'); }
-    finally { setSaving(false); }
+    finally { setSaving(false); TopProgressBar.done(); }
   }
 
   async function removeMapping(companyLevelId) {
@@ -474,7 +475,7 @@ export default function AdminGuideLevels() {
       {/* Tab toggle */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 36, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
         {TABS.map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+          <button key={t.id} onClick={() => { TopProgressBar.start(); setActiveTab(t.id); setTimeout(() => TopProgressBar.done(), 120); }} style={{
             padding: '9px 20px', fontSize: 13, fontWeight: activeTab === t.id ? 600 : 400,
             background: 'none', border: 'none', cursor: 'pointer',
             color: activeTab === t.id ? '#3b82f6' : 'var(--text-3)',

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import Navbar from './components/shared/Navbar';
+import { RouterProgressBar } from './components/shared/TopProgressBar';
 
 // Public pages
 import HomePage         from './pages/public/HomePage';
@@ -49,6 +50,7 @@ export default function App() {
       <AppDataProvider>
       <BrowserRouter>
         <Navbar />
+        <RouterProgressBar />
         <div style={{ paddingTop: 56 }}>
           <Routes>
             {/* Public */}
