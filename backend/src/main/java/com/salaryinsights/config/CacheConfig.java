@@ -43,6 +43,34 @@ public class CacheConfig {
                 .recordStats()
                 .build());
 
+        // launchpadResources — all active resources in one entry.
+        // Admin-curated dataset (~200-800 items max). TTL 6hr; evicted on any admin write.
+        // Frontend filters client-side from this single cache entry — zero API calls per filter.
+        manager.registerCustomCache("launchpadResources",
+            Caffeine.newBuilder()
+                .maximumSize(20)
+                .expireAfterWrite(6, TimeUnit.HOURS)
+                .recordStats()
+                .build());
+
+        // launchpadExp — only the hot public board paths (no-filter page 1, recent pages).
+        // Arbitrary filter combos hit the DB directly (fast via partial indexes).
+        // Short TTL (5min) because new experiences get approved regularly.
+        manager.registerCustomCache("launchpadExp",
+            Caffeine.newBuilder()
+                .maximumSize(100)
+                .expireAfterWrite(5, TimeUnit.MINUTES)
+                .recordStats()
+                .build());
+
+        // launchpadCounts — landing page stats (COUNT aggregates). 30min TTL.
+        manager.registerCustomCache("launchpadCounts",
+            Caffeine.newBuilder()
+                .maximumSize(10)
+                .expireAfterWrite(30, TimeUnit.MINUTES)
+                .recordStats()
+                .build());
+
         return manager;
     }
 }
