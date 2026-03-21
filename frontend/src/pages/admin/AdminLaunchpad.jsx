@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLaunchpad } from '../../context/LaunchpadContext';
 import api from '../../services/api';
 import TopProgressBar from '../../components/shared/TopProgressBar';
 import CompanyLogo from '../../components/shared/CompanyLogo';
@@ -23,6 +24,7 @@ const EMPTY_RES = { type:'CODING', title:'', difficulty:'', topic:'', companies:
 
 /* ── Resources tab ────────────────────────────────────────────────────────── */
 function ResourcesTab() {
+  const { reload: reloadContext } = useLaunchpad();
   const [resources,  setResources]  = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [loadError,  setLoadError]  = useState(null);
@@ -55,7 +57,7 @@ function ResourcesTab() {
     try {
       if (modal === 'create') await api.post('/admin/launchpad/resources', payload);
       else                    await api.put(`/admin/launchpad/resources/${modal.id}`, payload);
-      setModal(null); load();
+      setModal(null); load(); reloadContext();
     } catch (err) { setFormError(err.response?.data?.message ?? 'Save failed'); }
     finally { setSaving(false); TopProgressBar.done(); }
   }
@@ -63,14 +65,14 @@ function ResourcesTab() {
   async function toggleActive(r) {
     TopProgressBar.start();
     await api.patch(`/admin/launchpad/resources/${r.id}/toggle-active`);
-    TopProgressBar.done(); load();
+    TopProgressBar.done(); load(); reloadContext();
   }
 
   async function del(r) {
     if (!window.confirm(`Delete "${r.title}"?`)) return;
     TopProgressBar.start();
     await api.delete(`/admin/launchpad/resources/${r.id}`);
-    TopProgressBar.done(); load();
+    TopProgressBar.done(); load(); reloadContext();
   }
 
   const filtered = typeFilter ? resources.filter(r => r.type === typeFilter) : resources;

@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react';
 import api from '../services/api';
 
 /**
@@ -16,11 +16,17 @@ export function LaunchpadProvider({ children }) {
   const [resources,      setResources]      = useState([]);
   const [stats,          setStats]          = useState(null);
   const [resourcesReady, setResourcesReady] = useState(false);
+  const lastFetchRef = useRef(0);
 
-  const loadResources = useCallback(() => {
+  const loadResources = useCallback((force = false) => {
+    // Revalidate at most once every 60 seconds unless forced
+    const now = Date.now();
+    if (!force && now - lastFetchRef.current < 60_000) return;
+    lastFetchRef.current = now;
+
     api.get('/public/launchpad/resources')
       .then(r => setResources(r.data?.data ?? []))
-      .catch(err => { console.error('[LaunchpadContext] resources:', err.message); setResources([]); })
+      .catch(err => { console.error('[LaunchpadContext] resources:', err.message); })
       .finally(() => setResourcesReady(true));
 
     api.get('/public/launchpad/stats')
@@ -28,7 +34,15 @@ export function LaunchpadProvider({ children }) {
       .catch(() => {});
   }, []);
 
-  useEffect(() => { loadResources(); }, [loadResources]);
+  // Load on mount
+  useEffect(() => { loadResources(true); }, [loadResources]);
+
+  // Revalidate when the tab regains focus (user switches back from admin)
+  useEffect(() => {
+    function onFocus() { loadResources(false); }
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [loadResources]);
 
   function getByType(type) {
     return resources.filter(r => r.type === type && r.active);
@@ -54,7 +68,7 @@ export function LaunchpadProvider({ children }) {
     <LaunchpadContext.Provider value={{
       resources, stats, resourcesReady,
       getByType, getFiltered, allCompanies,
-      reload: loadResources,
+      reload: () => loadResources(true),
     }}>
       {children}
     </LaunchpadContext.Provider>

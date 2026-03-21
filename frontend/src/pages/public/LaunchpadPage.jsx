@@ -350,7 +350,11 @@ function StatsBar({ stats }) {
 /* ── Main page ────────────────────────────────────────────────────────────── */
 export default function LaunchpadPage() {
   const [activeTab, setActiveTab] = useState('CODING');
-  const { stats } = useLaunchpad();
+  const { stats, reload } = useLaunchpad();
+
+  // Revalidate resources when user navigates to this page
+  // (catches the case where admin added resources in another tab)
+  useEffect(() => { reload(); }, []); // eslint-disable-line
 
   return (
     <section className="section">
