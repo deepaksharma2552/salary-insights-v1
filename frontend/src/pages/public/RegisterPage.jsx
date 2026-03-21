@@ -33,39 +33,39 @@ export default function RegisterPage() {
             @keyframes siOrbitSweepC { from { transform: rotate(30deg);  } to { transform: rotate(390deg); } }
             @keyframes siOrbitTrack  { from { transform: rotate(0deg);   } to { transform: rotate(-360deg); } }
             @keyframes siOrbitCore   { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
-            @keyframes siOrbitPing   { 0% { transform: scale(1); opacity: 0.45; } 100% { transform: scale(1.3); opacity: 0; } }
+            @keyframes siOrbitPing   { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.3); opacity: 0; } }
             @media (prefers-reduced-motion: reduce) {
-              .si-sweep-a, .si-sweep-b, .si-sweep-c, .si-track, .si-core, .si-ping { animation: none !important; }
+              .si-sweep-a,.si-sweep-b,.si-sweep-c,.si-track,.si-core,.si-ping { animation: none !important; }
             }
           `}</style>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 4 }}>
             <svg width="44" height="44" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <circle cx="19" cy="19" r="18" stroke="#10b981" strokeWidth="0.7" fill="none"
+              <circle cx="19" cy="19" r="18" stroke="#3b82f6" strokeWidth="0.8" fill="none"
                 style={{ transformOrigin: '19px 19px', animation: 'siOrbitPing 3s ease-out infinite' }} />
               <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitTrack 20s linear infinite' }}>
-                <circle cx="19" cy="19" r="15" stroke="#10b981" strokeWidth="0.6" fill="none" opacity="0.2" strokeDasharray="2.5 2.5" />
+                <circle cx="19" cy="19" r="15" stroke="#3b82f6" strokeWidth="0.7" fill="none" opacity="0.25" strokeDasharray="2.5 2.5" />
               </g>
-              <circle cx="19" cy="19" r="9" stroke="#10b981" strokeWidth="0.5" fill="none" opacity="0.1" strokeDasharray="1.5 2" />
+              <circle cx="19" cy="19" r="9" stroke="#3b82f6" strokeWidth="0.5" fill="none" opacity="0.12" strokeDasharray="1.5 2" />
               <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepA 6s linear infinite' }}>
-                <circle cx="19" cy="4" r="2.2" fill="#10b981" />
+                <circle cx="19" cy="4" r="2.4" fill="#3b82f6" />
               </g>
               <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepB 6s linear infinite' }}>
-                <circle cx="19" cy="4" r="2" fill="#059669" />
+                <circle cx="19" cy="4" r="2" fill="#2563eb" />
               </g>
               <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepC 9s linear infinite' }}>
-                <circle cx="19" cy="4" r="1.6" fill="#10b981" opacity="0.6" />
+                <circle cx="19" cy="4" r="1.6" fill="#60a5fa" opacity="0.7" />
               </g>
               <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitCore 3s ease-in-out infinite' }}>
-                <circle cx="19" cy="19" r="7"   fill="#10b981" opacity="0.08" />
-                <circle cx="19" cy="19" r="4.5" fill="#10b981" opacity="0.18" />
-                <circle cx="19" cy="19" r="2.8" fill="#10b981" />
+                <circle cx="19" cy="19" r="7"   fill="#3b82f6" opacity="0.1" />
+                <circle cx="19" cy="19" r="4.5" fill="#3b82f6" opacity="0.2" />
+                <circle cx="19" cy="19" r="2.8" fill="#3b82f6" />
               </g>
             </svg>
             <span style={{ display: 'flex', flexDirection: 'column', gap: 1, lineHeight: 1 }}>
               <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif' }}>
-                Salary<span style={{ color: '#10b981' }}>Insights</span>
+                Salary<span style={{ color: '#3b82f6' }}>Insights</span>
               </span>
-              <span style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: '0.12em', color: '#10b981', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', opacity: 0.75 }}>
+              <span style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: '0.12em', color: '#3b82f6', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', opacity: 0.75 }}>
                 360° Career Clarity
               </span>
             </span>
