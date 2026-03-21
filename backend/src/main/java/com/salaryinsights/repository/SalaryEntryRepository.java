@@ -245,6 +245,8 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
 
     long countByReviewStatus(ReviewStatus status);
 
+    long countByCreatedAtAfterAndReviewStatus(java.time.LocalDateTime after, ReviewStatus status);
+
     @Query("SELECT AVG(s.baseSalary) FROM SalaryEntry s WHERE s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED")
     Double avgBaseSalaryApproved();
 
