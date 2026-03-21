@@ -30,16 +30,30 @@ function fmtCount(n) {
 }
 
 /* ── JourneyCard — equal-height, pixel-aligned ──────────────────────────── */
-function JourneyCard({ emoji, title, desc, stats, actions, amber }) {
+function JourneyCard({ emoji, title, desc, stats, actions, amber, featured }) {
   return (
     <div style={{
-      background: amber ? 'linear-gradient(135deg,#fffbeb,#fef3c7)' : 'var(--panel)',
-      border: amber ? '1px solid #fde68a' : '1px solid var(--border)',
+      background: amber ? 'linear-gradient(135deg,#fffbeb,#fef3c7)' : featured ? 'linear-gradient(135deg,#f0f9ff,#e0f2fe)' : 'var(--panel)',
+      border: amber ? '1px solid #fde68a' : featured ? '2px solid #0ea5e9' : '1px solid var(--border)',
       borderRadius: 14,
       padding: 18,
       display: 'flex',
       flexDirection: 'column',
+      boxShadow: featured ? '0 4px 20px rgba(14,165,233,0.15)' : 'none',
+      position: 'relative',
+      overflow: 'hidden',
     }}>
+      {/* Featured badge */}
+      {featured && (
+        <div style={{
+          position: 'absolute', top: 12, right: 12,
+          fontSize: 9, fontWeight: 700, color: '#0284c7',
+          background: '#bae6fd', padding: '2px 8px',
+          borderRadius: 20, letterSpacing: '.05em', textTransform: 'uppercase',
+        }}>
+          Most popular
+        </div>
+      )}
       {/* Emoji */}
       <div style={{ fontSize: 22, marginBottom: 10, height: 30, display: 'flex', alignItems: 'center' }}>
         {emoji}
@@ -48,7 +62,7 @@ function JourneyCard({ emoji, title, desc, stats, actions, amber }) {
       {/* Title — locked to 2 lines */}
       <div style={{
         fontSize: 12, fontWeight: 700,
-        color: amber ? '#78350f' : 'var(--text-1)',
+        color: amber ? '#78350f' : featured ? '#0284c7' : 'var(--text-1)',
         lineHeight: 1.35,
         minHeight: 34,
         marginBottom: 8,
@@ -91,7 +105,7 @@ function JourneyCard({ emoji, title, desc, stats, actions, amber }) {
           }}>
             <div style={{
               fontSize: 15, fontWeight: 800,
-              color: amber ? '#78350f' : 'var(--text-1)',
+              color: amber ? '#78350f' : featured ? '#0284c7' : 'var(--text-1)',
               fontFamily: "'IBM Plex Mono',monospace",
               lineHeight: 1,
             }}>
@@ -168,6 +182,7 @@ export default function HomePage() {
     {
       emoji: '💼',
       title: 'Am I paid fairly?',
+      featured: true,
       desc: 'Compare your base, bonus and equity against real verified data from peers at your company and level.',
       stats: [
         { value: fmtCount(totalEntries),   label: 'salary entries' },
@@ -301,39 +316,7 @@ export default function HomePage() {
         @keyframes tickerBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
       `}</style>
 
-      {/* ══════════════════════════════════════════════════════
-          ② SALARY DATABASE — core feature, full-width blue
-      ══════════════════════════════════════════════════════ */}
-      <section style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', padding: '22px 24px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: '1.3fr 0.7fr', gap: 24, alignItems: 'center' }}>
-          <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,.9)', background: 'rgba(255,255,255,.15)', border: '1px solid rgba(255,255,255,.25)', padding: '2px 9px', borderRadius: 20, marginBottom: 8, letterSpacing: '.05em', textTransform: 'uppercase' }}>
-              ⭐ Core Feature
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: 'white', letterSpacing: '-0.02em', marginBottom: 6 }}>Salary Database</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.8)', lineHeight: 1.65, marginBottom: 14 }}>
-              The most comprehensive anonymous salary database for India's tech industry. Browse real base, bonus and equity data — filtered by company, role, internal level and city.
-            </div>
-            <Link to="/salaries" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'white', color: '#0284c7', borderRadius: 7, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
-              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              Browse all salaries
-            </Link>
-          </div>
-          {/* Trust stats */}
-          <div style={{ display: 'flex', gap: 10 }}>
-            {[
-              { val: totalEntries != null ? totalEntries.toLocaleString('en-IN') : '—', lbl: 'verified entries' },
-              { val: totalCompanies != null ? totalCompanies.toLocaleString('en-IN') : '—', lbl: 'companies' },
-              { val: '8', lbl: 'cities' },
-            ].map(({ val, lbl }) => (
-              <div key={lbl} style={{ flex: 1, background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 10, padding: '12px 10px', textAlign: 'center' }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: 'white', fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '-0.02em', lineHeight: 1 }}>{val}</div>
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,.7)', marginTop: 4 }}>{lbl}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+
 
       {/* ══════════════════════════════════════════════════════
           ③ JOURNEY CARDS — equal height, pixel-aligned
@@ -346,7 +329,7 @@ export default function HomePage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[...journeyCards, { ...launchpadCard }].map((card, i) => (
-            <JourneyCard key={i} {...card} />
+            <JourneyCard key={i} {...card} featured={card.featured ?? false} />
           ))}
         </div>
       </section>
