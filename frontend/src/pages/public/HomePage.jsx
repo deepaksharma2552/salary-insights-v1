@@ -149,7 +149,8 @@ export default function HomePage() {
   const [recentSalaries, setRecentSalaries] = useState([]);
   const [totalEntries,   setTotalEntries]   = useState(null);
   const [totalCompanies, setTotalCompanies] = useState(null);
-  const [totalReferrals, setTotalReferrals] = useState(null);
+  const [totalReferrals,  setTotalReferrals]  = useState(null);
+  const [thisMonth,       setThisMonth]       = useState(null);
 
   useEffect(() => {
     // Recent salaries + totalEntries
@@ -168,6 +169,11 @@ export default function HomePage() {
     // Active referrals count
     api.get('/public/referrals', { params: { page: 0, size: 1 } })
       .then(res => setTotalReferrals(res.data?.data?.totalElements ?? null))
+      .catch(console.error);
+
+    // Submissions this month
+    api.get('/public/salaries/stats/this-month')
+      .then(res => setThisMonth(res.data?.data ?? null))
       .catch(console.error);
   }, []);
 
@@ -273,10 +279,10 @@ export default function HomePage() {
           {/* Right: Palette 3 stat cards */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, width: '100%' }}>
             {[
-              { label: '💰 Salary entries', val: totalEntries != null ? fmtCount(totalEntries) : '14.8k+', sub: 'verified & live', live: true, delay: 0 },
+              { label: '💰 Salary entries', val: totalEntries != null ? fmtCount(totalEntries) : '—', sub: 'verified & live', live: true, delay: 0 },
               { label: '🏢 Companies',      val: totalCompanies != null ? fmtCount(totalCompanies) : '—',    sub: 'tracked',        live: false, delay: 70 },
               { label: '🤝 Active referrals', val: totalReferrals != null ? fmtCount(totalReferrals) : '—', sub: 'live now',       live: true, delay: 140 },
-              { label: '🔒 Anonymous',      val: '100%',                                                     sub: 'always',         live: false, delay: 210 },
+              { label: '📅 This month',     val: thisMonth != null ? String(thisMonth) : '—',                sub: 'new submissions', live: true,  delay: 210 },
             ].map(({ label, val, sub, live, delay }) => (
               <div key={label} style={{
                 background: 'var(--panel)',
