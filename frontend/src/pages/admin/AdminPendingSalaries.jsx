@@ -10,21 +10,6 @@ export default function AdminPendingSalaries() {
   const [reason,   setReason]   = useState('');
 
   const [fetchError, setFetchError] = useState(null);
-  const [actioning,  setActioning]  = useState(null); // id of the row currently being actioned
-
-  // Load without setLoading(true) when called after an action — keeps table visible
-  const loadSilent = useCallback(() => {
-    setFetchError(null);
-    api.get('/admin/salaries/pending', { params: { page, size: 10 } })
-      .then(r => {
-        const paged = r.data?.data;
-        setEntries(paged?.content ?? []);
-        setTotal(paged?.totalElements ?? 0);
-      })
-      .catch(err => {
-        setFetchError(`Error ${err.response?.status ?? 'network'}: ${err.response?.data?.error ?? err.message}`);
-      });
-  }, [page]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -46,38 +31,21 @@ export default function AdminPendingSalaries() {
   useEffect(() => { load(); }, [load]);
 
   async function approve(id) {
-    setActioning(id);
-    try {
-      await api.patch(`/admin/salaries/${id}/approve`);
-      loadSilent();
-    } catch (e) { console.error(e); }
-    finally { setActioning(null); }
+    await api.patch(`/admin/salaries/${id}/approve`);
+    load();
   }
 
   async function reject(id) {
-    setActioning(id);
-    try {
-      await api.patch(`/admin/salaries/${id}/reject`, { reason });
-      setRejectId(null);
-      setReason('');
-      loadSilent();
-    } catch (e) { console.error(e); }
-    finally { setActioning(null); }
+    await api.patch(`/admin/salaries/${id}/reject`, { reason });
+    setRejectId(null);
+    setReason('');
+    load();
   }
 
   const fmt = (val) => val ? `₹${(val/100000).toFixed(1)}L` : '—';
 
   return (
     <div style={{ padding: 40 }}>
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes progressCrawl {
-          0%   { width: 0%;  }
-          40%  { width: 65%; }
-          70%  { width: 82%; }
-          100% { width: 90%; }
-        }
-      `}</style>
       <div style={{ marginBottom: 32 }}>
         <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin</span>
         <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, color: 'var(--text-1)', marginTop: 8, letterSpacing: '-0.02em' }}>
@@ -124,61 +92,19 @@ export default function AdminPendingSalaries() {
                       {e.createdAt ? new Date(e.createdAt).toLocaleDateString('en-IN') : '—'}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button
-                            onClick={() => approve(e.id)}
-                            disabled={actioning === e.id}
-                            style={{
-                              padding: '5px 14px', fontSize: 12, fontWeight: 600,
-                              background: 'var(--teal-dim)', color: 'var(--teal)',
-                              border: '1px solid rgba(62,207,176,0.2)', borderRadius: 7,
-                              cursor: actioning === e.id ? 'not-allowed' : 'pointer',
-                              opacity: actioning === e.id ? 0.65 : 1,
-                              fontFamily: "'DM Sans',sans-serif",
-                              display: 'flex', alignItems: 'center', gap: 6,
-                              transition: 'opacity 0.2s ease',
-                            }}
-                          >
-                            {actioning === e.id ? (
-                              <>
-                                <div style={{
-                                  width: 11, height: 11, borderRadius: '50%',
-                                  border: '1.5px solid rgba(62,207,176,0.3)',
-                                  borderTopColor: 'var(--teal)',
-                                  animation: 'spin 0.7s linear infinite', flexShrink: 0,
-                                }} />
-                                Approving…
-                              </>
-                            ) : '✓ Approve'}
-                          </button>
-                          <button
-                            onClick={() => setRejectId(e.id)}
-                            disabled={!!actioning}
-                            style={{
-                              padding: '5px 14px', fontSize: 12, fontWeight: 600,
-                              background: 'var(--rose-dim)', color: 'var(--rose)',
-                              border: '1px solid rgba(224,92,122,0.2)', borderRadius: 7,
-                              cursor: actioning ? 'not-allowed' : 'pointer',
-                              opacity: actioning ? 0.5 : 1,
-                              fontFamily: "'DM Sans',sans-serif",
-                              transition: 'opacity 0.2s ease',
-                            }}
-                          >
-                            ✕ Reject
-                          </button>
-                        </div>
-                        {/* Progress bar — visible only while this row is being approved */}
-                        {actioning === e.id && (
-                          <div style={{ width: '100%', height: 3, background: 'rgba(62,207,176,0.15)', borderRadius: 99, overflow: 'hidden' }}>
-                            <div style={{
-                              height: '100%',
-                              background: 'linear-gradient(90deg, var(--teal), #0ea5e9)',
-                              borderRadius: 99,
-                              animation: 'progressCrawl 2s cubic-bezier(0.05,0.6,0.4,1) forwards',
-                            }} />
-                          </div>
-                        )}
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          onClick={() => approve(e.id)}
+                          style={{ padding: '5px 14px', fontSize: 12, fontWeight: 600, background: 'var(--teal-dim)', color: 'var(--teal)', border: '1px solid rgba(62,207,176,0.2)', borderRadius: 7, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
+                        >
+                          ✓ Approve
+                        </button>
+                        <button
+                          onClick={() => setRejectId(e.id)}
+                          style={{ padding: '5px 14px', fontSize: 12, fontWeight: 600, background: 'var(--rose-dim)', color: 'var(--rose)', border: '1px solid rgba(224,92,122,0.2)', borderRadius: 7, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
+                        >
+                          ✕ Reject
+                        </button>
                       </div>
                     </td>
                   </tr>

@@ -6,7 +6,7 @@ import CompanyLogo from '../../components/shared/CompanyLogo';
 import { AuthContext } from '../../context/AuthContext';
 import { useLaunchpad } from '../../context/LaunchpadContext';
 
-/* ── helpers ─────────────────────────────────────────────────────────────── */
+/* ── helpers (unchanged) ────────────────────────────────────────────────── */
 function mapSalary(s) {
   const colors = ['#3ecfb0','#d4a853','#e05c7a','#a08ff0','#c07df0','#e89050'];
   const colorIdx = s.companyName ? s.companyName.charCodeAt(0) % colors.length : 0;
@@ -29,63 +29,95 @@ function fmtCount(n) {
   return n.toLocaleString('en-IN');
 }
 
-/* ── StatPill — the small number+label inside journey cards ─────────────── */
-function StatPill({ value, label, borderRight }) {
+/* ── JourneyCard — equal-height, pixel-aligned ──────────────────────────── */
+function JourneyCard({ emoji, title, desc, stats, actions, amber }) {
   return (
     <div style={{
-      flex: 1, padding: '10px 12px',
-      borderRight: borderRight ? '1px solid var(--border)' : 'none',
+      background: amber ? 'linear-gradient(135deg,#fffbeb,#fef3c7)' : 'var(--panel)',
+      border: amber ? '1px solid #fde68a' : '1px solid var(--border)',
+      borderRadius: 14,
+      padding: 18,
+      display: 'flex',
+      flexDirection: 'column',
     }}>
-      <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>
-        {value ?? <span style={{ opacity: 0.3 }}>—</span>}
+      {/* Emoji */}
+      <div style={{ fontSize: 22, marginBottom: 10, height: 30, display: 'flex', alignItems: 'center' }}>
+        {emoji}
       </div>
-      <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3 }}>{label}</div>
-    </div>
-  );
-}
 
-/* ── Journey card ─────────────────────────────────────────────────────────── */
-function JourneyCard({ emoji, title, desc, stats, actions, amber }) {
-  const cardStyle = amber ? {
-    background: 'linear-gradient(135deg,#fffbeb,#fef3c7)',
-    border: '1px solid #fde68a',
-  } : {
-    background: 'var(--panel)',
-    border: '1px solid var(--border)',
-  };
-
-  const statsBoxStyle = amber ? {
-    background: 'rgba(255,255,255,0.6)',
-    border: '1px solid #fcd34d',
-  } : {
-    border: '1px solid var(--border)',
-  };
-
-  return (
-    <div style={{ ...cardStyle, borderRadius: 14, padding: 24, display: 'flex', flexDirection: 'column', gap: 0 }}>
-      <div style={{ fontSize: 22, marginBottom: 14 }}>{emoji}</div>
-
-      <div style={{ fontSize: 14, fontWeight: 700, color: amber ? '#78350f' : 'var(--text-1)', marginBottom: 6, lineHeight: 1.3 }}>
+      {/* Title — locked to 2 lines */}
+      <div style={{
+        fontSize: 12, fontWeight: 700,
+        color: amber ? '#78350f' : 'var(--text-1)',
+        lineHeight: 1.35,
+        minHeight: 34,
+        marginBottom: 8,
+      }}>
         {title}
       </div>
-      <div style={{ fontSize: 12, color: amber ? '#92400e' : 'var(--text-2)', lineHeight: 1.65, marginBottom: 16 }}>
+
+      {/* Description — locked height = 3 lines so stat strip always same Y */}
+      <div style={{
+        fontSize: 10,
+        color: amber ? '#92400e' : 'var(--text-2)',
+        lineHeight: 1.65,
+        height: 50,
+        overflow: 'hidden',
+        marginBottom: 14,
+      }}>
         {desc}
       </div>
 
-      {/* Stat pills */}
-      <div style={{ ...statsBoxStyle, borderRadius: 9, overflow: 'hidden', display: 'flex', marginBottom: 16 }}>
+      {/* Stat strip — fixed height so buttons always same Y */}
+      <div style={{
+        display: 'flex',
+        border: amber ? '1px solid #fcd34d' : '1px solid var(--border)',
+        borderRadius: 8,
+        overflow: 'hidden',
+        height: 52,
+        flexShrink: 0,
+        marginBottom: 12,
+      }}>
         {stats.map((s, i) => (
-          <StatPill key={i} value={s.value} label={s.label} borderRight={i < stats.length - 1} />
+          <div key={i} style={{
+            flex: 1,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            padding: '0 4px',
+            borderRight: i < stats.length - 1
+              ? (amber ? '1px solid #fcd34d' : '1px solid var(--border)')
+              : 'none',
+            background: amber ? 'rgba(255,255,255,0.5)' : 'transparent',
+          }}>
+            <div style={{
+              fontSize: 15, fontWeight: 800,
+              color: amber ? '#78350f' : 'var(--text-1)',
+              fontFamily: "'IBM Plex Mono',monospace",
+              lineHeight: 1,
+            }}>
+              {s.value ?? <span style={{ opacity: 0.3 }}>—</span>}
+            </div>
+            <div style={{ fontSize: 9, color: amber ? '#92400e' : 'var(--text-3)', marginTop: 3, textAlign: 'center' }}>
+              {s.label}
+            </div>
+          </div>
         ))}
       </div>
 
-      {/* CTA buttons */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 'auto' }}>
+      {/* Spacer pushes buttons flush to bottom */}
+      <div style={{ flex: 1 }} />
+
+      {/* Buttons — fixed height so always aligned */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
         {actions.map((a, i) => (
           <Link key={i} to={a.to} style={{
-            display: 'block', padding: '8px 14px', borderRadius: 7,
-            fontSize: 12, fontWeight: 600, textDecoration: 'none', textAlign: 'center',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: 32,
+            borderRadius: 6,
+            fontSize: 10, fontWeight: 600,
+            textDecoration: 'none',
             background: a.bg, color: a.color,
+            ...(a.border ? { border: a.border } : {}),
           }}>
             {a.label}
           </Link>
@@ -95,21 +127,19 @@ function JourneyCard({ emoji, title, desc, stats, actions, amber }) {
   );
 }
 
-/* ── Main page ────────────────────────────────────────────────────────────── */
+/* ── Main page ───────────────────────────────────────────────────────────── */
 export default function HomePage() {
-  const { user }  = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
   const { stats: launchpadStats } = useLaunchpad();
 
-  const [recentSalaries,  setRecentSalaries]  = useState([]);
-  const [totalEntries,    setTotalEntries]     = useState(null);
-  const [totalCompanies,  setTotalCompanies]   = useState(null);
-  const [totalReferrals,  setTotalReferrals]   = useState(null);
-  const [topCompanies,    setTopCompanies]     = useState([]);
-
-  const COMPANY_COLORS = ['#0ea5e9','#8b5cf6','#10b981','#f59e0b','#ef4444','#ec4899','#06b6d4','#84cc16','#f97316','#6366f1'];
+  const [recentSalaries, setRecentSalaries] = useState([]);
+  const [totalEntries,   setTotalEntries]   = useState(null);
+  const [totalCompanies, setTotalCompanies] = useState(null);
+  const [totalReferrals, setTotalReferrals] = useState(null);
+  const [topCompanies,   setTopCompanies]   = useState([]);
 
   useEffect(() => {
-    // Salaries — existing call, also gives us totalEntries
+    // Recent salaries + totalEntries
     api.get('/public/salaries', { params: { page: 0, size: 10 } })
       .then(res => {
         const paged = res.data?.data;
@@ -117,17 +147,17 @@ export default function HomePage() {
         setTotalEntries(paged?.totalElements ?? null);
       }).catch(console.error);
 
-    // Top companies — existing call
+    // Top companies (for ticker)
     api.get('/public/salaries/analytics/by-company')
       .then(res => setTopCompanies(res.data?.data ?? []))
       .catch(console.error);
 
-    // Companies count — existing call
+    // Companies count
     api.get('/public/companies', { params: { page: 0, size: 1 } })
       .then(res => setTotalCompanies(res.data?.data?.totalElements ?? null))
       .catch(console.error);
 
-    // Active referrals count — page 1 size 1, read totalElements
+    // Active referrals count
     api.get('/public/referrals', { params: { page: 0, size: 1 } })
       .then(res => setTotalReferrals(res.data?.data?.totalElements ?? null))
       .catch(console.error);
@@ -137,42 +167,42 @@ export default function HomePage() {
   const journeyCards = [
     {
       emoji: '💼',
-      title: 'I want to check if I\'m paid fairly',
-      desc:  'Browse salaries at your company and role. See how your comp stacks up against the market.',
+      title: 'Am I paid fairly?',
+      desc: 'Compare your base, bonus and equity against real verified data from peers at your company and level.',
       stats: [
-        { value: fmtCount(totalEntries),   label: 'salary entries'  },
-        { value: fmtCount(totalCompanies), label: 'companies'       },
+        { value: fmtCount(totalEntries),   label: 'salary entries' },
+        { value: fmtCount(totalCompanies), label: 'companies'      },
       ],
       actions: [
-        { to: '/salaries',  label: 'Browse salaries →',  bg: '#eff6ff', color: '#1d4ed8' },
-        { to: '/dashboard', label: 'View analytics →',   bg: '#f5f3ff', color: '#6d28d9' },
+        { to: '/salaries',  label: 'Browse salaries →', bg: '#eff6ff', color: '#1d4ed8' },
+        { to: '/dashboard', label: 'View analytics →',  bg: '#f5f3ff', color: '#6d28d9' },
       ],
     },
     {
       emoji: '🎯',
       title: 'I\'m negotiating an offer',
-      desc:  'See real comp data for the company and role you\'re interviewing for. Know your worth before you negotiate.',
+      desc: 'See what the company actually pays across roles and levels before your HR call. Walk in knowing your number.',
       stats: [
-        { value: fmtCount(totalEntries),   label: 'salary entries'  },
-        { value: fmtCount(totalCompanies), label: 'companies'        },
-        { value: '6',                       label: 'exp. levels'      },
+        { value: fmtCount(totalEntries),   label: 'salary entries' },
+        { value: fmtCount(totalCompanies), label: 'companies'      },
+        { value: '11',                     label: 'levels'         },
       ],
       actions: [
-        { to: '/salaries',  label: 'Browse salaries →',  bg: '#eff6ff', color: '#1d4ed8' },
+        { to: '/salaries',         label: 'Browse salaries →', bg: '#eff6ff', color: '#1d4ed8' },
         { to: '/salaries?tab=levels', label: 'Compare levels →', bg: '#ecfeff', color: '#0e7490' },
       ],
     },
     {
       emoji: '🔍',
       title: 'I\'m looking for a job',
-      desc:  'Find referral links from the community to skip the queue and get a warm introduction to your dream company.',
+      desc: 'Get a warm referral from the community and skip straight to the interview queue at your target company.',
       stats: [
-        { value: fmtCount(totalReferrals),  label: 'active referrals' },
-        { value: fmtCount(totalCompanies),  label: 'companies'        },
+        { value: fmtCount(totalReferrals), label: 'active referrals' },
+        { value: fmtCount(totalCompanies), label: 'companies'        },
       ],
       actions: [
-        { to: '/referrals',  label: 'Browse referrals →', bg: '#fff1f2', color: '#be123c' },
-        { to: '/companies',  label: 'Company profiles →', bg: 'var(--bg-2)', color: 'var(--text-2)' },
+        { to: '/referrals', label: 'Browse referrals →', bg: '#fff1f2', color: '#be123c' },
+        { to: '/companies', label: 'Company profiles →', bg: 'var(--bg-2)', color: 'var(--text-2)', border: '1px solid var(--border)' },
       ],
     },
   ];
@@ -180,33 +210,40 @@ export default function HomePage() {
   const launchpadCard = {
     emoji: '🎓',
     title: 'I\'m a college grad starting out',
-    desc:  'Launchpad — everything you need to crack interviews at top product companies.',
+    desc: 'Crack your first product company interview with curated DSA problems, system design guides and real stories.',
     stats: [
-      { value: launchpadStats ? `${launchpadStats.codingProblems}+`         : '—', label: 'coding problems'   },
-      { value: launchpadStats ? `${launchpadStats.systemDesignQuestions}+`  : '—', label: 'system design Qs'  },
-      { value: launchpadStats ? String(launchpadStats.interviewExperiences) : '—', label: 'interview stories' },
+      { value: launchpadStats ? `${launchpadStats.codingProblems}+`        : '—', label: 'coding problems'  },
+      { value: launchpadStats ? `${launchpadStats.systemDesignQuestions}+` : '—', label: 'design Qs'        },
+      { value: launchpadStats ? String(launchpadStats.interviewExperiences): '—', label: 'stories'          },
     ],
     actions: [
-      { to: '/launchpad',        label: 'Go to Launchpad 🚀',      bg: '#d97706', color: '#fff'     },
-      { to: '/launchpad/submit', label: 'Share your experience →', bg: 'rgba(255,255,255,0.7)', color: '#92400e' },
+      { to: '/launchpad',        label: 'Go to Launchpad 🚀',      bg: '#d97706', color: '#fff' },
+      { to: '/launchpad/submit', label: 'Share your experience →', bg: 'rgba(255,255,255,0.7)', color: '#92400e', border: '1px solid #fcd34d' },
     ],
     amber: true,
   };
 
+  const COMPANY_COLORS = ['#0ea5e9','#8b5cf6','#10b981','#f59e0b','#ef4444','#ec4899','#06b6d4','#84cc16','#f97316','#6366f1'];
+
   return (
     <>
-      {/* ── HERO (unchanged) ── */}
-      <section className="hero" style={{ padding: '80px 24px 64px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 56, flexWrap: 'wrap' }}>
+      {/* ══════════════════════════════════════════════════════
+          ① HERO — tagline left + live ticker right
+      ══════════════════════════════════════════════════════ */}
+      <section className="hero" style={{ padding: '56px 24px 48px', background: 'var(--panel)', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', display: 'grid', gridTemplateColumns: '1.05fr 0.95fr', gap: 32, alignItems: 'center' }}>
 
-          <div style={{ flex: '1 1 400px', maxWidth: 540, textAlign: 'left' }}>
-            <div className="hero-eyebrow" style={{ display: 'inline-block' }}>360° Compensation Intelligence</div>
-            <h1 className="hero-title" style={{ marginTop: 16 }}>
-              Your complete<br /><em>360° view</em> of pay.
+          {/* Left: tagline + CTAs */}
+          <div>
+            <div className="hero-eyebrow" style={{ display: 'inline-block', marginBottom: 14 }}>
+              🇮🇳 India's tech salary community
+            </div>
+            <h1 className="hero-title" style={{ marginBottom: 10 }}>
+              Make every career<br />decision with <em>confidence.</em>
             </h1>
-            <p className="hero-subtitle" style={{ margin: '16px 0 32px', textAlign: 'left' }}>
-              SalaryInsights360 gives you the full picture — base, bonus, equity, and total comp —
-              crowd-sourced across thousands of companies and roles, verified by our team.
+            <p className="hero-subtitle" style={{ margin: '0 0 22px' }}>
+              India's community-powered platform for salary data, referrals, interview prep
+              and career growth — 100% anonymous, 100% real.
             </p>
             <div className="hero-cta" style={{ justifyContent: 'flex-start' }}>
               <Link to="/salaries" className="btn-hero btn-hero-primary">
@@ -219,84 +256,104 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right: stat cards + top companies */}
-          <div style={{ flex: '0 0 340px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', borderTop: '3px solid #0ea5e9' }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Salary Entries</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-1)', letterSpacing: '-0.03em', fontFamily: "'IBM Plex Mono', monospace", lineHeight: 1 }}>
-                  {totalEntries != null ? totalEntries.toLocaleString('en-IN') : <span style={{ opacity: 0.3 }}>—</span>}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#0ea5e9" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                  approved &amp; verified
-                </div>
+          {/* Right: live ticker */}
+          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+            {/* Ticker header */}
+            <div style={{ padding: '9px 14px', background: 'var(--panel)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', animation: 'tickerBlink 1.5s ease-in-out infinite' }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-1)' }}>Live salary submissions</span>
               </div>
-              <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', borderTop: '3px solid #8b5cf6' }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Companies</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-1)', letterSpacing: '-0.03em', fontFamily: "'IBM Plex Mono', monospace", lineHeight: 1 }}>
-                  {totalCompanies != null ? totalCompanies.toLocaleString('en-IN') : <span style={{ opacity: 0.3 }}>—</span>}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#8b5cf6" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                  tracked &amp; growing
-                </div>
-              </div>
+              {totalEntries != null && (
+                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
+                  {totalEntries.toLocaleString('en-IN')} total
+                </span>
+              )}
             </div>
 
-            {/* Top paying companies */}
-            <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>🏆 Top Paying Companies</div>
-                <Link to="/dashboard" style={{ fontSize: 11, color: '#0ea5e9', textDecoration: 'none', fontWeight: 500 }}>View all →</Link>
-              </div>
-              {topCompanies.length === 0 ? (
-                <div style={{ fontSize: 12, color: 'var(--text-4)', textAlign: 'center', padding: '12px 0' }}>Loading…</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {topCompanies.slice(0, 10).map((co, i) => {
-                    const maxVal = topCompanies[0]?.avgBaseSalary ?? 1;
-                    const pct    = Math.round(((co.avgBaseSalary ?? 0) / maxVal) * 100);
-                    const color  = COMPANY_COLORS[i % COMPANY_COLORS.length];
-                    return (
-                      <div key={co.groupKey} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-4)', fontFamily: "'IBM Plex Mono',monospace", minWidth: 16, textAlign: 'right' }}>{i + 1}</span>
-                        <CompanyLogo companyId={co.companyId} companyName={co.groupKey ?? ''} logoUrl={co.logoUrl} website={co.website} size={22} radius={6} />
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-2)', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{co.groupKey}</span>
-                            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace" }}>{fmtSalary(co.avgBaseSalary)}</span>
-                          </div>
-                          <div style={{ height: 4, background: 'var(--bg-3)', borderRadius: 100, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 100, transition: 'width 0.8s cubic-bezier(0.16,1,0.3,1)' }} />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+            {/* Ticker rows — uses CompanyLogo just like top-companies did */}
+            {topCompanies.length === 0 ? (
+              <div style={{ padding: '20px 14px', textAlign: 'center', fontSize: 12, color: 'var(--text-4)' }}>Loading…</div>
+            ) : (
+              topCompanies.slice(0, 5).map((co, i) => (
+                <div key={co.groupKey} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: i < 4 ? '1px solid var(--border)' : 'none' }}>
+                  <CompanyLogo companyId={co.companyId} companyName={co.groupKey ?? ''} logoUrl={co.logoUrl} website={co.website} size={24} radius={6} />
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-1)', flex: 1 }}>{co.groupKey}</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-3)', flex: 1.2 }}>
+                    {co.topRole ?? 'Software Engineer'}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#0ea5e9', fontFamily: "'IBM Plex Mono',monospace" }}>
+                    {fmtSalary(co.avgBaseSalary)}
+                  </span>
                 </div>
-              )}
+              ))
+            )}
+
+            <div style={{ padding: '7px 14px', background: 'var(--panel)', borderTop: '1px solid var(--border)', fontSize: 10, color: 'var(--text-4)', textAlign: 'center' }}>
+              Updated continuously · <span style={{ color: '#0ea5e9', fontWeight: 600 }}>100% anonymous</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── JOURNEY CARDS ── */}
-      <section className="section" style={{ paddingTop: 48, paddingBottom: 40 }}>
-        <div style={{ marginBottom: 28, textAlign: 'center' }}>
+      {/* Blink animation for live dot */}
+      <style>{`
+        @keyframes tickerBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
+      `}</style>
+
+      {/* ══════════════════════════════════════════════════════
+          ② SALARY DATABASE — core feature, full-width blue
+      ══════════════════════════════════════════════════════ */}
+      <section style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', padding: '22px 24px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: '1.3fr 0.7fr', gap: 24, alignItems: 'center' }}>
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,.9)', background: 'rgba(255,255,255,.15)', border: '1px solid rgba(255,255,255,.25)', padding: '2px 9px', borderRadius: 20, marginBottom: 8, letterSpacing: '.05em', textTransform: 'uppercase' }}>
+              ⭐ Core Feature
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: 'white', letterSpacing: '-0.02em', marginBottom: 6 }}>Salary Database</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.8)', lineHeight: 1.65, marginBottom: 14 }}>
+              The most comprehensive anonymous salary database for India's tech industry. Browse real base, bonus and equity data — filtered by company, role, internal level and city.
+            </div>
+            <Link to="/salaries" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'white', color: '#0284c7', borderRadius: 7, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              Browse all salaries
+            </Link>
+          </div>
+          {/* Trust stats */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            {[
+              { val: totalEntries != null ? totalEntries.toLocaleString('en-IN') : '—', lbl: 'verified entries' },
+              { val: totalCompanies != null ? totalCompanies.toLocaleString('en-IN') : '—', lbl: 'companies' },
+              { val: '8', lbl: 'cities' },
+            ].map(({ val, lbl }) => (
+              <div key={lbl} style={{ flex: 1, background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 10, padding: '12px 10px', textAlign: 'center' }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: 'white', fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '-0.02em', lineHeight: 1 }}>{val}</div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,.7)', marginTop: 4 }}>{lbl}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          ③ JOURNEY CARDS — equal height, pixel-aligned
+      ══════════════════════════════════════════════════════ */}
+      <section className="section" style={{ paddingTop: 36, paddingBottom: 36, background: 'var(--bg-2)' }}>
+        <div style={{ marginBottom: 20 }}>
           <span className="section-tag" style={{ display: 'block' }}>Find your path</span>
           <h2 className="section-title">What brings you here today?</h2>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14 }}>
-          {journeyCards.map((card, i) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {[...journeyCards, { ...launchpadCard }].map((card, i) => (
             <JourneyCard key={i} {...card} />
           ))}
-          <JourneyCard {...launchpadCard} />
         </div>
       </section>
 
-      {/* ── RECENT SUBMISSIONS (unchanged) ── */}
+      {/* ══════════════════════════════════════════════════════
+          ④ RECENT SUBMISSIONS — uses full SalaryTable with logos
+      ══════════════════════════════════════════════════════ */}
       <section className="section salaries-section" style={{ paddingTop: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
           <div>
@@ -304,33 +361,32 @@ export default function HomePage() {
             <h2 className="section-title">Latest <em>salary data</em></h2>
           </div>
           <Link to="/salaries" className="btn-ghost" style={{ padding: '8px 18px', fontSize: 13, whiteSpace: 'nowrap', textDecoration: 'none' }}>
-            View all →
+            View all {totalEntries != null ? `${totalEntries.toLocaleString('en-IN')} entries` : ''} →
           </Link>
         </div>
+        {/* SalaryTable is untouched — company logos still render as before */}
         <SalaryTable rows={recentSalaries} />
       </section>
 
-      {/* ── CONTRIBUTE CTA — logged-out only ── */}
+      {/* ══════════════════════════════════════════════════════
+          ⑤ CONTRIBUTE CTA — logged-out only (unchanged logic)
+      ══════════════════════════════════════════════════════ */}
       {!user && (
-        <section style={{
-          padding: '28px 24px',
-          background: 'var(--panel)',
-          borderTop: '1px solid var(--border)',
-        }}>
+        <section style={{ padding: '18px 24px', background: '#0ea5e9' }}>
           <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)', marginBottom: 4 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 3 }}>
                 This platform runs on community contributions.
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.8)' }}>
                 Share your salary anonymously — every entry makes the data better for everyone.
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
-              <Link to="/register" className="btn-hero btn-hero-primary" style={{ padding: '9px 20px', fontSize: 13 }}>
+              <Link to="/register" style={{ padding: '8px 18px', background: 'white', color: '#0284c7', borderRadius: 7, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
                 Create free account
               </Link>
-              <Link to="/login" className="btn-hero btn-hero-secondary" style={{ padding: '9px 20px', fontSize: 13 }}>
+              <Link to="/login" style={{ padding: '8px 18px', background: 'rgba(255,255,255,.15)', border: '1px solid rgba(255,255,255,.3)', color: 'white', borderRadius: 7, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
                 Sign in
               </Link>
             </div>

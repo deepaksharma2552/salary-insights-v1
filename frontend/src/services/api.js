@@ -23,10 +23,6 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
-    // Log 403s prominently so they're visible in devtools
-    if (error.response?.status === 403) {
-      console.error('[API] 403 Forbidden —', error.config?.url, '— check that the logged-in user has ADMIN role in the database.');
-    }
     return Promise.reject(error);
   }
 );

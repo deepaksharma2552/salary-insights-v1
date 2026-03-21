@@ -15,38 +15,22 @@
   --text-3:   #94a3b8;
   --text-4:   #cbd5e1;
 
-  /* ── UI chrome — kept for buttons, links, focus rings ── */
-  --blue:        #3b82f6;
-  --blue-dim:    #eff6ff;
-  --blue-mid:    #dbeafe;
-  --purple:      #8b5cf6;
-  --purple-dim:  #f5f3ff;
+  --blue:     #0ea5e9;
+  --blue-dim: #f0f9ff;
+  --blue-mid: #e0f2fe;
+  --green:    #16a34a;
+  --green-dim:#f0fdf4;
+  --orange:   #ea580c;
+  --orange-dim:#fff7ed;
+  --red:      #dc2626;
+  --red-dim:  #fef2f2;
+  --purple:   #7c3aed;
+  --purple-dim:#f5f3ff;
 
-  /* ── Semantic status — kept intentionally for meaning ── */
-  --green:       #16a34a;
-  --green-dim:   #f0fdf4;
-  --orange:      #d97706;
-  --orange-dim:  #fffbeb;
-  --red:         #dc2626;
-  --red-dim:     #fef2f2;
-  --rose:        #e11d48;
-  --rose-dim:    #fff1f2;
-  --gold:        #d97706;
-  --teal:        #0284c7;
-
-  /* ── Viz palette — cool jewel tones, no red/green/orange ── */
-  --viz-1:       #3b82f6;   /* blue        – Base salary   */
-  --viz-2:       #8b5cf6;   /* violet      – Bonus         */
-  --viz-3:       #06b6d4;   /* cyan        – Equity        */
-  --viz-4:       #6366f1;   /* indigo      – group accent  */
-  --viz-5:       #a78bfa;   /* lavender    – group accent  */
-  --viz-6:       #22d3ee;   /* sky-cyan    – group accent  */
-  --viz-7:       #818cf8;   /* periwinkle  – group accent  */
-  --viz-8:       #c4b5fd;   /* soft-violet – group accent  */
-  --viz-1-dim:   #eff6ff;
-  --viz-2-dim:   #f5f3ff;
-  --viz-3-dim:   #ecfeff;
-  --viz-4-dim:   #eef2ff;
+  --gold:     #d97706;
+  --teal:     #0891b2;
+  --rose:     #e11d48;
+  --rose-dim: #fff1f2;
 
   --radius:   6px;
   --radius-lg:10px;
@@ -68,17 +52,13 @@
   --text-2:   #94a3b8;
   --text-3:   #64748b;
   --text-4:   #475569;
-  --blue-dim:    #1e3a5f;
-  --blue-mid:    #1e3a5f;
-  --purple-dim:  #2e1065;
-  --green-dim:   #052e16;
-  --orange-dim:  #431407;
-  --red-dim:     #450a0a;
-  --rose-dim:    #4c0519;
-  --viz-1-dim:   #1e3a5f;
-  --viz-2-dim:   #2e1065;
-  --viz-3-dim:   #083344;
-  --viz-4-dim:   #1e1b4b;
+  --blue-dim: #1e3a5f;
+  --blue-mid: #1e3a5f;
+  --green-dim:#052e16;
+  --orange-dim:#431407;
+  --red-dim:  #450a0a;
+  --purple-dim:#2e1065;
+  --rose-dim: #4c0519;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -136,7 +116,7 @@ body {
 }
 .logo-mark {
   width: 30px; height: 30px;
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
   border-radius: var(--radius);
   display: flex;
   align-items: center;
@@ -199,7 +179,7 @@ body {
   white-space: nowrap;
 }
 .nav-links a:hover { color: var(--text-1); background: var(--bg-3); }
-.nav-links a.active { color: #3b82f6; background: #f0f9ff; }
+.nav-links a.active { color: #0ea5e9; background: #f0f9ff; }
 
 .nav-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
@@ -245,7 +225,7 @@ body {
   font-size: 13px;
   font-weight: 600;
   color: white;
-  background: #3b82f6;
+  background: #0ea5e9;
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
@@ -253,10 +233,10 @@ body {
   font-family: 'Inter', sans-serif;
   white-space: nowrap;
 }
-.btn-primary:hover { background: #2563eb; }
+.btn-primary:hover { background: #0284c7; }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-auth { width: 100%; padding: 10px; font-size: 14px; font-weight: 600; color: white; background: #3b82f6; border: none; border-radius: var(--radius); cursor: pointer; transition: background 0.15s; font-family: 'Inter', sans-serif; }
-.btn-auth:hover { background: #2563eb; }
+.btn-auth { width: 100%; padding: 10px; font-size: 14px; font-weight: 600; color: white; background: #0ea5e9; border: none; border-radius: var(--radius); cursor: pointer; transition: background 0.15s; font-family: 'Inter', sans-serif; }
+.btn-auth:hover { background: #0284c7; }
 
 /* ── SECTION / PAGE LAYOUT ── */
 .section { padding: 80px 24px 60px; max-width: 1400px; margin: 0 auto; }
@@ -267,7 +247,7 @@ body {
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #3b82f6;
+  color: #0ea5e9;
   margin-bottom: 8px;
   display: block;
 }
@@ -277,7 +257,7 @@ body {
   color: var(--text-1);
   letter-spacing: -0.02em;
 }
-.section-title em { font-style: normal; color: #3b82f6; }
+.section-title em { font-style: normal; color: #0ea5e9; }
 
 /* ── HERO ── */
 .hero {
@@ -294,7 +274,7 @@ body {
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #3b82f6;
+  color: #0ea5e9;
   background: #f0f9ff;
   border: 1px solid #e0f2fe;
   padding: 4px 12px;
@@ -471,10 +451,10 @@ body {
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
-.badge-level-junior  { background: var(--viz-3-dim); color: var(--viz-3); }
-.badge-level-mid     { background: var(--viz-4-dim); color: var(--viz-4); }
-.badge-level-senior  { background: var(--viz-1-dim); color: var(--viz-1); }
-.badge-level-lead    { background: var(--viz-2-dim); color: var(--viz-2); }
+.badge-level-junior  { background: var(--green-dim);  color: var(--green); }
+.badge-level-mid     { background: var(--blue-dim);   color: var(--blue); }
+.badge-level-senior  { background: var(--purple-dim); color: var(--purple); }
+.badge-level-lead    { background: var(--orange-dim); color: var(--orange); }
 .badge-exp           { background: var(--bg-3); color: var(--text-2); font-size: 11px; }
 
 /* Status badges */
@@ -491,7 +471,7 @@ body {
   padding: 4px 10px;
   font-size: 12px;
   font-weight: 500;
-  color: #3b82f6;
+  color: #0ea5e9;
   background: #f0f9ff;
   border: 1px solid #e0f2fe;
   border-radius: var(--radius);
@@ -528,7 +508,7 @@ body {
   font-family: 'Inter', sans-serif;
 }
 .page-btn:hover:not(:disabled) { border-color: var(--border-2); color: var(--text-1); background: var(--bg-3); }
-.page-btn.active { background: var(--viz-1); color: white; border-color: #2563eb; }
+.page-btn.active { background: #0ea5e9; color: white; border-color: #0891b2; }
 .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── COMPANY CARDS ── */
@@ -607,22 +587,12 @@ body {
 .chart-subtitle { font-size: 12px; color: var(--text-3); margin-top: 3px; }
 .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-/* ── Salary bar system — semantic palette used across all charts ── */
-.bar-palette-base   { background: linear-gradient(90deg, #2563eb, #3b82f6); }
-.bar-palette-bonus  { background: linear-gradient(90deg, #7c3aed, #8b5cf6); }
-.bar-palette-equity { background: linear-gradient(90deg, #0284c7, #06b6d4); }
-
-.level-bars { display: flex; flex-direction: column; gap: 8px; }
-.level-bar-row { display: flex; align-items: center; gap: 10px; position: relative; }
-.level-bar-label { font-size: 11px; color: var(--text-2); font-weight: 500; flex-shrink: 0; }
-.level-bar-track {
-  flex: 1; height: 12px;
-  background: var(--bg-3);
-  border-radius: 6px;
-  overflow: visible;
-  position: relative;
-}
-.level-bar-val { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; color: var(--text-1); min-width: 52px; text-align: right; flex-shrink: 0; }
+.level-bars { display: flex; flex-direction: column; gap: 10px; }
+.level-bar-row { display: flex; align-items: center; gap: 12px; }
+.level-bar-label { font-size: 12px; color: var(--text-2); min-width: 80px; font-weight: 500; }
+.level-bar-track { flex: 1; height: 8px; background: var(--bg-3); border-radius: 100px; overflow: hidden; }
+.level-bar-fill { height: 100%; border-radius: 100px; background: var(--blue); transition: width 0.8s cubic-bezier(0.16,1,0.3,1); }
+.level-bar-val { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: var(--text-1); min-width: 60px; text-align: right; }
 
 /* ── AUTH ── */
 .auth-page {
@@ -747,7 +717,7 @@ body {
 }
 .comp-item-label { font-size: 11px; color: var(--text-3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
 .comp-item-val { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 700; color: var(--text-1); }
-.comp-item.highlight .comp-item-val { font-size: 24px; color: #3b82f6; }
+.comp-item.highlight .comp-item-val { font-size: 24px; color: #0ea5e9; }
 
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .detail-item { display: flex; flex-direction: column; gap: 3px; }
@@ -795,7 +765,7 @@ body {
   transition: all 0.15s;
 }
 .sidebar-nav a:hover { background: var(--bg-3); color: var(--text-1); }
-.sidebar-nav a.active { background: #f0f9ff; color: #3b82f6; }
+.sidebar-nav a.active { background: #f0f9ff; color: #0ea5e9; }
 
 /* ── SALARIES SECTION ── */
 .salaries-section { background: var(--bg-2); }

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import SalaryDetailDrawer from './SalaryDetailDrawer';
 import { LEVEL_BADGE_CLASS, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../data/salaryData';
-import CompanyLogo from '../shared/CompanyLogo';
 
 /**
  * SalaryTable
@@ -65,14 +64,12 @@ export default function SalaryTable({ rows }) {
                 >
                   <td>
                     <div className="company-cell">
-                      <CompanyLogo
-                        companyId={s.companyId}
-                        companyName={s.company}
-                        logoUrl={s.logoUrl}
-                        website={s.website}
-                        size={32}
-                        radius={8}
-                      />
+                      <div
+                        className="company-avatar"
+                        style={{ background: s.compBg, color: s.compColor }}
+                      >
+                        {s.compAbbr}
+                      </div>
                       <div>
                         <div className="company-name">{s.company}</div>
                         <div className="company-industry">{s.compInd}</div>

@@ -1,10 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
-import CompanyLogo from '../../components/shared/CompanyLogo';
-
-const VIZ_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#6366f1','#a78bfa','#818cf8'];
-const SEARCH_MIN_CHARS = 3;
-const SEARCH_DEBOUNCE  = 600;
 
 const PAGE_SIZE = 10;
 
@@ -31,7 +26,8 @@ function fmtDate(iso) {
 }
 
 function mapSalary(s) {
-  const color = VIZ_COLORS[s.companyName ? s.companyName.charCodeAt(0) % VIZ_COLORS.length : 0];
+  const colors = ['#3ecfb0','#d4a853','#e05c7a','#a08ff0','#c07df0','#e89050'];
+  const color = colors[s.companyName ? s.companyName.charCodeAt(0) % colors.length : 0];
   const levelMap = { INTERN:'junior',ENTRY:'junior',MID:'mid',SENIOR:'senior',LEAD:'lead',MANAGER:'lead',DIRECTOR:'lead',VP:'lead',C_LEVEL:'lead' };
   const fmt = (v) => { if (!v && v !== 0) return '—'; const l = Number(v)/100000; return l>=100?`₹${(l/100).toFixed(1)}Cr`:`₹${l.toFixed(1)}L`; };
   return {
@@ -79,7 +75,7 @@ function CompanyModal({ company, onClose }) {
       .finally(() => setLoading(false));
   }, [company.id, page]);
 
-  const LEVEL_COLORS = { junior: '#06b6d4', mid: '#6366f1', senior: '#3b82f6', lead: '#8b5cf6' };
+  const LEVEL_COLORS = { junior: '#3ecfb0', mid: '#d4a853', senior: '#a08ff0', lead: '#e05c7a' };
 
   return (
     <>
@@ -94,14 +90,12 @@ function CompanyModal({ company, onClose }) {
         <div style={{ padding:'28px 32px 20px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
             <div style={{ display:'flex', gap:16, alignItems:'center' }}>
-              <CompanyLogo
-                companyId={company.id}
-                companyName={company.name}
-                logoUrl={company.logoUrl}
-                website={company.website}
-                size={48}
-                radius={12}
-              />
+              <div style={{
+                width:48, height:48, borderRadius:12, flexShrink:0,
+                background:company.colorBg, color:company.color,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:14, fontWeight:700, fontFamily:"'JetBrains Mono',monospace",
+              }}>{company.abbr}</div>
               <div>
                 <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, color:'var(--text-1)', fontWeight:700 }}>{company.name}</div>
                 <div style={{ fontSize:13, color:'var(--text-3)', marginTop:2 }}>{company.industry}</div>
@@ -204,10 +198,8 @@ export default function CompaniesPage() {
   const [industries,    setIndustries]    = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState(null);
-  const [inputValue,    setInputValue]    = useState('');
   const [search,        setSearch]        = useState('');
   const [industry,      setIndustry]      = useState('');
-  const debounceRef = useRef(null);
   const [page,          setPage]          = useState(0);
   const [totalPages,    setTotalPages]    = useState(1);
   const [totalElements, setTotalElements] = useState(0);
@@ -219,48 +211,20 @@ export default function CompaniesPage() {
       .catch(console.error);
   }, []);
 
-  useEffect(() => () => clearTimeout(debounceRef.current), []);
-
-  function commitSearch(val) {
-    clearTimeout(debounceRef.current);
-    setSearch(val);
-    setPage(0);
-  }
-
-  function handleSearchChange(e) {
-    const val = e.target.value;
-    setInputValue(val);
-    clearTimeout(debounceRef.current);
-    if (val.length === 0) { commitSearch(''); return; }
-    if (val.length < SEARCH_MIN_CHARS) return;
-    debounceRef.current = setTimeout(() => commitSearch(val), SEARCH_DEBOUNCE);
-  }
-
-  function handleSearchKeyDown(e) {
-    if (e.key === 'Enter' && inputValue.length >= SEARCH_MIN_CHARS) commitSearch(inputValue);
-  }
-
-  function clearSearch() {
-    clearTimeout(debounceRef.current);
-    setInputValue('');
-    commitSearch('');
-  }
-
   const fetchCompanies = useCallback(() => {
     setLoading(true);
     setError(null);
     api.get('/public/companies', { params: { page, size: PAGE_SIZE, ...(search && { name: search }), ...(industry && { industry }) } })
       .then(r => {
         const paged = r.data?.data;
+        const colors = ['#3ecfb0','#d4a853','#e05c7a','#a08ff0','#c07df0','#e89050'];
         setItems((paged?.content ?? []).map(c => ({
           id:           c.id,
           name:         c.name ?? '—',
           industry:     c.industry ?? '—',
           abbr:         c.name ? c.name.slice(0,2).toUpperCase() : '?',
-          color:        VIZ_COLORS[c.name ? c.name.charCodeAt(0) % VIZ_COLORS.length : 0],
-          colorBg:      `${VIZ_COLORS[c.name ? c.name.charCodeAt(0) % VIZ_COLORS.length : 0]}26`,
-          logoUrl:      c.logoUrl  ?? null,
-          website:      c.website  ?? null,
+          color:        colors[c.name ? c.name.charCodeAt(0) % colors.length : 0],
+          colorBg:      `${colors[c.name ? c.name.charCodeAt(0) % colors.length : 0]}26`,
           updatedLabel: fmtDate(c.updatedAt ?? c.createdAt),
           entries:      c.entryCount ?? '—',
           avgBase:      fmtSalary(c.avgBaseSalary),
@@ -277,7 +241,6 @@ export default function CompaniesPage() {
 
   return (
     <section className="section">
-      <style>{`@keyframes progressCrawl{0%{width:0%}40%{width:65%}70%{width:82%}100%{width:90%}}`}</style>
       <div className="section-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:16, marginBottom:32 }}>
         <div>
           <span className="section-tag">Company Directory</span>
@@ -289,40 +252,10 @@ export default function CompaniesPage() {
       </div>
 
       <div className="filter-bar" style={{ marginBottom:32 }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-          <div className="search-box" style={{ width: '100%' }}>
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input
-              className="input-field"
-              type="text"
-              placeholder="Search companies…"
-              value={inputValue}
-              onChange={handleSearchChange}
-              onKeyDown={handleSearchKeyDown}
-              style={{ paddingRight: inputValue.length >= SEARCH_MIN_CHARS && inputValue !== search ? 68 : 10 }}
-            />
-            {inputValue.length >= SEARCH_MIN_CHARS && inputValue !== search && (
-              <span
-                onClick={() => commitSearch(inputValue)}
-                style={{
-                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                  fontSize: 10, color: '#3b82f6',
-                  fontFamily: "'IBM Plex Mono',monospace",
-                  cursor: 'pointer', userSelect: 'none',
-                  background: 'var(--bg-2)', padding: '1px 5px',
-                  borderRadius: 4, border: '1px solid var(--border)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                ↵ Search
-              </span>
-            )}
-          </div>
-          {inputValue.length > 0 && inputValue.length < SEARCH_MIN_CHARS && (
-            <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, fontSize: 10, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
-              Type {SEARCH_MIN_CHARS - inputValue.length} more character{SEARCH_MIN_CHARS - inputValue.length !== 1 ? 's' : ''} to search
-            </div>
-          )}
+        <div className="search-box">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input className="input-field" type="text" placeholder="Search companies…" value={search}
+            onChange={e => { setSearch(e.target.value); setPage(0); }} />
         </div>
         <select className="select-field" value={industry} onChange={e => { setIndustry(e.target.value); setPage(0); }}>
           <option value="">All Industries</option>
@@ -330,18 +263,7 @@ export default function CompaniesPage() {
         </select>
       </div>
 
-      {loading && (
-        <div style={{ padding: '60px 0 58px' }}>
-          <div style={{ width: '100%', height: 3, background: 'var(--bg-3)', borderRadius: 99, overflow: 'hidden' }}>
-            <div style={{
-              height: '100%',
-              background: 'linear-gradient(90deg,#38bdf8,#0ea5e9)',
-              borderRadius: 99,
-              animation: 'progressCrawl 2s cubic-bezier(0.05,0.6,0.4,1) forwards',
-            }} />
-          </div>
-        </div>
-      )}
+      {loading && <div style={{ textAlign:'center', padding:'60px 0', color:'var(--text-3)', fontFamily:"'JetBrains Mono',monospace", fontSize:13 }}>Loading companies…</div>}
       {!loading && error && <div style={{ padding:'16px 20px', background:'var(--rose-dim)', border:'1px solid rgba(224,92,122,0.2)', borderRadius:12, color:'var(--rose)', fontSize:13 }}>{error}</div>}
       {!loading && !error && items.length === 0 && (
         <div style={{ textAlign:'center', padding:'60px 20px' }}>
@@ -362,15 +284,7 @@ export default function CompaniesPage() {
                 onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=''; }}
               >
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
-                  <CompanyLogo
-                    companyId={c.id}
-                    companyName={c.name}
-                    logoUrl={c.logoUrl}
-                    website={c.website}
-                    size={40}
-                    radius={8}
-                    style={{ marginBottom: 0 }}
-                  />
+                  <div className="company-card-logo" style={{ background:c.colorBg, color:c.color, marginBottom:0 }}>{c.abbr}</div>
                   <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:'var(--text-3)', background:'var(--ink-3)', padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)' }}>
                     Updated {c.updatedLabel}
                   </span>
