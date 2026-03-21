@@ -137,7 +137,7 @@ export default function HomePage() {
   const journeyCards = [
     {
       emoji: '💼',
-      title: 'I want to check if I'm paid fairly',
+      title: 'I want to check if I\'m paid fairly',
       desc:  'Browse salaries at your company and role. See how your comp stacks up against the market.',
       stats: [
         { value: fmtCount(totalEntries),   label: 'salary entries'  },
@@ -150,8 +150,8 @@ export default function HomePage() {
     },
     {
       emoji: '🎯',
-      title: 'I'm negotiating an offer',
-      desc:  'See real comp data for the company and role you're interviewing for. Know your worth before you negotiate.',
+      title: 'I\'m negotiating an offer',
+      desc:  'See real comp data for the company and role you\'re interviewing for. Know your worth before you negotiate.',
       stats: [
         { value: fmtCount(totalEntries),   label: 'salary entries'  },
         { value: fmtCount(totalCompanies), label: 'companies'        },
@@ -164,7 +164,7 @@ export default function HomePage() {
     },
     {
       emoji: '🔍',
-      title: 'I'm looking for a job',
+      title: 'I\'m looking for a job',
       desc:  'Find referral links from the community to skip the queue and get a warm introduction to your dream company.',
       stats: [
         { value: fmtCount(totalReferrals),  label: 'active referrals' },
@@ -179,7 +179,7 @@ export default function HomePage() {
 
   const launchpadCard = {
     emoji: '🎓',
-    title: 'I'm a college grad starting out',
+    title: 'I\'m a college grad starting out',
     desc:  'Launchpad — everything you need to crack interviews at top product companies.',
     stats: [
       { value: launchpadStats ? `${launchpadStats.codingProblems}+`         : '—', label: 'coding problems'   },
