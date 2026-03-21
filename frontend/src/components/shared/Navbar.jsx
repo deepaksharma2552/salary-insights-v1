@@ -94,36 +94,52 @@ export default function Navbar() {
 
       {/* ── LOGO ── */}
       <Link to="/" className="nav-logo" style={{ textDecoration: 'none' }}>
-        <div style={{ position: 'relative', width: 36, height: 36, flexShrink: 0 }}>
-          <div style={{
-            position: 'absolute', inset: 0, borderRadius: '50%',
-            border: '2.5px solid transparent',
-            borderTopColor: '#0ea5e9', borderRightColor: '#7dd3fc',
-            animation: 'navRingSpin 3s linear infinite',
-          }} />
-          <div style={{
-            position: 'absolute', inset: 4, borderRadius: '50%',
-            border: '1.5px solid transparent',
-            borderBottomColor: '#e0f2fe', borderLeftColor: '#0284c7',
-            animation: 'navRingSpinRev 2s linear infinite',
-            opacity: 0.55,
-          }} />
-          <div style={{
-            position: 'absolute', inset: 8, borderRadius: 6,
-            background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: 'white', letterSpacing: '-0.02em', lineHeight: 1, fontFamily: 'Inter,sans-serif' }}>SI</span>
-            <span style={{ fontSize: 5.5, fontWeight: 600, color: 'rgba(255,255,255,0.85)', letterSpacing: '0.05em', fontFamily: "'IBM Plex Mono',monospace", marginTop: 1 }}>360°</span>
-          </div>
-        </div>
-        <span style={{ display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 1 }}>
-          <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif' }}>
-            Salary<span style={{ color: '#0ea5e9' }}>Insights</span>
+        <style>{`
+          @keyframes siOrbitSweepA { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
+          @keyframes siOrbitSweepB { from { transform: rotate(90deg);  } to { transform: rotate(450deg); } }
+          @keyframes siOrbitSweepC { from { transform: rotate(30deg);  } to { transform: rotate(390deg); } }
+          @keyframes siOrbitTrack  { from { transform: rotate(0deg);   } to { transform: rotate(-360deg); } }
+          @keyframes siOrbitCore   { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+          @keyframes siOrbitPing   { 0% { transform: scale(1); opacity: 0.45; } 100% { transform: scale(1.3); opacity: 0; } }
+          @media (prefers-reduced-motion: reduce) {
+            .si-sweep-a, .si-sweep-b, .si-sweep-c, .si-track, .si-core, .si-ping { animation: none !important; }
+          }
+        `}</style>
+        <svg width="36" height="36" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          {/* outer ping ripple */}
+          <circle className="si-ping" cx="19" cy="19" r="18" stroke="#10b981" strokeWidth="0.7" fill="none"
+            style={{ transformOrigin: '19px 19px', animation: 'siOrbitPing 3s ease-out infinite' }} />
+          {/* orbit track — dashed, counter-rotates */}
+          <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitTrack 20s linear infinite' }}>
+            <circle cx="19" cy="19" r="15" stroke="#10b981" strokeWidth="0.6" fill="none" opacity="0.2" strokeDasharray="2.5 2.5" />
+          </g>
+          {/* inner track */}
+          <circle cx="19" cy="19" r="9" stroke="#10b981" strokeWidth="0.5" fill="none" opacity="0.1" strokeDasharray="1.5 2" />
+          {/* comet A — primary */}
+          <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepA 6s linear infinite' }}>
+            <circle cx="19" cy="4" r="2.2" fill="#10b981" />
+          </g>
+          {/* comet B — offset 180° */}
+          <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepB 6s linear infinite' }}>
+            <circle cx="19" cy="4" r="2" fill="#059669" />
+          </g>
+          {/* comet C — different speed */}
+          <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepC 9s linear infinite' }}>
+            <circle cx="19" cy="4" r="1.6" fill="#10b981" opacity="0.6" />
+          </g>
+          {/* core — breathes */}
+          <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitCore 3s ease-in-out infinite' }}>
+            <circle cx="19" cy="19" r="7"   fill="#10b981" opacity="0.08" />
+            <circle cx="19" cy="19" r="4.5" fill="#10b981" opacity="0.18" />
+            <circle cx="19" cy="19" r="2.8" fill="#10b981" />
+          </g>
+        </svg>
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 1, lineHeight: 1 }}>
+          <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif' }}>
+            Salary<span style={{ color: '#10b981' }}>Insights</span>
           </span>
-          <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.06em', color: '#0ea5e9', fontFamily: "'IBM Plex Mono',monospace", opacity: 0.8 }}>
-            360° COMPENSATION
+          <span style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: '0.12em', color: '#10b981', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', opacity: 0.75 }}>
+            360° Career Clarity
           </span>
         </span>
       </Link>
@@ -197,9 +213,9 @@ export default function Navbar() {
                 {/* Avatar initials */}
                 <div style={{
                   width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-                  background: 'rgba(14,165,233,0.15)', border: '1px solid rgba(14,165,233,0.3)',
+                  background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 700, color: '#0ea5e9', fontFamily: 'Inter,sans-serif',
+                  fontSize: 10, fontWeight: 700, color: '#10b981', fontFamily: 'Inter,sans-serif',
                 }}>
                   {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
                 </div>
