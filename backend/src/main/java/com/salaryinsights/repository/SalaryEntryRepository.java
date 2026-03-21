@@ -259,6 +259,26 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
                    "GROUP BY month ORDER BY month", nativeQuery = true)
     List<Object[]> submissionTrendLast12Months();
 
+    /**
+     * Weekly breakdown for a specific month.
+     * Returns one row per ISO week that intersects the given month.
+     * Columns: week_start (timestamp), week_num (int 1-5), count (long)
+     */
+    @Query(value =
+        "SELECT " +
+        "  DATE_TRUNC('week', created_at) AS week_start, " +
+        "  EXTRACT(DAY FROM DATE_TRUNC('week', created_at) - DATE_TRUNC('month', DATE_TRUNC('week', created_at))) / 7 + 1 AS week_num, " +
+        "  COUNT(*) AS count " +
+        "FROM salary_entries " +
+        "WHERE EXTRACT(YEAR FROM created_at) = :year " +
+        "  AND EXTRACT(MONTH FROM created_at) = :month " +
+        "GROUP BY week_start " +
+        "ORDER BY week_start",
+        nativeQuery = true)
+    List<Object[]> submissionTrendWeeklyByMonth(
+        @Param("year")  int year,
+        @Param("month") int month);
+
     @Query("SELECT s FROM SalaryEntry s JOIN FETCH s.company LEFT JOIN FETCH s.submittedBy " +
            "WHERE s.reviewStatus = :status")
     Page<SalaryEntry> findByReviewStatusWithDetails(@Param("status") ReviewStatus status, Pageable pageable);

@@ -45,7 +45,9 @@ public class AdminSalaryController {
     }
 
     @GetMapping("/dashboard")
-    public ResponseEntity<ApiResponse<AdminDashboardResponse>> getDashboard() {
-        return ResponseEntity.ok(ApiResponse.success(salaryService.getAdminDashboard()));
+    public ResponseEntity<ApiResponse<AdminDashboardResponse>> getDashboard(
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
+        return ResponseEntity.ok(ApiResponse.success(salaryService.getAdminDashboard(year, month)));
     }
 }

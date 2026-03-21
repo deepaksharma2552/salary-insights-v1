@@ -482,7 +482,9 @@ public class SalaryService {
     }
 
     @Transactional(readOnly = true)
-    public AdminDashboardResponse getAdminDashboard() {
+    @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'dashboard:' + #year + ':' + #month")
+    public AdminDashboardResponse getAdminDashboard(Integer year, Integer month) {
+        // Monthly trend — always fetched (12-month window, drives the month selector)
         List<Object[]> trends = salaryEntryRepository.submissionTrendLast12Months();
         List<java.util.Map<String, Object>> trendData = trends.stream().map(row -> {
             java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
@@ -490,6 +492,32 @@ public class SalaryService {
             m.put("count", row[1]);
             return m;
         }).collect(java.util.stream.Collectors.toList());
+
+        // Weekly trend — only when year+month requested
+        List<java.util.Map<String, Object>> weeklyData = null;
+        if (year != null && month != null) {
+            List<Object[]> weeks = salaryEntryRepository.submissionTrendWeeklyByMonth(year, month);
+            weeklyData = new java.util.ArrayList<>();
+            int weekNum = 1;
+            for (Object[] row : weeks) {
+                java.util.Map<String, Object> w = new java.util.LinkedHashMap<>();
+                String weekStart = row[0] != null ? row[0].toString() : "";
+                // Compute human-readable range: "Mar 3 – Mar 9"
+                String label = "Week " + weekNum;
+                try {
+                    java.time.LocalDate start = java.time.LocalDate.parse(weekStart.substring(0, 10));
+                    java.time.LocalDate end   = start.plusDays(6);
+                    java.time.format.DateTimeFormatter fmt =
+                        java.time.format.DateTimeFormatter.ofPattern("MMM d", java.util.Locale.ENGLISH);
+                    label = start.format(fmt) + " – " + end.format(fmt);
+                } catch (Exception ignored) {}
+                w.put("weekStart", weekStart);
+                w.put("weekLabel", label);
+                w.put("weekNum",   weekNum);
+                w.put("count",     row[2]);
+                weekNum++;
+            }
+        }
 
         return AdminDashboardResponse.builder()
                 .totalCompanies(companyRepository.count())
@@ -500,6 +528,7 @@ public class SalaryService {
                 .rejectedEntries(salaryEntryRepository.countByReviewStatus(ReviewStatus.REJECTED))
                 .avgBaseSalary(salaryEntryRepository.avgBaseSalaryApproved())
                 .submissionTrend(trendData)
+                .weeklyTrend(weeklyData)
                 .build();
     }
 }
