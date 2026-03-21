@@ -13,9 +13,9 @@ import java.util.UUID;
 @Repository
 public interface GuideCompanyLevelRepository extends JpaRepository<GuideCompanyLevel, UUID> {
 
-    // Fetch all levels for a company with their mapping in one query (avoids N+1)
-    @Query("SELECT cl FROM GuideCompanyLevel cl " +
-           "LEFT JOIN FETCH cl.guideMapping gm " +
+    // Fetch all levels for a company with their mappings in one query (avoids N+1)
+    @Query("SELECT DISTINCT cl FROM GuideCompanyLevel cl " +
+           "LEFT JOIN FETCH cl.guideMappings gm " +
            "LEFT JOIN FETCH gm.guideStandardLevel " +
            "WHERE cl.company.id = :companyId " +
            "ORDER BY cl.title ASC")

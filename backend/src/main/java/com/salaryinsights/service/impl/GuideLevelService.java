@@ -58,7 +58,6 @@ public class GuideLevelService {
     public void deleteStandardLevel(UUID id) {
         GuideStandardLevel level = standardRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Standard level not found: " + id));
-        // RESTRICT FK on guide_mappings prevents deletion if any company level is mapped here
         standardRepo.delete(level);
     }
 
@@ -94,44 +93,60 @@ public class GuideLevelService {
     public void deleteCompanyLevel(UUID id) {
         GuideCompanyLevel cl = companyLevelRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Company level not found: " + id));
-        companyLevelRepo.delete(cl); // cascade deletes mapping
+        companyLevelRepo.delete(cl);
     }
 
     // ── Mappings ──────────────────────────────────────────────────────────────
 
+    /**
+     * Replaces all mappings for a company level with the submitted entries.
+     * Validates that percentages sum to exactly 100.
+     */
     @Transactional
-    public GuideCompanyLevelResponse upsertMapping(GuideMappingRequest req) {
+    public GuideCompanyLevelResponse saveOverlapMappings(GuideMappingRequest req) {
         GuideCompanyLevel cl = companyLevelRepo.findById(req.getGuideCompanyLevelId())
                 .orElseThrow(() -> new ResourceNotFoundException("Company level not found"));
-        GuideStandardLevel sl = standardRepo.findById(req.getGuideStandardLevelId())
-                .orElseThrow(() -> new ResourceNotFoundException("Standard level not found"));
 
-        GuideMapping mapping = mappingRepo.findByGuideCompanyLevelId(req.getGuideCompanyLevelId())
-                .orElse(GuideMapping.builder().guideCompanyLevel(cl).build());
-        mapping.setGuideStandardLevel(sl);
-        mappingRepo.save(mapping);
+        // Validate entries exist
+        if (req.getEntries() == null || req.getEntries().isEmpty()) {
+            throw new BadRequestException("At least one mapping entry is required");
+        }
 
-        // Reload to get full association graph
-        return toCompanyLevelResponse(
-                companyLevelRepo.findByCompanyIdWithMapping(cl.getCompany().getId())
-                        .stream().filter(l -> l.getId().equals(cl.getId())).findFirst()
-                        .orElse(cl));
+        // Validate percentages sum to 100
+        int total = req.getEntries().stream().mapToInt(GuideMappingRequest.MappingEntry::getOverlapPct).sum();
+        if (total != 100) {
+            throw new BadRequestException("Overlap percentages must sum to 100, got " + total);
+        }
+
+        // Delete all existing mappings for this company level
+        mappingRepo.deleteAllByCompanyLevelId(cl.getId());
+
+        // Insert new mappings
+        for (GuideMappingRequest.MappingEntry entry : req.getEntries()) {
+            GuideStandardLevel sl = standardRepo.findById(entry.getGuideStandardLevelId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Standard level not found: " + entry.getGuideStandardLevelId()));
+            GuideMapping mapping = GuideMapping.builder()
+                    .guideCompanyLevel(cl)
+                    .guideStandardLevel(sl)
+                    .overlapPct(entry.getOverlapPct())
+                    .build();
+            mappingRepo.save(mapping);
+        }
+
+        // Reload
+        GuideCompanyLevel reloaded = companyLevelRepo.findByCompanyIdWithMapping(cl.getCompany().getId())
+                .stream().filter(l -> l.getId().equals(cl.getId())).findFirst()
+                .orElse(cl);
+        return toCompanyLevelResponse(reloaded);
     }
 
     @Transactional
-    public void deleteMapping(UUID guideCompanyLevelId) {
-        GuideMapping mapping = mappingRepo.findByGuideCompanyLevelId(guideCompanyLevelId)
-                .orElseThrow(() -> new ResourceNotFoundException("Mapping not found"));
-        mappingRepo.delete(mapping);
+    public void deleteAllMappings(UUID guideCompanyLevelId) {
+        mappingRepo.deleteAllByCompanyLevelId(guideCompanyLevelId);
     }
 
     // ── Public grid ───────────────────────────────────────────────────────────
 
-    /**
-     * Builds the comparison grid for the public Level Guide view.
-     * Single DB query fetches all mappings for the requested companies,
-     * then assembles into a row/column structure in memory.
-     */
     @Transactional(readOnly = true)
     public GuideLevelGridResponse buildGrid(List<UUID> companyIds, String functionCategory) {
         if (companyIds == null || companyIds.isEmpty()) {
@@ -142,27 +157,21 @@ public class GuideLevelService {
             return empty;
         }
 
-        // Cap at 5 companies — enforced here as a safety guard
         List<UUID> capped = companyIds.size() > 5 ? companyIds.subList(0, 5) : companyIds;
 
-        // Single JOIN query — no N+1. Filter by function if provided.
-        boolean hasFunction = functionCategory != null && !functionCategory.isBlank() && !functionCategory.equalsIgnoreCase("All");
+        boolean hasFunction = functionCategory != null && !functionCategory.isBlank()
+                && !functionCategory.equalsIgnoreCase("All");
         List<GuideMapping> mappings = hasFunction
                 ? mappingRepo.findByCompanyIdsAndFunction(capped, functionCategory)
                 : mappingRepo.findByCompanyIds(capped);
 
-        // Collect companies that actually have mappings, preserving request order
         Map<String, GuideLevelGridResponse.CompanyCol> companyMap = new LinkedHashMap<>();
-        for (UUID id : capped) {
-            // Will be filled when we encounter this company in mappings
-            companyMap.put(id.toString(), null);
-        }
+        for (UUID id : capped) companyMap.put(id.toString(), null);
 
-        // Collect standard levels that have at least one mapping for selected companies
         Map<String, GuideLevelGridResponse.StandardLevelRow> stdMap = new LinkedHashMap<>();
 
-        // grid[standardLevelId][companyId] = internal title
-        Map<String, Map<String, GuideLevelGridResponse.GridCell>> grid = new LinkedHashMap<>();
+        // grid[standardLevelId][companyId] = list of GridCell (1:many now)
+        Map<String, Map<String, List<GuideLevelGridResponse.GridCell>>> grid = new LinkedHashMap<>();
 
         for (GuideMapping gm : mappings) {
             GuideStandardLevel gsl = gm.getGuideStandardLevel();
@@ -172,7 +181,6 @@ public class GuideLevelService {
             String stdId = gsl.getId().toString();
             String coId  = co.getId().toString();
 
-            // Build standard level row entry
             stdMap.computeIfAbsent(stdId, k -> {
                 GuideLevelGridResponse.StandardLevelRow row = new GuideLevelGridResponse.StandardLevelRow();
                 row.setId(stdId);
@@ -182,7 +190,6 @@ public class GuideLevelService {
                 return row;
             });
 
-            // Build company column entry
             if (companyMap.get(coId) == null) {
                 GuideLevelGridResponse.CompanyCol col = new GuideLevelGridResponse.CompanyCol();
                 col.setId(coId);
@@ -192,18 +199,19 @@ public class GuideLevelService {
                 companyMap.put(coId, col);
             }
 
-            // Fill grid cell
             GuideLevelGridResponse.GridCell cell = new GuideLevelGridResponse.GridCell();
             cell.setTitle(gcl.getTitle());
             cell.setFunctionCategory(gcl.getFunctionCategory() != null ? gcl.getFunctionCategory() : "Engineering");
-            grid.computeIfAbsent(stdId, k -> new LinkedHashMap<>()).put(coId, cell);
+            cell.setOverlapPct(gm.getOverlapPct());
+
+            grid.computeIfAbsent(stdId, k -> new LinkedHashMap<>())
+                .computeIfAbsent(coId, k -> new ArrayList<>())
+                .add(cell);
         }
 
-        // Standard levels sorted by rank (query already orders but LinkedHashMap preserves)
         List<GuideLevelGridResponse.StandardLevelRow> stdRows = new ArrayList<>(stdMap.values());
         stdRows.sort(Comparator.comparingInt(GuideLevelGridResponse.StandardLevelRow::getRank));
 
-        // Companies in original request order, skip any with no mappings
         List<GuideLevelGridResponse.CompanyCol> cols = capped.stream()
                 .map(id -> companyMap.get(id.toString()))
                 .filter(Objects::nonNull)
@@ -235,12 +243,21 @@ public class GuideLevelService {
         r.setTitle(cl.getTitle());
         r.setDescription(cl.getDescription());
         r.setFunctionCategory(cl.getFunctionCategory() != null ? cl.getFunctionCategory() : "Engineering");
-        if (cl.getGuideMapping() != null && cl.getGuideMapping().getGuideStandardLevel() != null) {
-            GuideStandardLevel sl = cl.getGuideMapping().getGuideStandardLevel();
-            r.setMappedStandardLevelId(sl.getId());
-            r.setMappedStandardLevelName(sl.getName());
-            r.setMappedStandardLevelRank(sl.getRank());
+
+        List<GuideCompanyLevelResponse.MappingEntry> entries = new ArrayList<>();
+        if (cl.getGuideMappings() != null) {
+            cl.getGuideMappings().stream()
+                .sorted(Comparator.comparingInt(m -> -m.getOverlapPct())) // highest % first
+                .forEach(gm -> {
+                    GuideCompanyLevelResponse.MappingEntry e = new GuideCompanyLevelResponse.MappingEntry();
+                    e.setStandardLevelId(gm.getGuideStandardLevel().getId());
+                    e.setStandardLevelName(gm.getGuideStandardLevel().getName());
+                    e.setStandardLevelRank(gm.getGuideStandardLevel().getRank());
+                    e.setOverlapPct(gm.getOverlapPct());
+                    entries.add(e);
+                });
         }
+        r.setMappings(entries);
         return r;
     }
 }

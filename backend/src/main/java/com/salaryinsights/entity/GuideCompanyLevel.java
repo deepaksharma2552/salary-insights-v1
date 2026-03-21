@@ -28,8 +28,8 @@ public class GuideCompanyLevel extends BaseEntity {
     @Column(name = "function_category", length = 50)
     private String functionCategory;
 
-    // Eager mapping — always needed when displaying company levels
-    @OneToOne(mappedBy = "guideCompanyLevel", cascade = CascadeType.ALL,
-              orphanRemoval = true, fetch = FetchType.LAZY)
-    private GuideMapping guideMapping;
+    // 1:many mappings — a level can span multiple standard levels with overlap percentages
+    @OneToMany(mappedBy = "guideCompanyLevel", cascade = CascadeType.ALL,
+               orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<GuideMapping> guideMappings = new java.util.ArrayList<>();
 }

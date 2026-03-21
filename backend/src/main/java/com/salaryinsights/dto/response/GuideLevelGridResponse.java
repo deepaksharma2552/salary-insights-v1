@@ -5,20 +5,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Response for the public Level Guide comparison grid.
+ * Public Level Guide comparison grid response.
  *
- * standardLevels — ordered list of benchmark levels (rows)
- * companies      — list of selected companies (columns), with their logo/website
- * grid           — map of standardLevelId → map of companyId → internal title
- *                  null entry means company has no mapping for that standard level
+ * standardLevels — ordered benchmark levels (rows)
+ * companies      — selected companies (columns)
+ * grid           — standardLevelId → companyId → list of GridCell
+ *                  A list because a company level can partially overlap a row
+ *                  (e.g. 60% at Senior AND 40% at this row)
  */
 @Data
 public class GuideLevelGridResponse {
 
-    private List<StandardLevelRow> standardLevels;
-    private List<CompanyCol>       companies;
-    // key1 = standardLevelId, key2 = companyId, value = GridCell (title + functionCategory)
-    private Map<String, Map<String, GridCell>> grid;
+    private List<StandardLevelRow>              standardLevels;
+    private List<CompanyCol>                    companies;
+    private Map<String, Map<String, List<GridCell>>> grid;
 
     @Data
     public static class StandardLevelRow {
@@ -36,10 +36,15 @@ public class GuideLevelGridResponse {
         private String website;
     }
 
-    /** A single cell in the grid — the company's internal title for a given standard level. */
+    /**
+     * One entry per company level that touches this standard level row.
+     * overlapPct shows how much of that company level lives here.
+     * 100 = exact match. <100 = spans multiple rows.
+     */
     @Data
     public static class GridCell {
-        private String title;
-        private String functionCategory; // "Engineering" | "Product" | "Program"
+        private String  title;
+        private String  functionCategory;
+        private Integer overlapPct;
     }
 }

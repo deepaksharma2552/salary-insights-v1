@@ -70,15 +70,19 @@ public class AdminGuideLevelController {
 
     // ── Mappings ──────────────────────────────────────────────────────────────
 
+    /**
+     * Saves the complete overlap mapping for a company level.
+     * Replaces all existing mappings. Percentages must sum to 100.
+     */
     @PostMapping("/mappings")
-    public ResponseEntity<ApiResponse<GuideCompanyLevelResponse>> upsertMapping(
+    public ResponseEntity<ApiResponse<GuideCompanyLevelResponse>> saveOverlapMappings(
             @Valid @RequestBody GuideMappingRequest req) {
-        return ResponseEntity.ok(ApiResponse.success("Mapped", service.upsertMapping(req)));
+        return ResponseEntity.ok(ApiResponse.success("Mapped", service.saveOverlapMappings(req)));
     }
 
     @DeleteMapping("/mappings/company-level/{guideCompanyLevelId}")
-    public ResponseEntity<ApiResponse<Void>> deleteMapping(@PathVariable UUID guideCompanyLevelId) {
-        service.deleteMapping(guideCompanyLevelId);
-        return ResponseEntity.ok(ApiResponse.success("Mapping removed", null));
+    public ResponseEntity<ApiResponse<Void>> deleteAllMappings(@PathVariable UUID guideCompanyLevelId) {
+        service.deleteAllMappings(guideCompanyLevelId);
+        return ResponseEntity.ok(ApiResponse.success("Mappings removed", null));
     }
 }
