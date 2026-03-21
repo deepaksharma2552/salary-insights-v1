@@ -34,8 +34,15 @@ public class PublicGuideLevelController {
      */
     @GetMapping("/grid")
     public ResponseEntity<ApiResponse<GuideLevelGridResponse>> getGrid(
-            @RequestParam List<UUID> companyIds,
+            @RequestParam(required = false) List<UUID> companyIds,
             @RequestParam(required = false) String functionCategory) {
+        if (companyIds == null || companyIds.isEmpty()) {
+            GuideLevelGridResponse empty = new GuideLevelGridResponse();
+            empty.setStandardLevels(java.util.List.of());
+            empty.setCompanies(java.util.List.of());
+            empty.setGrid(java.util.Map.of());
+            return ResponseEntity.ok(ApiResponse.success(empty));
+        }
         return ResponseEntity.ok(ApiResponse.success(service.buildGrid(companyIds, functionCategory)));
     }
 }

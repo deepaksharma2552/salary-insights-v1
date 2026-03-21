@@ -3,7 +3,6 @@ package com.salaryinsights.dto.response;
 import lombok.Data;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * Response for the public Level Guide comparison grid.

@@ -52,27 +52,7 @@ VALUES
     ('b1000001-0000-0000-0000-000000000006', 'Razorpay',  'Fintech',               'https://razorpay.com',  'ACTIVE', NOW()),
     ('b1000001-0000-0000-0000-000000000007', 'Atlassian', 'Technology',            'https://atlassian.com', 'ACTIVE', NOW()),
     ('b1000001-0000-0000-0000-000000000008', 'PhonePe',   'Fintech',               'https://phonepe.com',   'ACTIVE', NOW())
-ON CONFLICT (id) DO NOTHING;
-
--- ─────────────────────────────────────────────────────────────────────────────
--- STEP 2b — Clean up any partial data from previous failed runs
--- Removes guide_mappings and guide_company_levels for the 8 seed companies
--- so the inserts below can run cleanly even on a re-run.
--- guide_standard_levels and companies are safe — they use ON CONFLICT (id).
--- ─────────────────────────────────────────────────────────────────────────────
-
-DELETE FROM guide_mappings
-WHERE guide_company_level_id IN (
-    SELECT gcl.id FROM guide_company_levels gcl
-    JOIN companies c ON gcl.company_id = c.id
-    WHERE c.name IN ('Google','Microsoft','Amazon','Flipkart','Swiggy','Razorpay','Atlassian','PhonePe')
-);
-
-DELETE FROM guide_company_levels
-WHERE company_id IN (
-    SELECT id FROM companies
-    WHERE name IN ('Google','Microsoft','Amazon','Flipkart','Swiggy','Razorpay','Atlassian','PhonePe')
-);
+ON CONFLICT (name) DO NOTHING;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- STEP 3 — Company Levels (function_category: Engineering / Product / Program)
@@ -82,275 +62,275 @@ WHERE company_id IN (
 
 -- Engineering
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000001', id, 'L3',  'Software Engineer (New Grad)',         'Engineering' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000001', id, 'L3',  'Software Engineer (New Grad)',         'Engineering' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000002', id, 'L4',  'Software Engineer',                   'Engineering' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000002', id, 'L4',  'Software Engineer',                   'Engineering' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000003', id, 'L5',  'Senior Software Engineer',            'Engineering' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000003', id, 'L5',  'Senior Software Engineer',            'Engineering' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000004', id, 'L6',  'Staff Software Engineer',             'Engineering' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000004', id, 'L6',  'Staff Software Engineer',             'Engineering' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000005', id, 'L7',  'Senior Staff / Principal Engineer',   'Engineering' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000005', id, 'L7',  'Senior Staff / Principal Engineer',   'Engineering' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000006', id, 'L8',  'Distinguished Engineer',              'Engineering' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000006', id, 'L8',  'Distinguished Engineer',              'Engineering' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000007', id, 'M3',  'Engineering Manager',                 'Engineering' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000007', id, 'M3',  'Engineering Manager',                 'Engineering' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000008', id, 'M4',  'Senior Engineering Manager',          'Engineering' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000008', id, 'M4',  'Senior Engineering Manager',          'Engineering' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000009', id, 'D1',  'Director of Engineering',             'Engineering' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000009', id, 'D1',  'Director of Engineering',             'Engineering' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- Product
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000011', id, 'PM (L4)',   'Product Manager',               'Product' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000011', id, 'PM (L4)',   'Product Manager',               'Product' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000012', id, 'PM (L5)',   'Senior Product Manager',        'Product' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000012', id, 'PM (L5)',   'Senior Product Manager',        'Product' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000013', id, 'PM (L6)',   'Staff Product Manager',         'Product' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000013', id, 'PM (L6)',   'Staff Product Manager',         'Product' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000014', id, 'GPM (L7)',  'Group Product Manager',         'Product' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000014', id, 'GPM (L7)',  'Group Product Manager',         'Product' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000015', id, 'Director of PM', 'Director of Product Management', 'Product' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000015', id, 'Director of PM', 'Director of Product Management', 'Product' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- Program
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000021', id, 'TPM (L4)',  'Technical Program Manager',         'Program' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000021', id, 'TPM (L4)',  'Technical Program Manager',         'Program' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000022', id, 'TPM (L5)',  'Senior Technical Program Manager',  'Program' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000022', id, 'TPM (L5)',  'Senior Technical Program Manager',  'Program' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000023', id, 'TPM (L6)',  'Staff Technical Program Manager',   'Program' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000023', id, 'TPM (L6)',  'Staff Technical Program Manager',   'Program' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c1000001-0000-0000-0000-000000000024', id, 'Director of TPM', 'Director of TPM',             'Program' FROM companies WHERE name='Google' ON CONFLICT (id) DO NOTHING;
+SELECT 'c1000001-0000-0000-0000-000000000024', id, 'Director of TPM', 'Director of TPM',             'Program' FROM companies WHERE name='Google' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- ══ MICROSOFT ════════════════════════════════════════════════════════════════
 
 -- Engineering
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000001', id, 'SDE I',           'Software Development Engineer I',         'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000001', id, 'SDE I',           'Software Development Engineer I',         'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000002', id, 'SDE II',          'Software Development Engineer II',        'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000002', id, 'SDE II',          'Software Development Engineer II',        'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000003', id, 'Senior SDE',      'Senior Software Development Engineer',    'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000003', id, 'Senior SDE',      'Senior Software Development Engineer',    'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000004', id, 'Principal SDE',   'Principal Software Development Engineer', 'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000004', id, 'Principal SDE',   'Principal Software Development Engineer', 'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000005', id, 'Partner SDE',     'Partner-level Engineer / Architect',       'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000005', id, 'Partner SDE',     'Partner-level Engineer / Architect',       'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000006', id, 'Eng. Manager',    'Engineering Manager',                     'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000006', id, 'Eng. Manager',    'Engineering Manager',                     'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000007', id, 'Senior EM',       'Senior Engineering Manager',              'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000007', id, 'Senior EM',       'Senior Engineering Manager',              'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000008', id, 'Director',        'Director of Engineering',                 'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000008', id, 'Director',        'Director of Engineering',                 'Engineering' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- Product
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000011', id, 'PM',              'Product Manager',                         'Product' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000011', id, 'PM',              'Product Manager',                         'Product' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000012', id, 'PM II',           'Product Manager II',                      'Product' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000012', id, 'PM II',           'Product Manager II',                      'Product' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000013', id, 'Senior PM',       'Senior Product Manager',                  'Product' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000013', id, 'Senior PM',       'Senior Product Manager',                  'Product' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000014', id, 'Principal PM',    'Principal Product Manager',               'Product' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000014', id, 'Principal PM',    'Principal Product Manager',               'Product' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000015', id, 'Director of PM',  'Director of Product Management',          'Product' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000015', id, 'Director of PM',  'Director of Product Management',          'Product' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- Program
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000021', id, 'PM (Program)',     'Program Manager',                        'Program' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000021', id, 'PM (Program)',     'Program Manager',                        'Program' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000022', id, 'Senior PM (Prog)','Senior Program Manager',                  'Program' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000022', id, 'Senior PM (Prog)','Senior Program Manager',                  'Program' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c2000001-0000-0000-0000-000000000023', id, 'Principal PM (Prog)', 'Principal Program Manager',           'Program' FROM companies WHERE name='Microsoft' ON CONFLICT (id) DO NOTHING;
+SELECT 'c2000001-0000-0000-0000-000000000023', id, 'Principal PM (Prog)', 'Principal Program Manager',           'Program' FROM companies WHERE name='Microsoft' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- ══ AMAZON ════════════════════════════════════════════════════════════════════
 
 -- Engineering
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000001', id, 'SDE I',            'Software Development Engineer I',         'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000001', id, 'SDE I',            'Software Development Engineer I',         'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000002', id, 'SDE II',           'Software Development Engineer II',        'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000002', id, 'SDE II',           'Software Development Engineer II',        'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000003', id, 'SDE III',          'Senior Software Development Engineer',    'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000003', id, 'SDE III',          'Senior Software Development Engineer',    'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000004', id, 'Principal SDE',    'Principal Software Development Engineer', 'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000004', id, 'Principal SDE',    'Principal Software Development Engineer', 'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000005', id, 'Distinguished SDE','Distinguished Engineer',                  'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000005', id, 'Distinguished SDE','Distinguished Engineer',                  'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000006', id, 'SDM I',            'Software Development Manager I',          'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000006', id, 'SDM I',            'Software Development Manager I',          'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000007', id, 'SDM II',           'Software Development Manager II',         'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000007', id, 'SDM II',           'Software Development Manager II',         'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000008', id, 'Director of SDE',  'Director of Software Development',        'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000008', id, 'Director of SDE',  'Director of Software Development',        'Engineering' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- Product
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000011', id, 'PM I',             'Product Manager I',                       'Product' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000011', id, 'PM I',             'Product Manager I',                       'Product' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000012', id, 'PM II',            'Product Manager II',                      'Product' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000012', id, 'PM II',            'Product Manager II',                      'Product' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000013', id, 'Senior PM',        'Senior Product Manager',                  'Product' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000013', id, 'Senior PM',        'Senior Product Manager',                  'Product' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000014', id, 'Principal PM',     'Principal Product Manager',               'Product' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000014', id, 'Principal PM',     'Principal Product Manager',               'Product' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000015', id, 'Director of PM',   'Director of Product Management',          'Product' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000015', id, 'Director of PM',   'Director of Product Management',          'Product' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- Program
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000021', id, 'TPM I',            'Technical Program Manager I',             'Program' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000021', id, 'TPM I',            'Technical Program Manager I',             'Program' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000022', id, 'TPM II',           'Technical Program Manager II',            'Program' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000022', id, 'TPM II',           'Technical Program Manager II',            'Program' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000023', id, 'Senior TPM',       'Senior Technical Program Manager',        'Program' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000023', id, 'Senior TPM',       'Senior Technical Program Manager',        'Program' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c3000001-0000-0000-0000-000000000024', id, 'Principal TPM',    'Principal Technical Program Manager',     'Program' FROM companies WHERE name='Amazon' ON CONFLICT (id) DO NOTHING;
+SELECT 'c3000001-0000-0000-0000-000000000024', id, 'Principal TPM',    'Principal Technical Program Manager',     'Program' FROM companies WHERE name='Amazon' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- ══ FLIPKART ══════════════════════════════════════════════════════════════════
 
 -- Engineering
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000001', id, 'SDE-1',            'Software Development Engineer 1',         'Engineering' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000001', id, 'SDE-1',            'Software Development Engineer 1',         'Engineering' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000002', id, 'SDE-2',            'Software Development Engineer 2',         'Engineering' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000002', id, 'SDE-2',            'Software Development Engineer 2',         'Engineering' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000003', id, 'SDE-3',            'Senior Software Development Engineer',    'Engineering' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000003', id, 'SDE-3',            'Senior Software Development Engineer',    'Engineering' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000004', id, 'MTS',              'Member of Technical Staff',               'Engineering' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000004', id, 'MTS',              'Member of Technical Staff',               'Engineering' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000005', id, 'Principal Eng.',   'Principal Engineer',                      'Engineering' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000005', id, 'Principal Eng.',   'Principal Engineer',                      'Engineering' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000006', id, 'EM',               'Engineering Manager',                     'Engineering' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000006', id, 'EM',               'Engineering Manager',                     'Engineering' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000007', id, 'Senior EM',        'Senior Engineering Manager',              'Engineering' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000007', id, 'Senior EM',        'Senior Engineering Manager',              'Engineering' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- Product
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000011', id, 'APM',              'Associate Product Manager',               'Product' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000011', id, 'APM',              'Associate Product Manager',               'Product' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000012', id, 'PM-1',             'Product Manager 1',                       'Product' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000012', id, 'PM-1',             'Product Manager 1',                       'Product' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000013', id, 'PM-2',             'Product Manager 2 / Senior PM',           'Product' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000013', id, 'PM-2',             'Product Manager 2 / Senior PM',           'Product' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000014', id, 'Senior PM',        'Senior Product Manager',                  'Product' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000014', id, 'Senior PM',        'Senior Product Manager',                  'Product' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000015', id, 'Director of PM',   'Director of Product Management',          'Product' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000015', id, 'Director of PM',   'Director of Product Management',          'Product' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- Program
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000021', id, 'TPM-1',            'Technical Program Manager 1',             'Program' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000021', id, 'TPM-1',            'Technical Program Manager 1',             'Program' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000022', id, 'TPM-2',            'Technical Program Manager 2',             'Program' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000022', id, 'TPM-2',            'Technical Program Manager 2',             'Program' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c4000001-0000-0000-0000-000000000023', id, 'Senior TPM',       'Senior Technical Program Manager',        'Program' FROM companies WHERE name='Flipkart' ON CONFLICT (id) DO NOTHING;
+SELECT 'c4000001-0000-0000-0000-000000000023', id, 'Senior TPM',       'Senior Technical Program Manager',        'Program' FROM companies WHERE name='Flipkart' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- ══ SWIGGY ════════════════════════════════════════════════════════════════════
 
 -- Engineering
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c5000001-0000-0000-0000-000000000001', id, 'SDE-1',            'Software Development Engineer 1',         'Engineering' FROM companies WHERE name='Swiggy' ON CONFLICT (id) DO NOTHING;
+SELECT 'c5000001-0000-0000-0000-000000000001', id, 'SDE-1',            'Software Development Engineer 1',         'Engineering' FROM companies WHERE name='Swiggy' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c5000001-0000-0000-0000-000000000002', id, 'SDE-2',            'Software Development Engineer 2',         'Engineering' FROM companies WHERE name='Swiggy' ON CONFLICT (id) DO NOTHING;
+SELECT 'c5000001-0000-0000-0000-000000000002', id, 'SDE-2',            'Software Development Engineer 2',         'Engineering' FROM companies WHERE name='Swiggy' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c5000001-0000-0000-0000-000000000003', id, 'SDE-3',            'Senior Software Development Engineer',    'Engineering' FROM companies WHERE name='Swiggy' ON CONFLICT (id) DO NOTHING;
+SELECT 'c5000001-0000-0000-0000-000000000003', id, 'SDE-3',            'Senior Software Development Engineer',    'Engineering' FROM companies WHERE name='Swiggy' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c5000001-0000-0000-0000-000000000004', id, 'Staff Engineer',   'Staff Engineer',                          'Engineering' FROM companies WHERE name='Swiggy' ON CONFLICT (id) DO NOTHING;
+SELECT 'c5000001-0000-0000-0000-000000000004', id, 'Staff Engineer',   'Staff Engineer',                          'Engineering' FROM companies WHERE name='Swiggy' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c5000001-0000-0000-0000-000000000005', id, 'Principal Eng.',   'Principal Engineer',                      'Engineering' FROM companies WHERE name='Swiggy' ON CONFLICT (id) DO NOTHING;
+SELECT 'c5000001-0000-0000-0000-000000000005', id, 'Principal Eng.',   'Principal Engineer',                      'Engineering' FROM companies WHERE name='Swiggy' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c5000001-0000-0000-0000-000000000006', id, 'EM',               'Engineering Manager',                     'Engineering' FROM companies WHERE name='Swiggy' ON CONFLICT (id) DO NOTHING;
+SELECT 'c5000001-0000-0000-0000-000000000006', id, 'EM',               'Engineering Manager',                     'Engineering' FROM companies WHERE name='Swiggy' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- Product
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c5000001-0000-0000-0000-000000000011', id, 'APM',              'Associate Product Manager',               'Product' FROM companies WHERE name='Swiggy' ON CONFLICT (id) DO NOTHING;
+SELECT 'c5000001-0000-0000-0000-000000000011', id, 'APM',              'Associate Product Manager',               'Product' FROM companies WHERE name='Swiggy' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c5000001-0000-0000-0000-000000000012', id, 'PM',               'Product Manager',                         'Product' FROM companies WHERE name='Swiggy' ON CONFLICT (id) DO NOTHING;
+SELECT 'c5000001-0000-0000-0000-000000000012', id, 'PM',               'Product Manager',                         'Product' FROM companies WHERE name='Swiggy' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c5000001-0000-0000-0000-000000000013', id, 'Senior PM',        'Senior Product Manager',                  'Product' FROM companies WHERE name='Swiggy' ON CONFLICT (id) DO NOTHING;
+SELECT 'c5000001-0000-0000-0000-000000000013', id, 'Senior PM',        'Senior Product Manager',                  'Product' FROM companies WHERE name='Swiggy' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c5000001-0000-0000-0000-000000000014', id, 'Lead PM',          'Lead / Staff Product Manager',            'Product' FROM companies WHERE name='Swiggy' ON CONFLICT (id) DO NOTHING;
+SELECT 'c5000001-0000-0000-0000-000000000014', id, 'Lead PM',          'Lead / Staff Product Manager',            'Product' FROM companies WHERE name='Swiggy' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- ══ RAZORPAY ══════════════════════════════════════════════════════════════════
 
 -- Engineering
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c6000001-0000-0000-0000-000000000001', id, 'SDE-1',            'Software Development Engineer 1',         'Engineering' FROM companies WHERE name='Razorpay' ON CONFLICT (id) DO NOTHING;
+SELECT 'c6000001-0000-0000-0000-000000000001', id, 'SDE-1',            'Software Development Engineer 1',         'Engineering' FROM companies WHERE name='Razorpay' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c6000001-0000-0000-0000-000000000002', id, 'SDE-2',            'Software Development Engineer 2',         'Engineering' FROM companies WHERE name='Razorpay' ON CONFLICT (id) DO NOTHING;
+SELECT 'c6000001-0000-0000-0000-000000000002', id, 'SDE-2',            'Software Development Engineer 2',         'Engineering' FROM companies WHERE name='Razorpay' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c6000001-0000-0000-0000-000000000003', id, 'SDE-3',            'Senior Software Development Engineer',    'Engineering' FROM companies WHERE name='Razorpay' ON CONFLICT (id) DO NOTHING;
+SELECT 'c6000001-0000-0000-0000-000000000003', id, 'SDE-3',            'Senior Software Development Engineer',    'Engineering' FROM companies WHERE name='Razorpay' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c6000001-0000-0000-0000-000000000004', id, 'Staff Engineer',   'Staff Engineer',                          'Engineering' FROM companies WHERE name='Razorpay' ON CONFLICT (id) DO NOTHING;
+SELECT 'c6000001-0000-0000-0000-000000000004', id, 'Staff Engineer',   'Staff Engineer',                          'Engineering' FROM companies WHERE name='Razorpay' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c6000001-0000-0000-0000-000000000005', id, 'EM',               'Engineering Manager',                     'Engineering' FROM companies WHERE name='Razorpay' ON CONFLICT (id) DO NOTHING;
+SELECT 'c6000001-0000-0000-0000-000000000005', id, 'EM',               'Engineering Manager',                     'Engineering' FROM companies WHERE name='Razorpay' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- Product
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c6000001-0000-0000-0000-000000000011', id, 'PM',               'Product Manager',                         'Product' FROM companies WHERE name='Razorpay' ON CONFLICT (id) DO NOTHING;
+SELECT 'c6000001-0000-0000-0000-000000000011', id, 'PM',               'Product Manager',                         'Product' FROM companies WHERE name='Razorpay' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c6000001-0000-0000-0000-000000000012', id, 'Senior PM',        'Senior Product Manager',                  'Product' FROM companies WHERE name='Razorpay' ON CONFLICT (id) DO NOTHING;
+SELECT 'c6000001-0000-0000-0000-000000000012', id, 'Senior PM',        'Senior Product Manager',                  'Product' FROM companies WHERE name='Razorpay' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c6000001-0000-0000-0000-000000000013', id, 'Lead PM',          'Lead Product Manager',                    'Product' FROM companies WHERE name='Razorpay' ON CONFLICT (id) DO NOTHING;
+SELECT 'c6000001-0000-0000-0000-000000000013', id, 'Lead PM',          'Lead Product Manager',                    'Product' FROM companies WHERE name='Razorpay' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- ══ ATLASSIAN ═════════════════════════════════════════════════════════════════
 
 -- Engineering
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c7000001-0000-0000-0000-000000000001', id, 'Associate SDE',    'Associate Software Development Engineer', 'Engineering' FROM companies WHERE name='Atlassian' ON CONFLICT (id) DO NOTHING;
+SELECT 'c7000001-0000-0000-0000-000000000001', id, 'Associate SDE',    'Associate Software Development Engineer', 'Engineering' FROM companies WHERE name='Atlassian' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c7000001-0000-0000-0000-000000000002', id, 'SDE',              'Software Development Engineer',           'Engineering' FROM companies WHERE name='Atlassian' ON CONFLICT (id) DO NOTHING;
+SELECT 'c7000001-0000-0000-0000-000000000002', id, 'SDE',              'Software Development Engineer',           'Engineering' FROM companies WHERE name='Atlassian' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c7000001-0000-0000-0000-000000000003', id, 'Senior SDE',       'Senior Software Development Engineer',    'Engineering' FROM companies WHERE name='Atlassian' ON CONFLICT (id) DO NOTHING;
+SELECT 'c7000001-0000-0000-0000-000000000003', id, 'Senior SDE',       'Senior Software Development Engineer',    'Engineering' FROM companies WHERE name='Atlassian' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c7000001-0000-0000-0000-000000000004', id, 'Staff SDE',        'Staff Software Development Engineer',     'Engineering' FROM companies WHERE name='Atlassian' ON CONFLICT (id) DO NOTHING;
+SELECT 'c7000001-0000-0000-0000-000000000004', id, 'Staff SDE',        'Staff Software Development Engineer',     'Engineering' FROM companies WHERE name='Atlassian' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c7000001-0000-0000-0000-000000000005', id, 'Principal SDE',    'Principal Software Development Engineer', 'Engineering' FROM companies WHERE name='Atlassian' ON CONFLICT (id) DO NOTHING;
+SELECT 'c7000001-0000-0000-0000-000000000005', id, 'Principal SDE',    'Principal Software Development Engineer', 'Engineering' FROM companies WHERE name='Atlassian' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c7000001-0000-0000-0000-000000000006', id, 'EM',               'Engineering Manager',                     'Engineering' FROM companies WHERE name='Atlassian' ON CONFLICT (id) DO NOTHING;
+SELECT 'c7000001-0000-0000-0000-000000000006', id, 'EM',               'Engineering Manager',                     'Engineering' FROM companies WHERE name='Atlassian' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c7000001-0000-0000-0000-000000000007', id, 'Senior EM',        'Senior Engineering Manager',              'Engineering' FROM companies WHERE name='Atlassian' ON CONFLICT (id) DO NOTHING;
+SELECT 'c7000001-0000-0000-0000-000000000007', id, 'Senior EM',        'Senior Engineering Manager',              'Engineering' FROM companies WHERE name='Atlassian' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- Product
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c7000001-0000-0000-0000-000000000011', id, 'PM',               'Product Manager',                         'Product' FROM companies WHERE name='Atlassian' ON CONFLICT (id) DO NOTHING;
+SELECT 'c7000001-0000-0000-0000-000000000011', id, 'PM',               'Product Manager',                         'Product' FROM companies WHERE name='Atlassian' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c7000001-0000-0000-0000-000000000012', id, 'Senior PM',        'Senior Product Manager',                  'Product' FROM companies WHERE name='Atlassian' ON CONFLICT (id) DO NOTHING;
+SELECT 'c7000001-0000-0000-0000-000000000012', id, 'Senior PM',        'Senior Product Manager',                  'Product' FROM companies WHERE name='Atlassian' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c7000001-0000-0000-0000-000000000013', id, 'Principal PM',     'Principal Product Manager',               'Product' FROM companies WHERE name='Atlassian' ON CONFLICT (id) DO NOTHING;
+SELECT 'c7000001-0000-0000-0000-000000000013', id, 'Principal PM',     'Principal Product Manager',               'Product' FROM companies WHERE name='Atlassian' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c7000001-0000-0000-0000-000000000014', id, 'Head of PM',       'Head of Product Management',              'Product' FROM companies WHERE name='Atlassian' ON CONFLICT (id) DO NOTHING;
+SELECT 'c7000001-0000-0000-0000-000000000014', id, 'Head of PM',       'Head of Product Management',              'Product' FROM companies WHERE name='Atlassian' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- Program
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c7000001-0000-0000-0000-000000000021', id, 'TPM',              'Technical Program Manager',               'Program' FROM companies WHERE name='Atlassian' ON CONFLICT (id) DO NOTHING;
+SELECT 'c7000001-0000-0000-0000-000000000021', id, 'TPM',              'Technical Program Manager',               'Program' FROM companies WHERE name='Atlassian' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c7000001-0000-0000-0000-000000000022', id, 'Senior TPM',       'Senior Technical Program Manager',        'Program' FROM companies WHERE name='Atlassian' ON CONFLICT (id) DO NOTHING;
+SELECT 'c7000001-0000-0000-0000-000000000022', id, 'Senior TPM',       'Senior Technical Program Manager',        'Program' FROM companies WHERE name='Atlassian' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c7000001-0000-0000-0000-000000000023', id, 'Principal TPM',    'Principal Technical Program Manager',     'Program' FROM companies WHERE name='Atlassian' ON CONFLICT (id) DO NOTHING;
+SELECT 'c7000001-0000-0000-0000-000000000023', id, 'Principal TPM',    'Principal Technical Program Manager',     'Program' FROM companies WHERE name='Atlassian' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- ══ PHONEPE ═══════════════════════════════════════════════════════════════════
 
 -- Engineering
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c8000001-0000-0000-0000-000000000001', id, 'SDE-1',            'Software Development Engineer 1',         'Engineering' FROM companies WHERE name='PhonePe' ON CONFLICT (id) DO NOTHING;
+SELECT 'c8000001-0000-0000-0000-000000000001', id, 'SDE-1',            'Software Development Engineer 1',         'Engineering' FROM companies WHERE name='PhonePe' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c8000001-0000-0000-0000-000000000002', id, 'SDE-2',            'Software Development Engineer 2',         'Engineering' FROM companies WHERE name='PhonePe' ON CONFLICT (id) DO NOTHING;
+SELECT 'c8000001-0000-0000-0000-000000000002', id, 'SDE-2',            'Software Development Engineer 2',         'Engineering' FROM companies WHERE name='PhonePe' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c8000001-0000-0000-0000-000000000003', id, 'SDE-3',            'Senior Software Development Engineer',    'Engineering' FROM companies WHERE name='PhonePe' ON CONFLICT (id) DO NOTHING;
+SELECT 'c8000001-0000-0000-0000-000000000003', id, 'SDE-3',            'Senior Software Development Engineer',    'Engineering' FROM companies WHERE name='PhonePe' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c8000001-0000-0000-0000-000000000004', id, 'Staff Engineer',   'Staff Engineer',                          'Engineering' FROM companies WHERE name='PhonePe' ON CONFLICT (id) DO NOTHING;
+SELECT 'c8000001-0000-0000-0000-000000000004', id, 'Staff Engineer',   'Staff Engineer',                          'Engineering' FROM companies WHERE name='PhonePe' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c8000001-0000-0000-0000-000000000005', id, 'Principal Eng.',   'Principal Engineer',                      'Engineering' FROM companies WHERE name='PhonePe' ON CONFLICT (id) DO NOTHING;
+SELECT 'c8000001-0000-0000-0000-000000000005', id, 'Principal Eng.',   'Principal Engineer',                      'Engineering' FROM companies WHERE name='PhonePe' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c8000001-0000-0000-0000-000000000006', id, 'EM',               'Engineering Manager',                     'Engineering' FROM companies WHERE name='PhonePe' ON CONFLICT (id) DO NOTHING;
+SELECT 'c8000001-0000-0000-0000-000000000006', id, 'EM',               'Engineering Manager',                     'Engineering' FROM companies WHERE name='PhonePe' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- Product
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c8000001-0000-0000-0000-000000000011', id, 'APM',              'Associate Product Manager',               'Product' FROM companies WHERE name='PhonePe' ON CONFLICT (id) DO NOTHING;
+SELECT 'c8000001-0000-0000-0000-000000000011', id, 'APM',              'Associate Product Manager',               'Product' FROM companies WHERE name='PhonePe' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c8000001-0000-0000-0000-000000000012', id, 'PM',               'Product Manager',                         'Product' FROM companies WHERE name='PhonePe' ON CONFLICT (id) DO NOTHING;
+SELECT 'c8000001-0000-0000-0000-000000000012', id, 'PM',               'Product Manager',                         'Product' FROM companies WHERE name='PhonePe' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c8000001-0000-0000-0000-000000000013', id, 'Senior PM',        'Senior Product Manager',                  'Product' FROM companies WHERE name='PhonePe' ON CONFLICT (id) DO NOTHING;
+SELECT 'c8000001-0000-0000-0000-000000000013', id, 'Senior PM',        'Senior Product Manager',                  'Product' FROM companies WHERE name='PhonePe' ON CONFLICT(company_id,title) DO NOTHING;
 INSERT INTO guide_company_levels (id, company_id, title, description, function_category)
-SELECT 'c8000001-0000-0000-0000-000000000014', id, 'Lead PM',          'Lead Product Manager',                    'Product' FROM companies WHERE name='PhonePe' ON CONFLICT (id) DO NOTHING;
+SELECT 'c8000001-0000-0000-0000-000000000014', id, 'Lead PM',          'Lead Product Manager',                    'Product' FROM companies WHERE name='PhonePe' ON CONFLICT(company_id,title) DO NOTHING;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- STEP 4 — Mappings (company level → standard level)
