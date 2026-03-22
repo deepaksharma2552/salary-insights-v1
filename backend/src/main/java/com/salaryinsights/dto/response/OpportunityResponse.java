@@ -18,6 +18,8 @@ public class OpportunityResponse {
     private String title;
     private String companyName;
     private UUID   companyId;
+    private String logoUrl;
+    private String website;
 
     private OpportunityType   type;
     private String            role;

@@ -115,8 +115,9 @@ public class OpportunityService {
         final String cursorFilter = (cursor != null && !cursor.isBlank()) ? cursor : null;
 
         Specification<Opportunity> spec = (root, query, cb) -> {
-            // Eager-load postedBy to avoid LazyInitializationException in mapper
+            // Eager-load postedBy and company to avoid LazyInitializationException in mapper
             root.fetch("postedBy");
+            root.fetch("company", jakarta.persistence.criteria.JoinType.LEFT);
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("status"), OpportunityStatus.LIVE));
             if (cursorFilter != null)
@@ -263,6 +264,8 @@ public class OpportunityService {
                 .title(o.getTitle())
                 .companyName(o.getCompanyName())
                 .companyId(o.getCompany() != null ? o.getCompany().getId() : null)
+                .logoUrl(o.getCompany() != null ? o.getCompany().getLogoUrl() : null)
+                .website(o.getCompany() != null ? o.getCompany().getWebsite() : null)
                 .type(o.getType())
                 .role(o.getRole())
                 .location(o.getLocation())
