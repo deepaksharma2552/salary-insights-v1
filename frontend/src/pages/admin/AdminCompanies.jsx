@@ -2,7 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../services/api';
 import TopProgressBar from '../../components/shared/TopProgressBar';
 
-const EMPTY = { name: '', industry: '', website: '', description: '' };
+const BENEFIT_OPTIONS = [
+  'ESOPs', 'Health insurance', 'Dental & vision', 'Relocation',
+  'Learning budget', 'Meal allowance', 'WFH / Remote', 'Parental leave', 'Gym / wellness',
+];
+
+const EMPTY = { name: '', industry: '', website: '', description: '', benefits: [] };
 const SEARCH_MIN  = 3;
 const SEARCH_WAIT = 600;
 const SIZE_OPTIONS = [10, 25, 50];
@@ -122,7 +127,7 @@ export default function AdminCompanies() {
   /* ── CRUD ───────────────────────────────────────────────────────────────── */
   function openCreate() { setForm(EMPTY); setModal('create'); setError(''); }
   function openEdit(c)  {
-    setForm({ name: c.name, industry: c.industry ?? '', website: c.website ?? '', description: c.description ?? '' });
+    setForm({ name: c.name, industry: c.industry ?? '', website: c.website ?? '', description: c.description ?? '', benefits: c.benefits ?? [] });
     setModal(c); setError('');
   }
 
@@ -360,6 +365,38 @@ export default function AdminCompanies() {
                   }
                 </div>
               ))}
+
+              {/* Benefits checklist */}
+              <div className="form-group">
+                <label className="form-label">Benefits</label>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 8 }}>
+                  Source from the company's official benefits page.
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {BENEFIT_OPTIONS.map(b => {
+                    const active = (form.benefits ?? []).includes(b);
+                    return (
+                      <button key={b} type="button"
+                        onClick={() => setForm(x => ({
+                          ...x,
+                          benefits: active
+                            ? x.benefits.filter(v => v !== b)
+                            : [...(x.benefits ?? []), b],
+                        }))}
+                        style={{
+                          padding: '5px 12px', fontSize: 12, fontWeight: 500,
+                          borderRadius: 20, cursor: 'pointer', transition: 'all 0.12s',
+                          border: active ? '1px solid #3b82f6' : '1px solid var(--border)',
+                          background: active ? '#eff6ff' : 'var(--bg-2)',
+                          color: active ? '#1d4ed8' : 'var(--text-2)',
+                        }}
+                      >
+                        {active && '✓ '}{b}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
               <button className="btn-ghost" onClick={() => setModal(null)}>Cancel</button>

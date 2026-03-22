@@ -199,6 +199,154 @@ function CompanyModal({ company, onClose }) {
 }
 
 // ── Main CompaniesPage ────────────────────────────────────────────────────────
+const LEVEL_CATEGORY_LABEL = {
+  STARTUP:    'Startup',
+  MID_SIZE:   'Mid-size',
+  ENTERPRISE: 'Enterprise',
+  CUSTOM:     'Custom',
+};
+const LEVEL_CATEGORY_STYLE = {
+  STARTUP:    { background: '#EAF3DE', color: '#27500A', border: '0.5px solid #97C459' },
+  MID_SIZE:   { background: '#EEEDFE', color: '#3C3489', border: '0.5px solid #AFA9EC' },
+  ENTERPRISE: { background: '#E6F1FB', color: '#0C447C', border: '0.5px solid #85B7EB' },
+  CUSTOM:     { background: 'var(--bg-2)', color: 'var(--text-3)', border: '1px solid var(--border)' },
+};
+
+function CompanyCard({ c, onClick }) {
+  const [expanded,  setExpanded]  = useState(false);
+  const [levels,    setLevels]    = useState(null);  // null = not loaded, [] = loaded
+  const [loadingLvl, setLoadingLvl] = useState(false);
+
+  const hasTcRange = c.tcMin != null && c.tcMax != null;
+  const tcRangeStr = hasTcRange ? `${fmtSalary(c.tcMin)} – ${fmtSalary(c.tcMax)}` : c.avgTC !== '—' ? c.avgTC : '—';
+
+  function toggleExpand(e) {
+    e.stopPropagation();
+    if (expanded) { setExpanded(false); return; }
+    setExpanded(true);
+    if (levels !== null) return; // already loaded
+    setLoadingLvl(true);
+    api.get(`/public/companies/${c.id}/salary-summary`)
+      .then(r => setLevels(r.data?.data?.levels ?? []))
+      .catch(() => setLevels([]))
+      .finally(() => setLoadingLvl(false));
+  }
+
+  const maxTC = levels ? Math.max(...levels.map(l => l.avgTC ?? 0), 1) : 1;
+  const catStyle = LEVEL_CATEGORY_STYLE[c.levelCategory] ?? LEVEL_CATEGORY_STYLE.CUSTOM;
+  const catLabel = LEVEL_CATEGORY_LABEL[c.levelCategory] ?? null;
+
+  return (
+    <div
+      className="company-card fade-up"
+      onClick={onClick}
+      style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 12, transition: 'transform 0.15s, box-shadow 0.15s' }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.25)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
+    >
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <CompanyLogo companyId={c.id} companyName={c.name} logoUrl={c.logoUrl} website={c.website} size={36} radius={8} />
+          <div>
+            <div className="company-card-name" style={{ marginBottom: 0 }}>{c.name}</div>
+            <div className="company-card-industry">{c.industry}</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+          {catLabel && (
+            <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 20, ...catStyle }}>{catLabel}</span>
+          )}
+          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'var(--text-3)', background: 'var(--bg-2)', padding: '2px 7px', borderRadius: 6, border: '1px solid var(--border)' }}>
+            {c.entries} entries
+          </span>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div style={{ height: '0.5px', background: 'var(--border)' }} />
+
+      {/* TC range + expand button */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div>
+          <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 2 }}>
+            {hasTcRange ? 'TC range across levels' : 'Avg TC'}
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--text-1)' }}>
+            {tcRangeStr}
+          </div>
+        </div>
+        <button
+          onClick={toggleExpand}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 500, color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+        >
+          Breakdown by level
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"
+            style={{ transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Loading bar */}
+      {loadingLvl && (
+        <div style={{ height: 3, background: 'rgba(59,130,246,0.12)', borderRadius: 99, overflow: 'hidden', margin: '-4px 0' }}>
+          <div style={{ height: '100%', background: '#3b82f6', borderRadius: 99, animation: 'companyCrawl 1.2s ease-in-out infinite' }} />
+        </div>
+      )}
+
+      {/* Level breakdown — shown when expanded and loaded */}
+      {expanded && levels && levels.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, animation: 'companyFadeIn 0.2s ease' }}>
+          <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 2 }}>
+            Avg TC by internal level
+          </div>
+          {levels.map(l => (
+            <div key={l.internalLevel} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, color: 'var(--text-2)', width: 110, flexShrink: 0 }}>{l.internalLevel}</span>
+              <div style={{ flex: 1, height: 5, background: 'var(--bg-3)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: 99, background: '#3b82f6', width: `${Math.round(((l.avgTC ?? 0) / maxTC) * 100)}%` }} />
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 600, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--text-1)', minWidth: 52, textAlign: 'right' }}>
+                {fmtSalary(l.avgTC)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {expanded && levels && levels.length === 0 && !loadingLvl && (
+        <div style={{ fontSize: 11, color: 'var(--text-3)', fontStyle: 'italic' }}>No level breakdown available yet.</div>
+      )}
+
+      {/* Divider before benefits */}
+      <div style={{ height: '0.5px', background: 'var(--border)' }} />
+
+      {/* Benefits */}
+      <div>
+        <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 6 }}>Benefits</div>
+        {c.benefits && c.benefits.length > 0 ? (
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            {c.benefits.map(b => (
+              <span key={b} style={{ fontSize: 10, color: 'var(--text-2)', background: 'var(--bg-2)', border: '0.5px solid var(--border)', borderRadius: 6, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="#3b82f6" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                {b}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: 11, color: 'var(--text-3)', fontStyle: 'italic' }}>Not added yet</div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
+        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'var(--text-3)' }}>Updated {c.updatedLabel}</span>
+        <span style={{ fontSize: 11, color: 'var(--teal)', fontFamily: "'IBM Plex Mono',monospace", opacity: 0.8 }}>View salaries →</span>
+      </div>
+    </div>
+  );
+}
+
 export default function CompaniesPage() {
   const [items,         setItems]         = useState([]);
   const [industries,    setIndustries]    = useState([]);
@@ -265,6 +413,10 @@ export default function CompaniesPage() {
           entries:      c.entryCount ?? '—',
           avgBase:      fmtSalary(c.avgBaseSalary),
           avgTC:        fmtSalary(c.avgTotalCompensation),
+          tcMin:        c.tcMin ?? null,
+          tcMax:        c.tcMax ?? null,
+          benefits:     c.benefits ?? [],
+          levelCategory: c.companyLevelCategory ?? null,
         })));
         setTotalPages(paged?.totalPages ?? 1);
         setTotalElements(paged?.totalElements ?? 0);
@@ -277,7 +429,11 @@ export default function CompaniesPage() {
 
   return (
     <section className="section">
-      <style>{`@keyframes progressCrawl{0%{width:0%}40%{width:65%}70%{width:82%}100%{width:90%}}`}</style>
+      <style>{`
+        @keyframes progressCrawl { 0%{width:0%} 40%{width:65%} 70%{width:82%} 100%{width:90%} }
+        @keyframes companyCrawl  { 0%{transform:translateX(-100%)} 100%{transform:translateX(250%)} }
+        @keyframes companyFadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+      `}</style>
       <div className="section-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:16, marginBottom:32 }}>
         <div>
           <span className="section-tag">Company Directory</span>
@@ -355,37 +511,7 @@ export default function CompaniesPage() {
         <>
           <div className="companies-grid">
             {items.map(c => (
-              <div key={c.id} className="company-card fade-up"
-                onClick={() => setSelected(c)}
-                style={{ cursor:'pointer', transition:'transform 0.15s, box-shadow 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow='0 8px 32px rgba(0,0,0,0.25)'; }}
-                onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=''; }}
-              >
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
-                  <CompanyLogo
-                    companyId={c.id}
-                    companyName={c.name}
-                    logoUrl={c.logoUrl}
-                    website={c.website}
-                    size={40}
-                    radius={8}
-                    style={{ marginBottom: 0 }}
-                  />
-                  <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:'var(--text-3)', background:'var(--ink-3)', padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)' }}>
-                    Updated {c.updatedLabel}
-                  </span>
-                </div>
-                <div className="company-card-name">{c.name}</div>
-                <div className="company-card-industry">{c.industry}</div>
-                <div className="company-card-stats">
-                  <div className="cstat"><div className="cstat-val">{c.entries}</div><div className="cstat-label">Entries</div></div>
-                  <div className="cstat"><div className="cstat-val">{c.avgBase}</div><div className="cstat-label">Avg Base</div></div>
-                  <div className="cstat"><div className="cstat-val">{c.avgTC}</div><div className="cstat-label">Avg TC</div></div>
-                </div>
-                <div style={{ marginTop:12, fontSize:11, color:'var(--teal)', fontFamily:"'JetBrains Mono',monospace", opacity:0.7 }}>
-                  Click to view salaries →
-                </div>
-              </div>
+              <CompanyCard key={c.id} c={c} onClick={() => setSelected(c)} />
             ))}
           </div>
 
