@@ -626,13 +626,13 @@ function CompanyCard({ c, onViewDetails }) {
         <span style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.07em', color:'var(--text-3)' }}>
           {hasTcRange ? 'TC range' : 'Avg TC'}
         </span>
-        {/* Bottom row: value + breakdown link */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
-          <span style={{ fontSize:15, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', whiteSpace:'nowrap' }}>
+        {/* Bottom row: value left, breakdown right — each on own line if narrow */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, flexWrap:'wrap' }}>
+          <span style={{ fontSize:13, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', whiteSpace:'nowrap', minWidth:0 }}>
             {tcRangeStr}
           </span>
           <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:11, fontWeight:500, color:'#3b82f6', whiteSpace:'nowrap', flexShrink:0 }}>
-            Breakdown by level
+            View breakdown
             <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"
               style={{ transition:'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
               <polyline points="6 9 12 15 18 9"/>
