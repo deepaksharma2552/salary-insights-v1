@@ -7,9 +7,6 @@ import com.salaryinsights.service.impl.AuditLogService;
 import com.salaryinsights.service.impl.LevelMappingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -86,18 +83,15 @@ public class AdminLevelController {
         return ResponseEntity.ok(ApiResponse.success("Mapping removed", null));
     }
 
-    // Audit Logs
+    // Audit Logs — scoped to level-related entities, cursor-based
     @GetMapping("/audit-logs")
-    public ResponseEntity<ApiResponse<PagedResponse<AuditLog>>> getAuditLogs(
-            @RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<ApiResponse<CursorPage<AuditLog>>> getAuditLogs(
+            @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String entityType) {
 
-        PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<AuditLog> logs = entityType != null
-                ? auditLogService.getLogsByEntityType(entityType, pageable)
-                : auditLogService.getAllLogs(pageable);
-
-        return ResponseEntity.ok(ApiResponse.success(PagedResponse.of(logs)));
+        CursorPage<AuditLog> page = auditLogService.getLogs(
+                cursor, size, null, null, entityType, null, null);
+        return ResponseEntity.ok(ApiResponse.success(page));
     }
 }
