@@ -33,7 +33,12 @@ public class CompanyService {
     public PagedResponse<CompanyResponse> getAllCompanies(String name, String industry, String location, Pageable pageable) {
         Page<Company> page = companyRepository.searchCompanies(CompanyStatus.ACTIVE, name, industry, location, pageable);
         List<com.salaryinsights.dto.response.CompanyResponse> enriched = page.getContent().stream()
-                .map(c -> enrichWithStats(companyMapper.toResponse(c), c.getId()))
+                .map(c -> {
+                    com.salaryinsights.dto.response.CompanyResponse r = enrichWithStats(companyMapper.toResponse(c), c.getId());
+                    r.setTcMin(c.getTcMin());
+                    r.setTcMax(c.getTcMax());
+                    return r;
+                })
                 .collect(java.util.stream.Collectors.toList());
         return com.salaryinsights.dto.response.PagedResponse.<com.salaryinsights.dto.response.CompanyResponse>builder()
                 .content(enriched)
