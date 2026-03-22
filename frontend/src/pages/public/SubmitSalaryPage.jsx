@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useAppData } from '../../context/AppDataContext';
+import CompanyLogo from '../../components/shared/CompanyLogo';
 
 export default function SubmitSalaryPage() {
   const navigate = useNavigate();
@@ -229,29 +230,47 @@ export default function SubmitSalaryPage() {
                     Type {3 - companyQuery.length} more character{3 - companyQuery.length !== 1 ? 's' : ''} to search…
                   </div>
                 )}
-                {companySelected && (
-                  <div style={{ fontSize: 11, marginTop: 4, fontFamily: "'JetBrains Mono',monospace", color: companySelected.isNew ? 'var(--gold)' : 'var(--teal)' }}>
-                    {companySelected.isNew ? '✦ New company — will be created on submit' : '✓ Company selected'}
+                {companySelected && !(companySelected.isNew) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <CompanyLogo
+                      companyId={companySelected.id}
+                      companyName={companySelected.name}
+                      logoUrl={companySelected.logoUrl}
+                      website={companySelected.website}
+                      size={22}
+                      radius={4}
+                    />
+                    <span style={{ fontSize: 11, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--teal)' }}>✓ Company selected</span>
+                  </div>
+                )}
+                {companySelected && companySelected.isNew && (
+                  <div style={{ fontSize: 11, marginTop: 4, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--gold)' }}>
+                    ✦ New company — will be created on submit
                   </div>
                 )}
                 {showSuggestions && suggestions.length > 0 && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, marginTop: 4, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
                     {suggestions.map((c, i) => (
                       <div key={c.id} onClick={() => selectCompany(c)}
-                        style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: i < suggestions.length - 1 ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', gap: 12 }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--ink-3)'}
+                        style={{ padding: '9px 14px', cursor: 'pointer', borderBottom: i < suggestions.length - 1 ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', gap: 10 }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-2)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       >
-                        <div style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, background: 'var(--ink-3)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: 'var(--gold)' }}>
-                          {c.name.slice(0, 2).toUpperCase()}
-                        </div>
+                        <CompanyLogo
+                          companyId={c.id}
+                          companyName={c.name}
+                          logoUrl={c.logoUrl}
+                          website={c.website}
+                          size={28}
+                          radius={6}
+                        />
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>{c.name}</div>
                           {c.industry && <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>{c.industry}</div>}
                         </div>
                       </div>
                     ))}
-                    <div style={{ padding: '8px 16px', fontSize: 11, color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", borderTop: '1px solid var(--border)', background: 'var(--ink-2)' }}>
+                    <div style={{ padding: '8px 16px', fontSize: 11, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace", borderTop: '1px solid var(--border)', background: 'var(--bg-2)' }}>
                       {suggestions.length} result{suggestions.length !== 1 ? 's' : ''} found
                     </div>
                   </div>
