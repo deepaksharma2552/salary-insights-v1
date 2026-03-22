@@ -513,6 +513,7 @@ export default function DashboardPage() {
   const [selLocations, setSelLocations] = useState([]);
   const [selCompanies, setSelCompanies] = useState([]);
   const [selLocationsForCompany, setSelLocationsForCompany] = useState([]);
+  const [selLevels, setSelLevels] = useState([]);
 
   // All valid location display names (from the Location enum — matches what the DB stores)
   const ALL_LOCATIONS = [
@@ -572,6 +573,20 @@ export default function DashboardPage() {
 
   const allLocations    = useMemo(() => Object.keys(locationGrouped), [locationGrouped]);
   const allCompanyNames = useMemo(() => Object.keys(companyGrouped),  [companyGrouped]);
+  const allLevelNames   = useMemo(() => {
+    const seen = new Set();
+    byCompanyLevel.forEach(row => { if (row.internalLevel) seen.add(row.internalLevel); });
+    // Sort by known seniority order, unknowns go to end alphabetically
+    const ORDER = ['SDE 1','SDE 2','SDE 3','Staff Engineer','Principal Engineer','Architect',
+                   'Engineering Manager','Sr. Engineering Manager','Director','Sr. Director','VP'];
+    return [...seen].sort((a, b) => {
+      const ai = ORDER.indexOf(a); const bi = ORDER.indexOf(b);
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      if (ai !== -1) return -1;
+      if (bi !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  }, [byCompanyLevel]);
 
   /* ── Visible items — filter if selected, else show all / top 6 ── */
   const visibleLocations = selLocations.length > 0
@@ -708,8 +723,8 @@ export default function DashboardPage() {
               <div>
                 <div className="chart-title">Avg Salary by Company &amp; Level</div>
                 <div className="chart-subtitle">
-                  {selLocationsForCompany.length > 0
-                    ? `${selLocationsForCompany.length} location${selLocationsForCompany.length > 1 ? 's' : ''} · ${selCompanies.length > 0 ? selCompanies.length + ' companies' : 'all companies'} · hover for breakdown`
+                  {selLocationsForCompany.length > 0 || selLevels.length > 0
+                    ? `${selLocationsForCompany.length > 0 ? selLocationsForCompany.length + ' location' + (selLocationsForCompany.length > 1 ? 's' : '') + ' · ' : ''}${selCompanies.length > 0 ? selCompanies.length + ' companies' : 'all companies'}${selLevels.length > 0 ? ' · ' + selLevels.length + ' level' + (selLevels.length > 1 ? 's' : '') : ''} · hover for breakdown`
                     : 'Hover each bar for Base · Bonus · Equity breakdown'}
                 </div>
               </div>
@@ -729,10 +744,17 @@ export default function DashboardPage() {
                     onChange={setSelCompanies}
                     max={5}
                   />
+                  <MultiFilter
+                    label="Level"
+                    items={allLevelNames}
+                    selected={selLevels}
+                    onChange={setSelLevels}
+                    max={5}
+                  />
                 </div>
-                {(selLocationsForCompany.length > 0 || selCompanies.length > 0) && (
+                {(selLocationsForCompany.length > 0 || selCompanies.length > 0 || selLevels.length > 0) && (
                   <button
-                    onClick={() => { setSelLocationsForCompany([]); setSelCompanies([]); }}
+                    onClick={() => { setSelLocationsForCompany([]); setSelCompanies([]); setSelLevels([]); }}
                     style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'IBM Plex Mono',monospace" }}
                   >
                     ✕ clear all
@@ -741,7 +763,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Active filter chips — locations first, then companies */}
+            {/* Active filter chips — locations, companies, levels */}
             <Chips
               items={selLocationsForCompany}
               onRemove={loc => setSelLocationsForCompany(selLocationsForCompany.filter(l => l !== loc))}
@@ -749,6 +771,10 @@ export default function DashboardPage() {
             <Chips
               items={selCompanies}
               onRemove={c => setSelCompanies(selCompanies.filter(x => x !== c))}
+            />
+            <Chips
+              items={selLevels}
+              onRemove={l => setSelLevels(selLevels.filter(x => x !== l))}
             />
 
             {/* Progress bar — crawls while backend re-fetches, invisible otherwise */}
@@ -768,7 +794,11 @@ export default function DashboardPage() {
             {byCompanyLevel.length === 0 ? <EmptyState /> : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {visibleCompanies.map((company, ci) => {
-                  const rows     = companyGrouped[company] ?? [];
+                  const allRows  = companyGrouped[company] ?? [];
+                  const rows     = selLevels.length > 0
+                    ? allRows.filter(r => selLevels.includes(r.internalLevel))
+                    : allRows;
+                  if (rows.length === 0) return null; // hide company entirely if no matching levels
                   const firstRow = rows[0];
                   const color    = BAR_COLORS[ci % BAR_COLORS.length];
                   return (
