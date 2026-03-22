@@ -287,12 +287,12 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  AVG(equity)                    AS avgEquity, " +
         "  AVG(total_compensation)        AS avgTC, " +
         "  COUNT(*)                       AS cnt " +
-        "FROM salary_entries " +
-        "WHERE company_id = :companyId " +
-        "  AND review_status = 'APPROVED' " +
-        "  AND company_internal_level IS NOT NULL " +
-        "GROUP BY company_internal_level " +
-        "ORDER BY AVG(total_compensation) ASC",
+        "FROM salary_entries s " +
+        "WHERE s.company_id = CAST(:companyId AS uuid) " +
+        "  AND s.review_status = 'APPROVED' " +
+        "  AND s.company_internal_level IS NOT NULL " +
+        "GROUP BY s.company_internal_level " +
+        "ORDER BY AVG(s.total_compensation) ASC",
         nativeQuery = true)
     List<Object[]> salarySummaryByLevel(@Param("companyId") UUID companyId);
 
