@@ -431,3 +431,7 @@ export default function AdminOpportunities() {
           </div>
         </div>
       )}
+
+    </div>
+  );
+}
