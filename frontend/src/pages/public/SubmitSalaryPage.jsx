@@ -356,81 +356,89 @@ export default function SubmitSalaryPage() {
                 </select>
               </div>
 
-              {/* Base Salary — B3 style: taller input, stacked INR formatted right */}
-              <div className="form-group">
-                <label className="form-label">Base Salary (₹/yr) *</label>
-                <div style={{ position:'relative' }}>
-                  <input
-                    className="form-input"
-                    name="baseSalary" type="number" min="0"
-                    placeholder="e.g. 3200000"
-                    value={form.baseSalary} onChange={handleChange} required
-                    style={{ paddingRight: fmtInr(form.baseSalary) ? 80 : 12, height: 52 }}
-                  />
-                  {fmtInr(form.baseSalary) && (
-                    <div style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', alignItems:'flex-end', gap:1, pointerEvents:'none' }}>
-                      <span style={{ fontSize:13, fontWeight:600, color:'#059669', fontFamily:"'IBM Plex Mono',monospace", lineHeight:1.2 }}>
-                        {fmtInr(form.baseSalary)}
-                      </span>
-                      <span style={{ fontSize:9, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>per year</span>
-                    </div>
-                  )}
-                </div>
-              </div>
+              {/* Compensation — full-width row, internal 2-col grid matching parent */}
+              <div style={{ gridColumn:'1 / -1', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
 
-              {/* Bonus — B3 style */}
-              <div className="form-group">
-                <label className="form-label">Bonus (₹/yr)</label>
-                <div style={{ position:'relative' }}>
-                  <input
-                    className="form-input"
-                    name="bonus" type="number" min="0"
-                    placeholder="e.g. 500000"
-                    value={form.bonus} onChange={handleChange}
-                    style={{ paddingRight: fmtInr(form.bonus) ? 80 : 12, height: 52 }}
-                  />
-                  {fmtInr(form.bonus) && (
-                    <div style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', alignItems:'flex-end', gap:1, pointerEvents:'none' }}>
-                      <span style={{ fontSize:13, fontWeight:600, color:'#059669', fontFamily:"'IBM Plex Mono',monospace", lineHeight:1.2 }}>
-                        {fmtInr(form.bonus)}
-                      </span>
-                      <span style={{ fontSize:9, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>per year</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* RSU / Equity — B3 style with USD conversion stacked below INR */}
-              <div className="form-group">
-                <label className="form-label">
-                  Equity / RSU (₹/yr)
-                  {form.equity && fmtUsd(form.equity) && (
-                    <span style={{ marginLeft:8, fontSize:10, color:'var(--text-3)', fontWeight:400 }}>
-                      live rate: 1 USD = ₹{usdRate}
-                    </span>
-                  )}
-                </label>
-                <div style={{ position:'relative' }}>
-                  <input
-                    className="form-input"
-                    name="equity" type="number" min="0"
-                    placeholder="e.g. 1500000"
-                    value={form.equity} onChange={handleChange}
-                    style={{ paddingRight: fmtInr(form.equity) ? 84 : 12, height: fmtUsd(form.equity) ? 58 : 52 }}
-                  />
-                  {fmtInr(form.equity) && (
-                    <div style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, pointerEvents:'none' }}>
-                      <span style={{ fontSize:13, fontWeight:600, color:'#059669', fontFamily:"'IBM Plex Mono',monospace", lineHeight:1.2 }}>
-                        {fmtInr(form.equity)}
-                      </span>
-                      {fmtUsd(form.equity) && (
-                        <span style={{ fontSize:10, color:'#185FA5', fontFamily:"'IBM Plex Mono',monospace", lineHeight:1.2 }}>
-                          ≈ {fmtUsd(form.equity)}
+                {/* Base Salary */}
+                <div className="form-group" style={{ margin:0 }}>
+                  <label className="form-label">Base Salary (₹/yr) *</label>
+                  <div style={{ position:'relative' }}>
+                    <input
+                      className="form-input"
+                      name="baseSalary" type="number" min="0"
+                      placeholder="e.g. 3200000"
+                      value={form.baseSalary} onChange={handleChange} required
+                      style={{ paddingRight: fmtInr(form.baseSalary) ? 80 : 12, height: 52 }}
+                    />
+                    {fmtInr(form.baseSalary) && (
+                      <div style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', alignItems:'flex-end', gap:1, pointerEvents:'none' }}>
+                        <span style={{ fontSize:13, fontWeight:600, color:'#059669', fontFamily:"'IBM Plex Mono',monospace", lineHeight:1.2 }}>
+                          {fmtInr(form.baseSalary)}
                         </span>
-                      )}
-                    </div>
-                  )}
+                        <span style={{ fontSize:9, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>per year</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Bonus */}
+                <div className="form-group" style={{ margin:0 }}>
+                  <label className="form-label">Bonus (₹/yr)</label>
+                  <div style={{ position:'relative' }}>
+                    <input
+                      className="form-input"
+                      name="bonus" type="number" min="0"
+                      placeholder="e.g. 500000"
+                      value={form.bonus} onChange={handleChange}
+                      style={{ paddingRight: fmtInr(form.bonus) ? 80 : 12, height: 52 }}
+                    />
+                    {fmtInr(form.bonus) && (
+                      <div style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', alignItems:'flex-end', gap:1, pointerEvents:'none' }}>
+                        <span style={{ fontSize:13, fontWeight:600, color:'#059669', fontFamily:"'IBM Plex Mono',monospace", lineHeight:1.2 }}>
+                          {fmtInr(form.bonus)}
+                        </span>
+                        <span style={{ fontSize:9, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>per year</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* RSU / Equity */}
+                <div className="form-group" style={{ margin:0 }}>
+                  <label className="form-label">
+                    Equity / RSU (₹/yr)
+                    {form.equity && fmtUsd(form.equity) && (
+                      <span style={{ marginLeft:8, fontSize:10, color:'var(--text-3)', fontWeight:400 }}>
+                        live rate: 1 USD = ₹{usdRate}
+                      </span>
+                    )}
+                  </label>
+                  <div style={{ position:'relative' }}>
+                    <input
+                      className="form-input"
+                      name="equity" type="number" min="0"
+                      placeholder="e.g. 1500000"
+                      value={form.equity} onChange={handleChange}
+                      style={{ paddingRight: fmtInr(form.equity) ? 84 : 12, height: fmtUsd(form.equity) ? 58 : 52 }}
+                    />
+                    {fmtInr(form.equity) && (
+                      <div style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, pointerEvents:'none' }}>
+                        <span style={{ fontSize:13, fontWeight:600, color:'#059669', fontFamily:"'IBM Plex Mono',monospace", lineHeight:1.2 }}>
+                          {fmtInr(form.equity)}
+                        </span>
+                        {fmtUsd(form.equity) && (
+                          <span style={{ fontSize:10, color:'#185FA5', fontFamily:"'IBM Plex Mono',monospace", lineHeight:1.2 }}>
+                            ≈ {fmtUsd(form.equity)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Empty cell to balance the grid */}
+                <div />
+
               </div>
 
               {/* Years of Experience */}
