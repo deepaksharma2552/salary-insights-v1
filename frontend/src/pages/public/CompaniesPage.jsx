@@ -309,24 +309,41 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
                 </div>
               )}
               {!loadingLvl && levels && levels.length > 0 && (
-                <div style={{ display:'flex', flexDirection:'column', gap:10, paddingTop:4 }}>
-                  <div style={{ fontSize:11, color:'var(--text-3)', marginBottom:4 }}>
+                <div style={{ display:'flex', flexDirection:'column', gap:8, paddingTop:4 }}>
+                  <div style={{ fontSize:11, color:'var(--text-3)', marginBottom:6 }}>
                     Avg TC per internal level · {company.entries} approved {company.entries === 1 ? 'entry' : 'entries'}
                   </div>
-                  {levels.map(l => (
-                    <div key={l.internalLevel} style={{ display:'flex', alignItems:'center', gap:12 }}>
-                      <span style={{ fontSize:12, color:'var(--text-2)', width:130, flexShrink:0 }}>{l.internalLevel}</span>
-                      <div style={{ flex:1, height:5, background:'var(--bg-3)', borderRadius:99, overflow:'hidden' }}>
-                        <div style={{ height:'100%', borderRadius:99, background:'#3b82f6', width:`${Math.round(((l.avgTC ?? 0) / maxTC) * 100)}%` }} />
+                  {levels.map(l => {
+                    const pct = Math.round(((l.avgTC ?? 0) / maxTC) * 100);
+                    const showLabelInside = pct >= 28; // enough room for label
+                    return (
+                      <div key={l.internalLevel} style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <span style={{ fontSize:12, color:'var(--text-2)', width:120, flexShrink:0 }}>{l.internalLevel}</span>
+                        <div style={{ flex:1, height:22, background:'var(--bg-2)', borderRadius:6, overflow:'hidden', position:'relative' }}>
+                          <div style={{
+                            height:'100%', width:`${pct}%`, minWidth: showLabelInside ? 0 : undefined,
+                            background:'linear-gradient(90deg,#1e40af,#3b82f6)',
+                            borderRadius:6, display:'flex', alignItems:'center',
+                            paddingLeft:8, transition:'width 0.4s ease',
+                          }}>
+                            {showLabelInside && (
+                              <span style={{ fontSize:11, fontWeight:600, color:'#fff', fontFamily:"'IBM Plex Mono',monospace", whiteSpace:'nowrap' }}>
+                                {fmtSalary(l.avgTC)}
+                              </span>
+                            )}
+                          </div>
+                          {!showLabelInside && (
+                            <span style={{ position:'absolute', left:`${pct + 1}%`, top:'50%', transform:'translateY(-50%)', fontSize:11, fontWeight:600, color:'var(--text-1)', fontFamily:"'IBM Plex Mono',monospace", whiteSpace:'nowrap' }}>
+                              {fmtSalary(l.avgTC)}
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", minWidth:48, textAlign:'right', flexShrink:0 }}>
+                          {l.count != null ? `${l.count} entr${l.count === 1 ? 'y' : 'ies'}` : ''}
+                        </span>
                       </div>
-                      <span style={{ fontSize:12, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', minWidth:52, textAlign:'right' }}>
-                        {fmtSalary(l.avgTC)}
-                      </span>
-                      <span style={{ fontSize:11, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", minWidth:52, textAlign:'right' }}>
-                        {l.count != null ? `${l.count} entr${l.count === 1 ? 'y' : 'ies'}` : ''}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </>
@@ -335,9 +352,21 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
           {/* All entries */}
           {tab === 'entries' && (
             <>
-              <div style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", marginBottom:14 }}>
-                {loadingEnt ? 'Loading…' : `${totalElements} approved entr${totalElements !== 1 ? 'ies' : 'y'}`}
-              </div>
+              {loadingEnt ? (
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'48px 0', gap:14 }}>
+                  <div style={{
+                    width:28, height:28, borderRadius:'50%',
+                    border:'2.5px solid var(--border)',
+                    borderTopColor:'#3b82f6',
+                    animation:'lvlSpin 0.7s linear infinite',
+                  }} />
+                  <span style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>Loading entries…</span>
+                </div>
+              ) : (
+                <div style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", marginBottom:14 }}>
+                  {`${totalElements} approved entr${totalElements !== 1 ? 'ies' : 'y'}`}
+                </div>
+              )}
               {!loadingEnt && salaries.length === 0 && (
                 <div style={{ textAlign:'center', padding:'40px 0', color:'var(--text-3)', fontSize:13 }}>
                   No approved salary entries for this company yet.
