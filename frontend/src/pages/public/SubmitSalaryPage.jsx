@@ -356,6 +356,16 @@ export default function SubmitSalaryPage() {
                 </select>
               </div>
 
+              {/* Employment Type */}
+              <div className="form-group">
+                <label className="form-label">Employment Type</label>
+                <select className="form-input" name="employmentType" value={form.employmentType} onChange={handleChange} style={{ cursor: 'pointer' }}>
+                  <option value="FULL_TIME">Full-time</option>
+                  <option value="CONTRACT">Contract</option>
+                  <option value="PART_TIME">Part-time</option>
+                </select>
+              </div>
+
               {/* ── Section divider: Compensation ── */}
               <div style={{ gridColumn:'1 / -1', display:'flex', alignItems:'center', gap:10, margin:'4px 0 -2px' }}>
                 <span style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-3)', whiteSpace:'nowrap' }}>Compensation</span>
@@ -491,22 +501,6 @@ export default function SubmitSalaryPage() {
                     Auto-filled from years of experience · you can override this
                   </div>
                 )}
-              </div>
-
-              {/* ── Section divider: Details ── */}
-              <div style={{ gridColumn:'1 / -1', display:'flex', alignItems:'center', gap:10, margin:'4px 0 -2px' }}>
-                <span style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-3)', whiteSpace:'nowrap' }}>Details</span>
-                <div style={{ flex:1, height:'0.5px', background:'var(--border)' }} />
-              </div>
-
-              {/* Employment Type */}
-              <div className="form-group">
-                <label className="form-label">Employment Type</label>
-                <select className="form-input" name="employmentType" value={form.employmentType} onChange={handleChange} style={{ cursor: 'pointer' }}>
-                  <option value="FULL_TIME">Full-time</option>
-                  <option value="CONTRACT">Contract</option>
-                  <option value="PART_TIME">Part-time</option>
-                </select>
               </div>
 
               {/* Notes */}
