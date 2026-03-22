@@ -199,18 +199,20 @@ public class SalaryService {
         // Resolve job function + function level if provided.
         // Also derive companyInternalLevel from the level name if not explicitly set —
         // avoids asking the user for a duplicate field on the submit form.
+        // Use a final reference — entry is reassigned after save() so can't be captured directly
+        final SalaryEntry entryRef = entry;
         if (request.getJobFunctionId() != null) {
             jobFunctionRepository.findById(request.getJobFunctionId())
-                    .ifPresent(entry::setJobFunction);
+                    .ifPresent(entryRef::setJobFunction);
         }
         if (request.getFunctionLevelId() != null) {
             functionLevelRepository.findById(request.getFunctionLevelId())
                     .ifPresent(fl -> {
-                        entry.setFunctionLevel(fl);
+                        entryRef.setFunctionLevel(fl);
                         // Use the admin-configured mapping stored on the level — no name-string matching.
                         // If the admin hasn't mapped this level, companyInternalLevel stays null.
-                        if (entry.getCompanyInternalLevel() == null && fl.getInternalLevel() != null) {
-                            entry.setCompanyInternalLevel(fl.getInternalLevel());
+                        if (entryRef.getCompanyInternalLevel() == null && fl.getInternalLevel() != null) {
+                            entryRef.setCompanyInternalLevel(fl.getInternalLevel());
                         }
                     });
         }
