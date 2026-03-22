@@ -356,6 +356,12 @@ export default function SubmitSalaryPage() {
                 </select>
               </div>
 
+              {/* ── Section divider: Compensation ── */}
+              <div style={{ gridColumn:'1 / -1', display:'flex', alignItems:'center', gap:10, margin:'4px 0 -2px' }}>
+                <span style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-3)', whiteSpace:'nowrap' }}>Compensation</span>
+                <div style={{ flex:1, height:'0.5px', background:'var(--border)' }} />
+              </div>
+
               {/* Compensation — full-width row, internal 2-col grid matching parent */}
               <div style={{ gridColumn:'1 / -1', display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
 
@@ -368,7 +374,7 @@ export default function SubmitSalaryPage() {
                       name="baseSalary" type="number" min="0"
                       placeholder="e.g. 3200000"
                       value={form.baseSalary} onChange={handleChange} required
-                      style={{ paddingRight: fmtInr(form.baseSalary) ? 68 : 12 }}
+                      style={{ paddingRight: fmtInr(form.baseSalary) ? 68 : 12, height:38 }}
                     />
                     {fmtInr(form.baseSalary) && (
                       <span style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', fontSize:12, fontWeight:600, color:'#059669', fontFamily:"'IBM Plex Mono',monospace", pointerEvents:'none', whiteSpace:'nowrap' }}>
@@ -392,7 +398,7 @@ export default function SubmitSalaryPage() {
                       name="bonus" type="number" min="0"
                       placeholder="e.g. 500000"
                       value={form.bonus} onChange={handleChange}
-                      style={{ paddingRight: fmtInr(form.bonus) ? 68 : 12 }}
+                      style={{ paddingRight: fmtInr(form.bonus) ? 68 : 12, height:38 }}
                     />
                     {fmtInr(form.bonus) && (
                       <span style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', fontSize:12, fontWeight:600, color:'#059669', fontFamily:"'IBM Plex Mono',monospace", pointerEvents:'none', whiteSpace:'nowrap' }}>
@@ -416,7 +422,7 @@ export default function SubmitSalaryPage() {
                       name="equity" type="number" min="0"
                       placeholder="e.g. 1500000"
                       value={form.equity} onChange={handleChange}
-                      style={{ paddingRight: fmtInr(form.equity) ? 68 : 12 }}
+                      style={{ paddingRight: fmtInr(form.equity) ? 68 : 12, height:38 }}
                     />
                     {fmtInr(form.equity) && (
                       <span style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', fontSize:12, fontWeight:600, color:'#059669', fontFamily:"'IBM Plex Mono',monospace", pointerEvents:'none', whiteSpace:'nowrap' }}>
@@ -444,6 +450,12 @@ export default function SubmitSalaryPage() {
                 {/* Empty cell to balance the grid */}
                 <div />
 
+              </div>
+
+              {/* ── Section divider: Experience ── */}
+              <div style={{ gridColumn:'1 / -1', display:'flex', alignItems:'center', gap:10, margin:'4px 0 -2px' }}>
+                <span style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-3)', whiteSpace:'nowrap' }}>Experience</span>
+                <div style={{ flex:1, height:'0.5px', background:'var(--border)' }} />
               </div>
 
               {/* Years of Experience */}
@@ -479,6 +491,12 @@ export default function SubmitSalaryPage() {
                     Auto-filled from years of experience · you can override this
                   </div>
                 )}
+              </div>
+
+              {/* ── Section divider: Details ── */}
+              <div style={{ gridColumn:'1 / -1', display:'flex', alignItems:'center', gap:10, margin:'4px 0 -2px' }}>
+                <span style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-3)', whiteSpace:'nowrap' }}>Details</span>
+                <div style={{ flex:1, height:'0.5px', background:'var(--border)' }} />
               </div>
 
               {/* Employment Type */}
