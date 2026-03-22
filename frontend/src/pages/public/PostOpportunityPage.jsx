@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import CompanyLogo from '../../components/shared/CompanyLogo';
 
 const TYPE_OPTIONS = [
   { value: 'REFERRAL',   label: 'Referral',          hint: 'I can refer someone to this company' },
@@ -208,31 +209,66 @@ export default function PostOpportunityPage() {
             {/* Company autocomplete */}
             <div className="form-group" ref={autocompleteRef} style={{ position: 'relative' }}>
               <label className="form-label">Company <span style={{ color: 'var(--red)' }}>*</span></label>
-              <input
-                className="form-input"
-                value={companyQuery}
-                onChange={handleCompanyInput}
-                placeholder="Search or type company name…"
-                autoComplete="off"
-              />
-              {companySelected && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {companySelected && !companySelected.isNew && (
+                  <CompanyLogo
+                    companyId={companySelected.id}
+                    companyName={companySelected.name}
+                    logoUrl={companySelected.logoUrl}
+                    website={companySelected.website}
+                    size={28}
+                    radius={6}
+                  />
+                )}
+                <input
+                  className="form-input"
+                  value={companyQuery}
+                  onChange={handleCompanyInput}
+                  placeholder="Search or type company name…"
+                  autoComplete="off"
+                />
+              </div>
+              {companySelected && companySelected.isNew && (
                 <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-                  {companySelected.isNew ? '+ New company will be created' : `Linked to existing company`}
+                  + New company will be created
+                </div>
+              )}
+              {companySelected && !companySelected.isNew && (
+                <div style={{ fontSize: 11, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--teal)', marginTop: 4 }}>
+                  ✓ Company selected
                 </div>
               )}
               {showSuggestions && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 50, maxHeight: 200, overflowY: 'auto', boxShadow: 'var(--shadow-md)', marginTop: 4 }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, zIndex: 50, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.18)', marginTop: 4 }}>
                   {searchLoading && <div style={{ padding: '10px 14px', fontSize: 13, color: 'var(--text-3)' }}>Searching…</div>}
-                  {suggestions.map(c => (
+                  {suggestions.map((c, i) => (
                     <div key={c.id} onClick={() => selectCompany(c)}
-                      style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 13, color: 'var(--text-1)', borderBottom: '1px solid var(--border)' }}
+                      style={{ padding: '9px 14px', cursor: 'pointer', borderBottom: i < suggestions.length - 1 ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', gap: 10 }}
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-2)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >{c.name}</div>
+                    >
+                      <CompanyLogo
+                        companyId={c.id}
+                        companyName={c.name}
+                        logoUrl={c.logoUrl}
+                        website={c.website}
+                        size={28}
+                        radius={6}
+                      />
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-1)' }}>{c.name}</div>
+                        {c.industry && <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>{c.industry}</div>}
+                      </div>
+                    </div>
                   ))}
+                  {suggestions.length > 0 && (
+                    <div style={{ padding: '8px 14px', fontSize: 11, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace", borderTop: '1px solid var(--border)', background: 'var(--bg-2)' }}>
+                      {suggestions.length} result{suggestions.length !== 1 ? 's' : ''} found
+                    </div>
+                  )}
                   {!searchLoading && companyQuery.trim() && (
                     <div onClick={useNewCompany}
-                      style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 13, color: 'var(--blue)', fontWeight: 500 }}
+                      style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 13, color: 'var(--blue)', fontWeight: 500, borderTop: suggestions.length > 0 ? 'none' : '1px solid var(--border)' }}
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-2)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >+ Use "{companyQuery.trim()}"</div>
@@ -261,8 +297,17 @@ export default function PostOpportunityPage() {
             {/* Location */}
             <div className="form-group">
               <label className="form-label">Location</label>
-              <input className="form-input" name="location" value={form.location} onChange={handleChange}
-                placeholder="e.g. Bangalore, Mumbai, Remote" maxLength={100} />
+              <select className="form-input" name="location" value={form.location} onChange={handleChange} style={{ cursor: 'pointer' }}>
+                <option value="">Select location</option>
+                <option value="BENGALURU">Bengaluru</option>
+                <option value="HYDERABAD">Hyderabad</option>
+                <option value="PUNE">Pune</option>
+                <option value="DELHI_NCR">Delhi-NCR</option>
+                <option value="KOCHI">Kochi</option>
+                <option value="COIMBATORE">Coimbatore</option>
+                <option value="MYSORE">Mysore</option>
+                <option value="MANGALURU">Mangaluru</option>
+              </select>
             </div>
 
             {/* Work mode */}
