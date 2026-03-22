@@ -10,6 +10,7 @@ import com.salaryinsights.entity.Opportunity;
 import com.salaryinsights.entity.User;
 import com.salaryinsights.enums.OpportunityStatus;
 import com.salaryinsights.enums.OpportunityType;
+import com.salaryinsights.enums.WorkMode;
 import com.salaryinsights.exception.BadRequestException;
 import com.salaryinsights.exception.ResourceNotFoundException;
 import com.salaryinsights.repository.CompanyRepository;
@@ -44,10 +45,10 @@ public class OpportunityService {
     private final UserRepository        userRepository;
     private final AuditLogService       auditLogService;
 
-    private static final DateTimeFormatter CURSOR_FMT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
-    private static final int DEFAULT_EXPIRY_DAYS = 30;
+    private static final DateTimeFormatter CURSOR_FMT    = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final int               DEFAULT_EXPIRY = 30;
 
-    // ── Post (any logged-in user) ──────────────────────────────────────────────
+    // ── Post ──────────────────────────────────────────────────────────────────
 
     @Transactional
     public OpportunityResponse post(OpportunityRequest req) {
@@ -58,19 +59,18 @@ public class OpportunityService {
             company = companyRepository.findById(req.getCompanyId()).orElse(null);
         }
 
-        // Resolve expiry: use deadline midnight if set, else +30 days
         LocalDateTime expiresAt = req.getDeadline() != null
                 ? req.getDeadline().atTime(23, 59, 59)
-                : LocalDateTime.now().plusDays(DEFAULT_EXPIRY_DAYS);
+                : LocalDateTime.now().plusDays(DEFAULT_EXPIRY);
 
         Opportunity opp = Opportunity.builder()
-                .title(req.getTitle())
+                .title(req.getTitle().trim())
                 .companyName(req.getCompanyName().trim())
                 .company(company)
                 .type(req.getType())
                 .role(req.getRole())
                 .location(req.getLocation())
-                .workMode(req.getWorkMode() != null ? req.getWorkMode() : com.salaryinsights.enums.WorkMode.ONSITE)
+                .workMode(req.getWorkMode() != null ? req.getWorkMode() : WorkMode.ONSITE)
                 .applyLink(req.getApplyLink().trim())
                 .stipendOrSalary(req.getStipendOrSalary())
                 .experienceRequired(req.getExperienceRequired())
@@ -87,32 +87,36 @@ public class OpportunityService {
         return toResponse(saved);
     }
 
-    // ── Public browse — cursor-based, no COUNT on unfiltered path ─────────────
+    // ── Public browse — cursor-based, @Transactional so JOIN FETCH works ──────
 
+    @Transactional(readOnly = true)
     public CursorPage<OpportunityResponse> getLive(
-            String cursor,
-            int size,
-            String type,
-            String location,
-            String workMode
-    ) {
-        int safeSize = Math.min(size, 50);
+            String cursor, int size,
+            String type, String location, String workMode) {
+
+        int safeSize  = Math.min(size, 50);
         boolean hasFilters = type != null || location != null || workMode != null;
 
         if (!hasFilters) {
+            // Fast path — keyset, no COUNT, JOIN FETCH already in query
             PageRequest pageable = PageRequest.of(0, safeSize);
             Slice<Opportunity> slice = (cursor == null || cursor.isBlank())
-                    ? opportunityRepository.findLiveFirstPage(pageable)
+                    ? opportunityRepository.findLiveFirstPage(OpportunityStatus.LIVE, pageable)
                     : opportunityRepository.findLiveNextPage(
-                            LocalDateTime.parse(cursor, CURSOR_FMT), pageable);
+                            OpportunityStatus.LIVE,
+                            LocalDateTime.parse(cursor, CURSOR_FMT),
+                            pageable);
 
             return CursorPage.of(slice, this::toResponse,
                     o -> o.getCreatedAt().format(CURSOR_FMT));
         }
 
-        // Filtered path — Specification
+        // Filtered path — Specification, passes enums safely
         final String cursorFilter = (cursor != null && !cursor.isBlank()) ? cursor : null;
+
         Specification<Opportunity> spec = (root, query, cb) -> {
+            // Eager-load postedBy to avoid LazyInitializationException in mapper
+            root.fetch("postedBy");
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("status"), OpportunityStatus.LIVE));
             if (cursorFilter != null)
@@ -123,8 +127,7 @@ public class OpportunityService {
             if (location != null)
                 predicates.add(cb.equal(cb.lower(root.get("location")), location.toLowerCase()));
             if (workMode != null)
-                predicates.add(cb.equal(root.get("workMode"),
-                        com.salaryinsights.enums.WorkMode.valueOf(workMode)));
+                predicates.add(cb.equal(root.get("workMode"), WorkMode.valueOf(workMode)));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
@@ -146,34 +149,35 @@ public class OpportunityService {
 
     // ── My posts ──────────────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public PagedResponse<OpportunityResponse> getMyPosts(int page, int size) {
         User caller = currentUser();
-        Page<Opportunity> pg = opportunityRepository
-                .findByPostedByIdOrderByCreatedAtDesc(
-                        caller.getId(), PageRequest.of(page, size));
+        Page<Opportunity> pg = opportunityRepository.findByPostedByIdFetched(
+                caller.getId(), PageRequest.of(page, size));
         return PagedResponse.of(pg.map(this::toResponse));
     }
 
     // ── Admin: pending queue ───────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public PagedResponse<OpportunityResponse> getPending(int page, int size) {
-        Page<Opportunity> pg = opportunityRepository
-                .findByStatusOrderByCreatedAtAsc(
-                        OpportunityStatus.PENDING, PageRequest.of(page, size));
+        Page<Opportunity> pg = opportunityRepository.findByStatusFetched(
+                OpportunityStatus.PENDING, PageRequest.of(page, size));
         return PagedResponse.of(pg.map(this::toResponse));
     }
 
-    // ── Admin: all (any status, full filter) ──────────────────────────────────
+    // ── Admin: all ────────────────────────────────────────────────────────────
 
-    public PagedResponse<OpportunityResponse> getAll(
-            int page, int size, String status) {
-        Specification<Opportunity> spec = (root, query, cb) -> {
-            if (status != null)
-                return cb.equal(root.get("status"), OpportunityStatus.valueOf(status));
-            return cb.conjunction();
-        };
-        Page<Opportunity> pg = opportunityRepository.findAll(spec,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+    @Transactional(readOnly = true)
+    public PagedResponse<OpportunityResponse> getAll(int page, int size, String status) {
+        Page<Opportunity> pg;
+        if (status != null) {
+            pg = opportunityRepository.findByStatusFetched(
+                    OpportunityStatus.valueOf(status), PageRequest.of(page, size));
+        } else {
+            pg = opportunityRepository.findAllFetched(
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        }
         return PagedResponse.of(pg.map(this::toResponse));
     }
 
@@ -186,7 +190,7 @@ public class OpportunityService {
 
         if (req.getStatus() == OpportunityStatus.REJECTED
                 && (req.getRejectionReason() == null || req.getRejectionReason().isBlank())) {
-            throw new BadRequestException("Rejection reason is required when rejecting an opportunity");
+            throw new BadRequestException("Rejection reason is required when rejecting");
         }
 
         opp.setStatus(req.getStatus());
@@ -196,7 +200,11 @@ public class OpportunityService {
         Opportunity saved = opportunityRepository.save(opp);
         auditLogService.log("OPPORTUNITY", saved.getId().toString(),
                 req.getStatus().name(), saved.getTitle());
-        return toResponse(saved);
+
+        // Re-fetch with postedBy to avoid lazy load in mapper
+        return toResponse(userRepository.findById(saved.getPostedBy().getId())
+                .map(u -> { saved.setPostedBy(u); return saved; })
+                .orElse(saved));
     }
 
     // ── Admin: delete ─────────────────────────────────────────────────────────
@@ -209,18 +217,28 @@ public class OpportunityService {
         opportunityRepository.delete(opp);
     }
 
-    // ── Expiry (called by OpportunityExpiryJob) ───────────────────────────────
+    // ── Expiry ────────────────────────────────────────────────────────────────
 
     @Transactional
     public int expireStale() {
-        int count = opportunityRepository.expireLivePastDeadline(LocalDateTime.now());
-        if (count > 0) log.info("[Opportunities] Expired {} stale LIVE entries", count);
+        int count = opportunityRepository.expireLivePastDeadline(
+                OpportunityStatus.LIVE, OpportunityStatus.EXPIRED, LocalDateTime.now());
+        if (count > 0) log.info("[Opportunities] Expired {} stale entries", count);
         return count;
     }
 
-    // ── Mapper ────────────────────────────────────────────────────────────────
+    // ── Mapper — safe, all fields accessed within transaction ─────────────────
 
     private OpportunityResponse toResponse(Opportunity o) {
+        String postedByName = "";
+        String postedByEmail = "";
+        if (o.getPostedBy() != null) {
+            String first = o.getPostedBy().getFirstName() != null ? o.getPostedBy().getFirstName() : "";
+            String last  = o.getPostedBy().getLastName()  != null ? o.getPostedBy().getLastName()  : "";
+            postedByName  = (first + " " + last).trim();
+            postedByEmail = o.getPostedBy().getEmail();
+        }
+
         return OpportunityResponse.builder()
                 .id(o.getId())
                 .title(o.getTitle())
@@ -237,10 +255,8 @@ public class OpportunityService {
                 .description(o.getDescription())
                 .status(o.getStatus())
                 .rejectionReason(o.getRejectionReason())
-                .postedByName(o.getPostedBy() != null
-                        ? o.getPostedBy().getFirstName() + " " + (o.getPostedBy().getLastName() != null ? o.getPostedBy().getLastName() : "")
-                        : "Unknown")
-                .postedByEmail(o.getPostedBy() != null ? o.getPostedBy().getEmail() : null)
+                .postedByName(postedByName)
+                .postedByEmail(postedByEmail)
                 .expiresAt(o.getExpiresAt())
                 .createdAt(o.getCreatedAt())
                 .updatedAt(o.getUpdatedAt())
@@ -251,8 +267,7 @@ public class OpportunityService {
 
     private User currentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String email = auth.getName();
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
+        return userRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + auth.getName()));
     }
 }

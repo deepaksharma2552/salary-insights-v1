@@ -2,7 +2,6 @@ package com.salaryinsights.repository;
 
 import com.salaryinsights.entity.Opportunity;
 import com.salaryinsights.enums.OpportunityStatus;
-import com.salaryinsights.enums.OpportunityType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -21,33 +20,79 @@ public interface OpportunityRepository
         extends JpaRepository<Opportunity, UUID>,
                 JpaSpecificationExecutor<Opportunity> {
 
-    // ── Public browse — fast keyset, no COUNT ─────────────────────────────────
+    // ── Public browse — JOIN FETCH postedBy to avoid LazyInitializationException ──
 
-    @Query("SELECT o FROM Opportunity o WHERE o.status = 'LIVE' ORDER BY o.createdAt DESC")
-    Slice<Opportunity> findLiveFirstPage(Pageable pageable);
+    @Query("""
+        SELECT o FROM Opportunity o
+        JOIN FETCH o.postedBy
+        WHERE o.status = :status
+        ORDER BY o.createdAt DESC
+        """)
+    Slice<Opportunity> findLiveFirstPage(
+            @Param("status") OpportunityStatus status,
+            Pageable pageable
+    );
 
-    @Query("SELECT o FROM Opportunity o WHERE o.status = 'LIVE' AND o.createdAt < :cursor ORDER BY o.createdAt DESC")
+    @Query("""
+        SELECT o FROM Opportunity o
+        JOIN FETCH o.postedBy
+        WHERE o.status = :status
+          AND o.createdAt < :cursor
+        ORDER BY o.createdAt DESC
+        """)
     Slice<Opportunity> findLiveNextPage(
+            @Param("status") OpportunityStatus status,
             @Param("cursor") LocalDateTime cursor,
             Pageable pageable
     );
 
-    // ── Admin moderation queue — pending only ─────────────────────────────────
+    // ── Admin queue — oldest PENDING first, JOIN FETCH postedBy ──────────────
 
-    Page<Opportunity> findByStatusOrderByCreatedAtAsc(OpportunityStatus status, Pageable pageable);
+    @Query("""
+        SELECT o FROM Opportunity o
+        JOIN FETCH o.postedBy
+        WHERE o.status = :status
+        ORDER BY o.createdAt ASC
+        """)
+    Page<Opportunity> findByStatusFetched(
+            @Param("status") OpportunityStatus status,
+            Pageable pageable
+    );
+
+    // ── Admin all — any status, JOIN FETCH postedBy ───────────────────────────
+
+    @Query("""
+        SELECT o FROM Opportunity o
+        JOIN FETCH o.postedBy
+        ORDER BY o.createdAt DESC
+        """)
+    Page<Opportunity> findAllFetched(Pageable pageable);
 
     // ── My posts ──────────────────────────────────────────────────────────────
 
-    Page<Opportunity> findByPostedByIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
+    @Query("""
+        SELECT o FROM Opportunity o
+        JOIN FETCH o.postedBy
+        WHERE o.postedBy.id = :userId
+        ORDER BY o.createdAt DESC
+        """)
+    Page<Opportunity> findByPostedByIdFetched(
+            @Param("userId") UUID userId,
+            Pageable pageable
+    );
 
-    // ── Expiry job — find LIVE rows past their expiry in batches ──────────────
+    // ── Expiry job — bulk UPDATE, enum-safe ───────────────────────────────────
 
     @Modifying
     @Query("""
         UPDATE Opportunity o
-        SET o.status = com.salaryinsights.enums.OpportunityStatus.EXPIRED
-        WHERE o.status = com.salaryinsights.enums.OpportunityStatus.LIVE
+        SET o.status = :expired
+        WHERE o.status = :live
           AND o.expiresAt < :now
         """)
-    int expireLivePastDeadline(@Param("now") LocalDateTime now);
+    int expireLivePastDeadline(
+            @Param("live")    OpportunityStatus live,
+            @Param("expired") OpportunityStatus expired,
+            @Param("now")     LocalDateTime now
+    );
 }
