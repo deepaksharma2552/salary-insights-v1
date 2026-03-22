@@ -259,6 +259,43 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
     @Query("SELECT AVG(s.totalCompensation) FROM SalaryEntry s WHERE s.company.id = :companyId AND s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED")
     Double avgTotalCompByCompany(@Param("companyId") UUID companyId);
 
+    @Query("SELECT MIN(s.totalCompensation) FROM SalaryEntry s WHERE s.company.id = :companyId AND s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED AND s.totalCompensation IS NOT NULL")
+    java.math.BigDecimal minTCByCompany(@Param("companyId") UUID companyId);
+
+    @Query("SELECT MAX(s.totalCompensation) FROM SalaryEntry s WHERE s.company.id = :companyId AND s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED AND s.totalCompensation IS NOT NULL")
+    java.math.BigDecimal maxTCByCompany(@Param("companyId") UUID companyId);
+
+    // ── Salary summary by internal level for a single company (lazy card expand) ──
+    @Query(value =
+        "SELECT " +
+        "  CASE s.company_internal_level " +
+        "    WHEN 'SDE_1'                 THEN 'SDE 1' " +
+        "    WHEN 'SDE_2'                 THEN 'SDE 2' " +
+        "    WHEN 'SDE_3'                 THEN 'SDE 3' " +
+        "    WHEN 'STAFF_ENGINEER'         THEN 'Staff Engineer' " +
+        "    WHEN 'PRINCIPAL_ENGINEER'     THEN 'Principal Engineer' " +
+        "    WHEN 'ARCHITECT'              THEN 'Architect' " +
+        "    WHEN 'ENGINEERING_MANAGER'    THEN 'Engineering Manager' " +
+        "    WHEN 'SR_ENGINEERING_MANAGER' THEN 'Sr. Engineering Manager' " +
+        "    WHEN 'DIRECTOR'               THEN 'Director' " +
+        "    WHEN 'SR_DIRECTOR'            THEN 'Sr. Director' " +
+        "    WHEN 'VP'                     THEN 'VP' " +
+        "    ELSE 'Other' " +
+        "  END                            AS internalLevel, " +
+        "  AVG(base_salary)               AS avgBase, " +
+        "  AVG(bonus)                     AS avgBonus, " +
+        "  AVG(equity)                    AS avgEquity, " +
+        "  AVG(total_compensation)        AS avgTC, " +
+        "  COUNT(*)                       AS cnt " +
+        "FROM salary_entries " +
+        "WHERE company_id = :companyId " +
+        "  AND review_status = 'APPROVED' " +
+        "  AND company_internal_level IS NOT NULL " +
+        "GROUP BY company_internal_level " +
+        "ORDER BY AVG(total_compensation) ASC",
+        nativeQuery = true)
+    List<Object[]> salarySummaryByLevel(@Param("companyId") UUID companyId);
+
     @Query(value = "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as count " +
                    "FROM salary_entries WHERE created_at >= NOW() - INTERVAL '12 months' " +
                    "GROUP BY month ORDER BY month", nativeQuery = true)

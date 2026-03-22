@@ -48,6 +48,19 @@ public class Company extends BaseEntity {
     @Builder.Default
     private CompanyStatus status = CompanyStatus.ACTIVE;
 
+    /** Admin-managed list of benefits sourced from the company's official benefits page. */
+    @Column(name = "benefits", columnDefinition = "TEXT[]")
+    @org.hibernate.annotations.Array(length = 50)
+    @Builder.Default
+    private String[] benefits = new String[0];
+
+    /** Precomputed from approved salary entries — updated on new salary approval. */
+    @Column(name = "tc_min", precision = 15, scale = 2)
+    private java.math.BigDecimal tcMin;
+
+    @Column(name = "tc_max", precision = 15, scale = 2)
+    private java.math.BigDecimal tcMax;
+
     @OneToMany(mappedBy = "company", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<CompanyLevel> companyLevels = new ArrayList<>();

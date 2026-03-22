@@ -50,6 +50,8 @@ public class CompanyService {
         response.setEntryCount(salaryEntryRepository.countApprovedByCompany(companyId));
         response.setAvgBaseSalary(salaryEntryRepository.avgBaseSalaryByCompany(companyId));
         response.setAvgTotalCompensation(salaryEntryRepository.avgTotalCompByCompany(companyId));
+        // tcMin / tcMax are stored on the companies row (backfilled by V22, kept fresh by salary approval)
+        // — already mapped by CompanyMapper.toResponse, no extra query needed here.
         return response;
     }
 
@@ -114,6 +116,55 @@ public class CompanyService {
 
     public List<String> getIndustries() {
         return companyRepository.findDistinctIndustries();
+    }
+
+    /**
+     * Lazy salary breakdown by internal level for a single company.
+     * Called by the card "Breakdown by level" toggle — cached 1 hour.
+     */
+    @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'salarySummary:' + #id")
+    public com.salaryinsights.dto.response.CompanySalarySummaryResponse getSalarySummary(UUID id) {
+        Company company = findCompanyById(id);
+        List<Object[]> rows = salaryEntryRepository.salarySummaryByLevel(id);
+
+        List<com.salaryinsights.dto.response.CompanySalarySummaryResponse.LevelRow> levels =
+            rows.stream().map(row -> com.salaryinsights.dto.response.CompanySalarySummaryResponse.LevelRow.builder()
+                .internalLevel(row[0] != null ? row[0].toString() : "Other")
+                .avgBase(row[1]  != null ? ((Number) row[1]).doubleValue()  : null)
+                .avgBonus(row[2] != null ? ((Number) row[2]).doubleValue()  : null)
+                .avgEquity(row[3]!= null ? ((Number) row[3]).doubleValue()  : null)
+                .avgTC(row[4]    != null ? ((Number) row[4]).doubleValue()  : null)
+                .count(row[5]    != null ? ((Number) row[5]).longValue()    : 0L)
+                .build()
+            ).collect(java.util.stream.Collectors.toList());
+
+        java.math.BigDecimal tcMin = company.getTcMin();
+        java.math.BigDecimal tcMax = company.getTcMax();
+
+        return com.salaryinsights.dto.response.CompanySalarySummaryResponse.builder()
+            .companyId(id.toString())
+            .companyName(company.getName())
+            .tcMin(tcMin  != null ? tcMin.doubleValue()  : null)
+            .tcMax(tcMax  != null ? tcMax.doubleValue()  : null)
+            .levels(levels)
+            .build();
+    }
+
+    /**
+     * Admin: update the benefits list for a company.
+     * Benefits are sourced from the company's official benefits page.
+     */
+    @Transactional
+    public CompanyResponse updateBenefits(UUID id, List<String> benefits) {
+        Company company = findCompanyById(id);
+        company.setBenefits(benefits != null
+            ? benefits.toArray(new String[0])
+            : new String[0]);
+        Company saved = companyRepository.save(company);
+        auditLogService.log("Company", id.toString(), "BENEFITS_UPDATED",
+            "Updated benefits for: " + saved.getName());
+        return enrichWithStats(companyMapper.toResponse(saved), saved.getId());
     }
 
     private Company findCompanyById(UUID id) {

@@ -2,6 +2,7 @@ package com.salaryinsights.controller;
 
 import com.salaryinsights.dto.response.ApiResponse;
 import com.salaryinsights.dto.response.CompanyResponse;
+import com.salaryinsights.dto.response.CompanySalarySummaryResponse;
 import com.salaryinsights.dto.response.PagedResponse;
 import com.salaryinsights.dto.response.SalaryResponse;
 import com.salaryinsights.service.impl.CompanyService;
@@ -57,5 +58,16 @@ public class PublicCompanyController {
                 org.springframework.data.domain.Sort.by("createdAt").descending());
         return ResponseEntity.ok(ApiResponse.success(
                 salaryService.getApprovedSalaries(id, null, null, null, null, pageable)));
+    }
+
+    /**
+     * GET /public/companies/{id}/salary-summary
+     * Lazy salary breakdown by internal level — called on card expand.
+     * Cached 1 hour at backend. No auth required.
+     */
+    @GetMapping("/{id}/salary-summary")
+    public ResponseEntity<ApiResponse<CompanySalarySummaryResponse>> getSalarySummary(
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(companyService.getSalarySummary(id)));
     }
 }

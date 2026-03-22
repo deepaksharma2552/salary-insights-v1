@@ -51,6 +51,19 @@ public class AdminCompanyController {
         return ResponseEntity.ok(ApiResponse.success("Status toggled", null));
     }
 
+    /**
+     * PATCH /admin/companies/{id}/benefits
+     * Admin updates the benefits list for a company.
+     * Source: company's official benefits page.
+     */
+    @PatchMapping("/{id}/benefits")
+    public ResponseEntity<ApiResponse<CompanyResponse>> updateBenefits(
+            @PathVariable UUID id,
+            @RequestBody java.util.List<String> benefits) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Benefits updated", companyService.updateBenefits(id, benefits)));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteCompany(@PathVariable UUID id) {
         companyService.deleteCompany(id);

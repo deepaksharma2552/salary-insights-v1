@@ -268,6 +268,19 @@ public class SalaryService {
         }
 
         entry = salaryEntryRepository.save(entry);
+
+        // Keep tc_min/tc_max on the company row fresh when a salary is approved
+        if (status == ReviewStatus.APPROVED && entry.getCompany() != null) {
+            UUID companyId = entry.getCompany().getId();
+            companyRepository.findById(companyId).ifPresent(company -> {
+                java.math.BigDecimal newMin = salaryEntryRepository.minTCByCompany(companyId);
+                java.math.BigDecimal newMax = salaryEntryRepository.maxTCByCompany(companyId);
+                company.setTcMin(newMin);
+                company.setTcMax(newMax);
+                companyRepository.save(company);
+            });
+        }
+
         auditLogService.log("SalaryEntry", id.toString(), status.name(),
                 "Salary " + status.name().toLowerCase() + " for company: " + entry.getCompany().getName());
 

@@ -4,12 +4,13 @@ import com.salaryinsights.enums.CompanyLevelCategory;
 import com.salaryinsights.enums.CompanyStatus;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
 public class CompanyResponse {
-    private UUID id;
+    private UUID   id;
     private String name;
     private String industry;
     private String location;
@@ -21,8 +22,15 @@ public class CompanyResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    /** Admin-managed benefit names (e.g. "ESOPs", "Health insurance"). */
+    private String[] benefits;
+
     // Aggregated salary stats — populated when fetching for public display
-    private Long entryCount;
+    private Long   entryCount;
     private Double avgBaseSalary;
     private Double avgTotalCompensation;
+
+    /** TC range across all levels — shown on card without extra call. */
+    private BigDecimal tcMin;
+    private BigDecimal tcMax;
 }
