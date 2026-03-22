@@ -48,11 +48,14 @@ public class Company extends BaseEntity {
     @Builder.Default
     private CompanyStatus status = CompanyStatus.ACTIVE;
 
-    /** Admin-managed list of benefits sourced from the company's official benefits page. */
-    @Column(name = "benefits", columnDefinition = "TEXT[]")
-    @org.hibernate.annotations.Array(length = 50)
+    /** Admin-managed list of benefits with optional amounts.
+     *  Stored as JSON array in TEXT column via JsonBenefitConverter.
+     *  e.g. [{"name":"ESOPs","amount":"Varies"},{"name":"Health insurance","amount":"₹5L/yr"}]
+     */
+    @Column(name = "benefits", columnDefinition = "TEXT")
+    @jakarta.persistence.Convert(converter = com.salaryinsights.config.JsonBenefitConverter.class)
     @Builder.Default
-    private String[] benefits = new String[0];
+    private java.util.List<com.salaryinsights.dto.response.BenefitItem> benefits = new java.util.ArrayList<>();
 
     /** Precomputed from approved salary entries — updated on new salary approval. */
     @Column(name = "tc_min", precision = 15, scale = 2)

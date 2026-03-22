@@ -1,9 +1,13 @@
 package com.salaryinsights.mapper;
 
 import com.salaryinsights.dto.request.CompanyRequest;
+import com.salaryinsights.dto.response.BenefitItem;
 import com.salaryinsights.dto.response.CompanyResponse;
 import com.salaryinsights.entity.Company;
 import org.mapstruct.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface CompanyMapper {
@@ -23,7 +27,7 @@ public interface CompanyMapper {
     @Mapping(target = "salaryEntries", ignore = true)
     @Mapping(target = "tcMin",         ignore = true)
     @Mapping(target = "tcMax",         ignore = true)
-    @Mapping(target = "benefits",      expression = "java(request.getBenefits() != null ? request.getBenefits().toArray(new String[0]) : new String[0])")
+    @Mapping(target = "benefits",      expression = "java(request.getBenefits() != null ? request.getBenefits() : new java.util.ArrayList<>())")
     Company toEntity(CompanyRequest request);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -35,6 +39,6 @@ public interface CompanyMapper {
     @Mapping(target = "salaryEntries", ignore = true)
     @Mapping(target = "tcMin",         ignore = true)
     @Mapping(target = "tcMax",         ignore = true)
-    @Mapping(target = "benefits",      expression = "java(request.getBenefits() != null ? request.getBenefits().toArray(new String[0]) : null)")
+    @Mapping(target = "benefits",      expression = "java(request.getBenefits() != null ? request.getBenefits() : null)")
     void updateEntity(@MappingTarget Company company, CompanyRequest request);
 }

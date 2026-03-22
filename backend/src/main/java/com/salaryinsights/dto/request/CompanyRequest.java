@@ -29,6 +29,6 @@ public class CompanyRequest {
     @Size(max = 500)
     private String logoUrl;
 
-    /** Admin-managed list of benefits sourced from company's official benefits page. */
-    private List<String> benefits;
+    /** Admin-managed benefits with optional amounts. */
+    private java.util.List<com.salaryinsights.dto.response.BenefitItem> benefits;
 }

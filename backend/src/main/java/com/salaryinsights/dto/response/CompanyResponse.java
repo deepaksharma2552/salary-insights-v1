@@ -22,8 +22,8 @@ public class CompanyResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    /** Admin-managed benefit names (e.g. "ESOPs", "Health insurance"). */
-    private String[] benefits;
+    /** Admin-managed benefits with optional amounts. */
+    private java.util.List<com.salaryinsights.dto.response.BenefitItem> benefits;
 
     // Aggregated salary stats — populated when fetching for public display
     private Long   entryCount;

@@ -161,11 +161,9 @@ public class CompanyService {
      * Benefits are sourced from the company's official benefits page.
      */
     @Transactional
-    public CompanyResponse updateBenefits(UUID id, List<String> benefits) {
+    public CompanyResponse updateBenefits(UUID id, List<com.salaryinsights.dto.response.BenefitItem> benefits) {
         Company company = findCompanyById(id);
-        company.setBenefits(benefits != null
-            ? benefits.toArray(new String[0])
-            : new String[0]);
+        company.setBenefits(benefits != null ? benefits : new java.util.ArrayList<>());
         Company saved = companyRepository.save(company);
         auditLogService.log("Company", id.toString(), "BENEFITS_UPDATED",
             "Updated benefits for: " + saved.getName());

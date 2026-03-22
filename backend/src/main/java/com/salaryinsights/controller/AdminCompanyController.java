@@ -59,7 +59,7 @@ public class AdminCompanyController {
     @PatchMapping("/{id}/benefits")
     public ResponseEntity<ApiResponse<CompanyResponse>> updateBenefits(
             @PathVariable UUID id,
-            @RequestBody java.util.List<String> benefits) {
+            @RequestBody java.util.List<com.salaryinsights.dto.response.BenefitItem> benefits) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Benefits updated", companyService.updateBenefits(id, benefits)));
     }
