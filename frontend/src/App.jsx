@@ -16,7 +16,6 @@ import SubmitSalaryPage from './pages/public/SubmitSalaryPage';
 import OpportunitiesPage       from './pages/public/OpportunitiesPage';
 import PostOpportunityPage     from './pages/public/PostOpportunityPage';
 import AdminOpportunities      from './pages/admin/AdminOpportunities';
-import SubmitExperiencePage    from './pages/public/SubmitExperiencePage';
 
 // Admin pages
 import AdminDashboard       from './pages/admin/AdminDashboard';
