@@ -175,6 +175,37 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
   const [page,          setPage]         = useState(0);
   const [totalPages,    setTotalPages]   = useState(1);
   const [totalElements, setTotalElements]= useState(0);
+  // Server-side filter + sort state
+  const [filterLevel,    setFilterLevel]    = useState('');
+  const [filterLocation, setFilterLocation] = useState('');
+  const [sortBy,         setSortBy]         = useState('totalCompensation');
+
+  // Unique level/location options derived from already-loaded level data + company entries
+  const levelOptions    = levels ? levels.map(l => l.internalLevel).filter(Boolean) : [];
+  const locationOptions = ['BENGALURU','HYDERABAD','PUNE','DELHI_NCR','MUMBAI','CHENNAI','KOLKATA','REMOTE'];
+  const locationLabels  = { BENGALURU:'Bengaluru', HYDERABAD:'Hyderabad', PUNE:'Pune', DELHI_NCR:'Delhi NCR', MUMBAI:'Mumbai', CHENNAI:'Chennai', KOLKATA:'Kolkata', REMOTE:'Remote' };
+
+  // Badge colour per internal level
+  const LEVEL_BADGE = {
+    SDE_1:                { bg:'#E1F5EE', color:'#0F6E56', darkBg:'#085041', darkColor:'#9FE1CB' },
+    SDE_2:                { bg:'#E6F1FB', color:'#185FA5', darkBg:'#0C447C', darkColor:'#B5D4F4' },
+    SDE_3:                { bg:'#EEEDFE', color:'#534AB7', darkBg:'#3C3489', darkColor:'#CECBF6' },
+    STAFF_ENGINEER:       { bg:'#EEEDFE', color:'#534AB7', darkBg:'#3C3489', darkColor:'#CECBF6' },
+    PRINCIPAL_ENGINEER:   { bg:'#FAEEDA', color:'#854F0B', darkBg:'#633806', darkColor:'#FAC775' },
+    ARCHITECT:            { bg:'#FAEEDA', color:'#854F0B', darkBg:'#633806', darkColor:'#FAC775' },
+    ENGINEERING_MANAGER:  { bg:'#FCEBEB', color:'#A32D2D', darkBg:'#791F1F', darkColor:'#F7C1C1' },
+    SR_ENGINEERING_MANAGER:{ bg:'#FCEBEB', color:'#A32D2D', darkBg:'#791F1F', darkColor:'#F7C1C1' },
+    DIRECTOR:             { bg:'#FCEBEB', color:'#A32D2D', darkBg:'#791F1F', darkColor:'#F7C1C1' },
+    SR_DIRECTOR:          { bg:'#FCEBEB', color:'#A32D2D', darkBg:'#791F1F', darkColor:'#F7C1C1' },
+    VP:                   { bg:'#F1EFE8', color:'#5F5E5A', darkBg:'#444441', darkColor:'#D3D1C7' },
+  };
+
+  function getLevelBadgeStyle(internalLevelStr) {
+    const key = internalLevelStr?.replace(/ /g,'_').toUpperCase();
+    const b = LEVEL_BADGE[key];
+    if (!b) return { fontSize:10, fontWeight:500, padding:'2px 7px', borderRadius:99, background:'var(--bg-2)', color:'var(--text-2)', whiteSpace:'nowrap' };
+    return { fontSize:10, fontWeight:500, padding:'2px 7px', borderRadius:99, background:b.bg, color:b.color, whiteSpace:'nowrap' };
+  }
 
   const LEVEL_COLORS = { junior:'#06b6d4', mid:'#6366f1', senior:'#3b82f6', lead:'#8b5cf6' };
 
@@ -198,11 +229,14 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
       .finally(() => setLoadingLvl(false));
   }, [company.id]);
 
-  // Load salary entries when entries tab is active
+  // Load salary entries — re-fetches on filter/sort/page change
   useEffect(() => {
     if (tab !== 'entries') return;
     setLoadingEnt(true);
-    api.get(`/public/companies/${company.id}/salaries`, { params: { page, size: 10 } })
+    const params = { page, size: 10, sortBy };
+    if (filterLevel)    params.level    = filterLevel;
+    if (filterLocation) params.location = filterLocation;
+    api.get(`/public/companies/${company.id}/salaries`, { params })
       .then(r => {
         const paged = r.data?.data;
         setSalaries((paged?.content ?? []).map(mapSalary));
@@ -211,7 +245,10 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
       })
       .catch(console.error)
       .finally(() => setLoadingEnt(false));
-  }, [company.id, tab, page]);
+  }, [company.id, tab, page, filterLevel, filterLocation, sortBy]);
+
+  // Reset to page 0 when filters/sort change
+  function applyFilter(setter, value) { setter(value); setPage(0); }
 
   const maxTC = levels ? Math.max(...levels.map(l => l.avgTC ?? 0), 1) : 1;
   const hasTcRange = company.tcMin != null && company.tcMax != null;
@@ -315,32 +352,65 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
                   </div>
                   {levels.map(l => {
                     const pct = Math.round(((l.avgTC ?? 0) / maxTC) * 100);
-                    const showLabelInside = pct >= 28; // enough room for label
+                    const basePct  = l.avgBase  ? Math.round((l.avgBase  / (l.avgTC ?? 1)) * 100) : null;
+                    const bonusPct = l.avgBonus ? Math.round((l.avgBonus / (l.avgTC ?? 1)) * 100) : null;
+                    const equityPct= l.avgEquity? Math.round((l.avgEquity/ (l.avgTC ?? 1)) * 100) : null;
                     return (
-                      <div key={l.internalLevel} style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <span style={{ fontSize:12, color:'var(--text-2)', width:120, flexShrink:0 }}>{l.internalLevel}</span>
-                        <div style={{ flex:1, height:22, background:'var(--bg-2)', borderRadius:6, overflow:'hidden', position:'relative' }}>
-                          <div style={{
-                            height:'100%', width:`${pct}%`, minWidth: showLabelInside ? 0 : undefined,
-                            background:'linear-gradient(90deg,#1e40af,#3b82f6)',
-                            borderRadius:6, display:'flex', alignItems:'center',
-                            paddingLeft:8, transition:'width 0.4s ease',
-                          }}>
-                            {showLabelInside && (
-                              <span style={{ fontSize:11, fontWeight:600, color:'#fff', fontFamily:"'IBM Plex Mono',monospace", whiteSpace:'nowrap' }}>
+                      <div key={l.internalLevel} style={{ marginBottom:4 }}>
+                        {/* Bar row */}
+                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                          <span style={{ fontSize:12, color:'var(--text-2)', width:120, flexShrink:0 }}>{l.internalLevel}</span>
+                          {/* Track — no overflow:hidden so label outside is never clipped */}
+                          <div style={{ flex:1, position:'relative', height:22 }}>
+                            <div style={{ position:'absolute', inset:0, background:'var(--bg-2)', borderRadius:6 }} />
+                            <div style={{
+                              position:'absolute', left:0, top:0, height:'100%',
+                              width:`${pct}%`,
+                              background:'linear-gradient(90deg,#1e40af,#3b82f6)',
+                              borderRadius:6, display:'flex', alignItems:'center',
+                              paddingLeft:8, transition:'width 0.4s ease',
+                            }}>
+                              {pct >= 28 && (
+                                <span style={{ fontSize:11, fontWeight:600, color:'#fff', fontFamily:"'IBM Plex Mono',monospace", whiteSpace:'nowrap' }}>
+                                  {fmtSalary(l.avgTC)}
+                                </span>
+                              )}
+                            </div>
+                            {/* Label outside bar — always visible, never clipped */}
+                            {pct < 28 && (
+                              <span style={{ position:'absolute', left:`calc(${pct}% + 8px)`, top:'50%', transform:'translateY(-50%)', fontSize:11, fontWeight:600, color:'var(--text-1)', fontFamily:"'IBM Plex Mono',monospace", whiteSpace:'nowrap' }}>
                                 {fmtSalary(l.avgTC)}
                               </span>
                             )}
                           </div>
-                          {!showLabelInside && (
-                            <span style={{ position:'absolute', left:`${pct + 1}%`, top:'50%', transform:'translateY(-50%)', fontSize:11, fontWeight:600, color:'var(--text-1)', fontFamily:"'IBM Plex Mono',monospace", whiteSpace:'nowrap' }}>
-                              {fmtSalary(l.avgTC)}
-                            </span>
-                          )}
+                          <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", minWidth:48, textAlign:'right', flexShrink:0 }}>
+                            {l.count != null ? `${l.count} entr${l.count === 1 ? 'y' : 'ies'}` : ''}
+                          </span>
                         </div>
-                        <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", minWidth:48, textAlign:'right', flexShrink:0 }}>
-                          {l.count != null ? `${l.count} entr${l.count === 1 ? 'y' : 'ies'}` : ''}
-                        </span>
+                        {/* Base + Bonus + RSU breakdown */}
+                        {(basePct || bonusPct || equityPct) && (
+                          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:4 }}>
+                            <span style={{ width:120, flexShrink:0 }} />
+                            <div style={{ flex:1, display:'flex', gap:12 }}>
+                              {l.avgBase && (
+                                <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>
+                                  Base <span style={{ color:'var(--text-2)', fontWeight:500 }}>{fmtSalary(l.avgBase)}</span>
+                                </span>
+                              )}
+                              {l.avgBonus && (
+                                <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>
+                                  Bonus <span style={{ color:'var(--text-2)', fontWeight:500 }}>{fmtSalary(l.avgBonus)}</span>
+                                </span>
+                              )}
+                              {l.avgEquity && (
+                                <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>
+                                  RSU <span style={{ color:'var(--text-2)', fontWeight:500 }}>{fmtSalary(l.avgEquity)}</span>
+                                </span>
+                              )}
+                            </div>
+                            <span style={{ minWidth:48, flexShrink:0 }} />
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -352,69 +422,137 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
           {/* All entries */}
           {tab === 'entries' && (
             <>
+              {/* Filter + sort bar */}
+              <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:12, flexWrap:'wrap' }}>
+                <select
+                  value={filterLevel}
+                  onChange={e => applyFilter(setFilterLevel, e.target.value)}
+                  style={{ fontSize:11, padding:'5px 10px', borderRadius:8, border:'0.5px solid var(--border)', background:'var(--bg-2)', color:'var(--text-2)', cursor:'pointer' }}
+                >
+                  <option value="">All levels</option>
+                  {levelOptions.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
+                <select
+                  value={filterLocation}
+                  onChange={e => applyFilter(setFilterLocation, e.target.value)}
+                  style={{ fontSize:11, padding:'5px 10px', borderRadius:8, border:'0.5px solid var(--border)', background:'var(--bg-2)', color:'var(--text-2)', cursor:'pointer' }}
+                >
+                  <option value="">All locations</option>
+                  {locationOptions.map(l => <option key={l} value={l}>{locationLabels[l] ?? l}</option>)}
+                </select>
+                {/* Active filter chips */}
+                {filterLevel && (
+                  <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, padding:'3px 8px 3px 10px', borderRadius:99, background:'#E6F1FB', color:'#185FA5', border:'0.5px solid #B5D4F4' }}>
+                    {filterLevel}
+                    <span onClick={() => applyFilter(setFilterLevel, '')} style={{ cursor:'pointer', fontSize:13, opacity:0.7, lineHeight:1 }}>×</span>
+                  </span>
+                )}
+                {filterLocation && (
+                  <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, padding:'3px 8px 3px 10px', borderRadius:99, background:'#E6F1FB', color:'#185FA5', border:'0.5px solid #B5D4F4' }}>
+                    {locationLabels[filterLocation] ?? filterLocation}
+                    <span onClick={() => applyFilter(setFilterLocation, '')} style={{ cursor:'pointer', fontSize:13, opacity:0.7, lineHeight:1 }}>×</span>
+                  </span>
+                )}
+                <select
+                  value={sortBy}
+                  onChange={e => applyFilter(setSortBy, e.target.value)}
+                  style={{ fontSize:11, padding:'5px 10px', borderRadius:8, border:'0.5px solid var(--border)', background:'var(--bg-2)', color:'var(--text-2)', cursor:'pointer', marginLeft:'auto' }}
+                >
+                  <option value="totalCompensation">Sort: TC ↓</option>
+                  <option value="baseSalary">Sort: Base ↓</option>
+                  <option value="createdAt">Sort: Date ↓</option>
+                </select>
+              </div>
+
+              {/* Spinner */}
               {loadingEnt ? (
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'48px 0', gap:14 }}>
-                  <div style={{
-                    width:28, height:28, borderRadius:'50%',
-                    border:'2.5px solid var(--border)',
-                    borderTopColor:'#3b82f6',
-                    animation:'lvlSpin 0.7s linear infinite',
-                  }} />
+                  <div style={{ width:28, height:28, borderRadius:'50%', border:'2.5px solid var(--border)', borderTopColor:'#3b82f6', animation:'lvlSpin 0.7s linear infinite' }} />
                   <span style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>Loading entries…</span>
                 </div>
               ) : (
-                <div style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", marginBottom:14 }}>
-                  {`${totalElements} approved entr${totalElements !== 1 ? 'ies' : 'y'}`}
+                <div style={{ fontSize:11, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", marginBottom:12 }}>
+                  {`Showing ${Math.min(page*10+1, totalElements)}–${Math.min((page+1)*10, totalElements)} of ${totalElements} entr${totalElements !== 1 ? 'ies' : 'y'}`}
                 </div>
               )}
+
               {!loadingEnt && salaries.length === 0 && (
-                <div style={{ textAlign:'center', padding:'40px 0', color:'var(--text-3)', fontSize:13 }}>
-                  No approved salary entries for this company yet.
+                <div style={{ textAlign:'center', padding:'40px 0', color:'var(--text-3)', fontSize:13, fontStyle:'italic' }}>
+                  No entries found{filterLevel || filterLocation ? ' for the selected filters' : ''}.
                 </div>
               )}
+
               {!loadingEnt && salaries.length > 0 && (
                 <>
                   <div className="salary-table-wrap">
                     <table className="salary-table">
                       <thead>
                         <tr>
-                          <th>Role</th><th>Level</th><th>Location</th><th>Exp</th>
-                          <th>Base</th><th>Bonus</th><th>Equity</th><th>Total TC</th><th>Date</th>
+                          <th>Role</th>
+                          <th>Level</th>
+                          <th>Location</th>
+                          <th>Exp</th>
+                          <th>Base</th>
+                          <th>Bonus</th>
+                          <th>RSU</th>
+                          <th>Total TC</th>
+                          <th>Date</th>
                         </tr>
                       </thead>
                       <tbody>
                         {salaries.map(s => (
                           <tr key={s.id}>
-                            <td><div className="company-name" style={{ fontSize:13 }}>{s.role}</div></td>
                             <td>
-                              <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:6, background:`${LEVEL_COLORS[s.level]}22`, color:LEVEL_COLORS[s.level], fontFamily:"'IBM Plex Mono',monospace", textTransform:'capitalize' }}>
+                              <div style={{ fontSize:13, fontWeight:500, color:'var(--text-1)' }}>{s.role}</div>
+                              <div style={{ fontSize:11, color:'var(--text-3)' }}>{s.empType?.replace('_',' ').toLowerCase()}</div>
+                            </td>
+                            <td>
+                              <span style={getLevelBadgeStyle(s.internalLevel !== '—' ? s.internalLevel : null)}>
                                 {s.internalLevel !== '—' ? s.internalLevel : s.level}
                               </span>
                             </td>
                             <td style={{ fontSize:12, color:'var(--text-2)' }}>{s.location}</td>
                             <td style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.yoe}</td>
-                            <td><div className="salary-amount" style={{ fontSize:14 }}>{s.base}</div></td>
-                            <td style={{ fontSize:13, color:'var(--text-2)' }}>{s.bonus}</td>
-                            <td style={{ fontSize:13, color:'var(--text-2)' }}>{s.equity}</td>
-                            <td><div className="salary-amount" style={{ fontSize:15 }}>{s.tc}</div></td>
+                            <td style={{ fontSize:13, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', fontWeight:500 }}>{s.base}</td>
+                            <td style={{ fontSize:12, color:'var(--text-2)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.bonus}</td>
+                            <td style={{ fontSize:12, color:'var(--text-2)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.equity}</td>
+                            <td style={{ fontSize:14, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', whiteSpace:'nowrap' }}>{s.tc}</td>
                             <td style={{ fontSize:11, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", whiteSpace:'nowrap' }}>{s.recordedAt}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  {totalPages > 1 && (
-                    <div className="pagination" style={{ marginTop:16 }}>
-                      <span className="page-info">{page*10+1}–{Math.min((page+1)*10, totalElements)} of {totalElements}</span>
-                      <div className="page-btns">
-                        <button className="page-btn" disabled={page===0} onClick={() => setPage(p=>p-1)}>←</button>
-                        {Array.from({ length: totalPages }, (_,i) => i).map(p => (
-                          <button key={p} className={`page-btn${p===page?' active':''}`} onClick={() => setPage(p)}>{p+1}</button>
-                        ))}
-                        <button className="page-btn" disabled={page===totalPages-1} onClick={() => setPage(p=>p+1)}>→</button>
+
+                  {/* Pagination — smart ellipsis */}
+                  {totalPages > 1 && (() => {
+                    const delta = 2;
+                    const pages = [];
+                    const left  = Math.max(0, page - delta);
+                    const right = Math.min(totalPages - 1, page + delta);
+                    if (left > 0) pages.push({ type:'num', n:0 });
+                    if (left > 1) pages.push({ type:'ellipsis', key:'l' });
+                    for (let i = left; i <= right; i++) pages.push({ type:'num', n:i });
+                    if (right < totalPages - 2) pages.push({ type:'ellipsis', key:'r' });
+                    if (right < totalPages - 1) pages.push({ type:'num', n:totalPages-1 });
+                    return (
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:14, paddingTop:12, borderTop:'0.5px solid var(--border)' }}>
+                        <span style={{ fontSize:11, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>
+                          Page {page+1} of {totalPages}
+                        </span>
+                        <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                          <button className="page-btn" disabled={page===0} onClick={() => setPage(0)} title="First">«</button>
+                          <button className="page-btn" disabled={page===0} onClick={() => setPage(p=>p-1)}>←</button>
+                          {pages.map((p,i) => p.type === 'ellipsis'
+                            ? <span key={p.key} style={{ fontSize:12, color:'var(--text-3)', padding:'0 4px' }}>…</span>
+                            : <button key={p.n} className={`page-btn${p.n===page?' active':''}`} onClick={() => setPage(p.n)}>{p.n+1}</button>
+                          )}
+                          <button className="page-btn" disabled={page===totalPages-1} onClick={() => setPage(p=>p+1)}>→</button>
+                          <button className="page-btn" disabled={page===totalPages-1} onClick={() => setPage(totalPages-1)} title="Last">»</button>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </>
               )}
             </>
