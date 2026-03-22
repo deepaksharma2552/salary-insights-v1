@@ -51,7 +51,7 @@ export default function AdminJobFunctions() {
 
   // Level modal state
   const [lvModal,     setLvModal]     = useState(null); // null | { fn } | { fn, level }
-  const [lvForm,      setLvForm]      = useState({ name: '', sortOrder: '' });
+  const [lvForm,      setLvForm]      = useState({ name: '', sortOrder: '', internalLevel: '' });
   const [lvSaving,    setLvSaving]    = useState(false);
   const [lvError,     setLvError]     = useState('');
 
@@ -105,11 +105,11 @@ export default function AdminJobFunctions() {
 
   /* ── Level CRUD ── */
   function openAddLevel(fn) {
-    setLvForm({ name: '', sortOrder: (fn.levels?.length ?? 0) + 1 });
+    setLvForm({ name: '', sortOrder: (fn.levels?.length ?? 0) + 1, internalLevel: '' });
     setLvModal({ fn }); setLvError('');
   }
   function openEditLevel(fn, level) {
-    setLvForm({ name: level.name, sortOrder: level.sortOrder });
+    setLvForm({ name: level.name, sortOrder: level.sortOrder, internalLevel: level.internalLevel ?? '' });
     setLvModal({ fn, level }); setLvError('');
   }
 
@@ -121,6 +121,7 @@ export default function AdminJobFunctions() {
         jobFunctionId: lvModal.fn.id,
         name: lvForm.name.trim(),
         sortOrder: Number(lvForm.sortOrder),
+        internalLevel: lvForm.internalLevel || null,
       };
       if (lvModal.level) await api.put(`/admin/job-functions/levels/${lvModal.level.id}`, payload);
       else               await api.post('/admin/job-functions/levels', payload);
@@ -210,6 +211,11 @@ export default function AdminJobFunctions() {
                         <div key={lv.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--bg-2)', borderRadius: 8, border: '1px solid var(--border)' }}>
                           <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono',monospace", color: '#3b82f6', fontWeight: 700, minWidth: 28 }}>#{lv.sortOrder}</span>
                           <span style={{ flex: 1, fontSize: 13, color: 'var(--text-1)', fontWeight: 500 }}>{lv.name}</span>
+                          {lv.internalLevel && (
+                            <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: '#3b82f6', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
+                              {lv.internalLevel}
+                            </span>
+                          )}
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button onClick={() => openEditLevel(fn, lv)} style={{ padding: '3px 10px', fontSize: 11, fontWeight: 600, background: 'rgba(59,130,246,0.08)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 5, cursor: 'pointer' }}>Edit</button>
                             <button onClick={() => deleteLevel(lv)} style={{ padding: '3px 10px', fontSize: 11, fontWeight: 600, background: 'var(--rose-dim)', color: 'var(--rose)', border: '1px solid rgba(224,92,122,0.15)', borderRadius: 5, cursor: 'pointer' }}>Del</button>
@@ -263,6 +269,29 @@ export default function AdminJobFunctions() {
             <div>
               <label className="form-label">Sort Order * <span style={{ fontWeight: 400, color: 'var(--text-3)', fontSize: 11 }}>(lower = more junior)</span></label>
               <input className="form-input" type="number" min={0} value={lvForm.sortOrder} onChange={e => setLvForm(f => ({ ...f, sortOrder: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="form-label">
+                Maps to Internal Level
+                <span style={{ fontWeight: 400, color: 'var(--text-3)', fontSize: 11, marginLeft: 6 }}>(optional)</span>
+              </label>
+              <select className="form-input" value={lvForm.internalLevel} onChange={e => setLvForm(f => ({ ...f, internalLevel: e.target.value }))} style={{ cursor: 'pointer' }}>
+                <option value="">— No mapping —</option>
+                <option value="SDE_1">SDE 1</option>
+                <option value="SDE_2">SDE 2</option>
+                <option value="SDE_3">SDE 3</option>
+                <option value="STAFF_ENGINEER">Staff Engineer</option>
+                <option value="PRINCIPAL_ENGINEER">Principal Engineer</option>
+                <option value="ARCHITECT">Architect</option>
+                <option value="ENGINEERING_MANAGER">Engineering Manager</option>
+                <option value="SR_ENGINEERING_MANAGER">Sr. Engineering Manager</option>
+                <option value="DIRECTOR">Director</option>
+                <option value="SR_DIRECTOR">Sr. Director</option>
+                <option value="VP">VP</option>
+              </select>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontFamily: "'JetBrains Mono',monospace" }}>
+                Used to group salaries in the company breakdown chart
+              </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
               <button type="button" className="btn-ghost" onClick={() => setLvModal(null)}>Cancel</button>
