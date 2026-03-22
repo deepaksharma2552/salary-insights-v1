@@ -42,6 +42,14 @@ public class SalaryService {
             UUID companyId, String companyName, String jobTitle,
             java.util.List<String> locations, java.util.List<String> experienceLevelStrs,
             Pageable pageable) {
+        return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, null, pageable);
+    }
+
+    public PagedResponse<SalaryResponse> getApprovedSalaries(
+            UUID companyId, String companyName, String jobTitle,
+            java.util.List<String> locations, java.util.List<String> experienceLevelStrs,
+            java.util.List<String> internalLevelStrs,
+            Pageable pageable) {
 
         final String companyNameFilter = (companyName != null && !companyName.isBlank()) ? companyName.toLowerCase() : null;
         final String jobTitleFilter    = (jobTitle    != null && !jobTitle.isBlank())    ? jobTitle.toLowerCase()    : null;
@@ -63,6 +71,15 @@ public class SalaryService {
         final java.util.List<ExperienceLevel> levelFilters = (experienceLevelStrs != null && !experienceLevelStrs.isEmpty())
             ? experienceLevelStrs.stream()
                 .map(s -> { try { return ExperienceLevel.valueOf(s.toUpperCase()); } catch (IllegalArgumentException e) { return null; } })
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toList())
+            : null;
+
+        // Convert raw strings → InternalLevel enums, silently skipping unknowns
+        final java.util.List<com.salaryinsights.enums.InternalLevel> internalLevelFilters =
+            (internalLevelStrs != null && !internalLevelStrs.isEmpty())
+            ? internalLevelStrs.stream()
+                .map(s -> { try { return com.salaryinsights.enums.InternalLevel.valueOf(s.toUpperCase()); } catch (IllegalArgumentException e) { return null; } })
                 .filter(java.util.Objects::nonNull)
                 .collect(java.util.stream.Collectors.toList())
             : null;
@@ -97,9 +114,13 @@ public class SalaryService {
                 if (locationEnumNames != null && !locationEnumNames.isEmpty()) {
                     predicates.add(root.get("location").in(locationEnumNames));
                 }
-                // Multi-level IN predicate
+                // Multi-level IN predicate (ExperienceLevel)
                 if (levelFilters != null && !levelFilters.isEmpty()) {
                     predicates.add(root.get("experienceLevel").in(levelFilters));
+                }
+                // Multi-internalLevel IN predicate (company-specific levels e.g. SDE_1)
+                if (internalLevelFilters != null && !internalLevelFilters.isEmpty()) {
+                    predicates.add(root.get("companyInternalLevel").in(internalLevelFilters));
                 }
 
                 return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));

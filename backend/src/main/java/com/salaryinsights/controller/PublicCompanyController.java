@@ -50,14 +50,24 @@ public class PublicCompanyController {
     @GetMapping("/{id}/salaries")
     public ResponseEntity<ApiResponse<PagedResponse<SalaryResponse>>> getCompanySalaries(
             @PathVariable UUID id,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) List<String> level,
+            @RequestParam(required = false) List<String> location,
+            @RequestParam(defaultValue = "totalCompensation") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
 
+        Sort.Direction direction = sortDir.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
+        String sortField = switch (sortBy) {
+            case "baseSalary"  -> "baseSalary";
+            case "createdAt"   -> "createdAt";
+            default            -> "totalCompensation";
+        };
         org.springframework.data.domain.PageRequest pageable =
-            org.springframework.data.domain.PageRequest.of(page, size,
-                org.springframework.data.domain.Sort.by("createdAt").descending());
+            org.springframework.data.domain.PageRequest.of(page, size, Sort.by(direction, sortField));
+
         return ResponseEntity.ok(ApiResponse.success(
-                salaryService.getApprovedSalaries(id, null, null, null, null, pageable)));
+                salaryService.getApprovedSalaries(id, null, null, location, null, level, pageable)));
     }
 
     /**
