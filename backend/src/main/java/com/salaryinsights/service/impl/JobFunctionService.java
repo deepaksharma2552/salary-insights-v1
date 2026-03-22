@@ -90,6 +90,7 @@ public class JobFunctionService {
                 .jobFunction(jf)
                 .name(req.getName().trim())
                 .sortOrder(req.getSortOrder())
+                .internalLevel(req.getInternalLevel())
                 .build();
         return toLevelResponse(levelRepo.save(fl));
     }
@@ -101,6 +102,7 @@ public class JobFunctionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Level not found: " + id));
         fl.setName(req.getName().trim());
         fl.setSortOrder(req.getSortOrder());
+        fl.setInternalLevel(req.getInternalLevel());
         return toLevelResponse(levelRepo.save(fl));
     }
 
@@ -131,6 +133,7 @@ public class JobFunctionService {
         r.setId(fl.getId());
         r.setName(fl.getName());
         r.setSortOrder(fl.getSortOrder());
+        r.setInternalLevel(fl.getInternalLevel() != null ? fl.getInternalLevel().name() : null);
         return r;
     }
 }

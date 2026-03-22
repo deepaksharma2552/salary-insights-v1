@@ -196,14 +196,23 @@ public class SalaryService {
         entry.setSubmittedBy(submitter);
         entry.setStandardizedLevel(standardizedLevel);
 
-        // Resolve job function + function level if provided
+        // Resolve job function + function level if provided.
+        // Also derive companyInternalLevel from the level name if not explicitly set —
+        // avoids asking the user for a duplicate field on the submit form.
         if (request.getJobFunctionId() != null) {
             jobFunctionRepository.findById(request.getJobFunctionId())
                     .ifPresent(entry::setJobFunction);
         }
         if (request.getFunctionLevelId() != null) {
             functionLevelRepository.findById(request.getFunctionLevelId())
-                    .ifPresent(entry::setFunctionLevel);
+                    .ifPresent(fl -> {
+                        entry.setFunctionLevel(fl);
+                        // Use the admin-configured mapping stored on the level — no name-string matching.
+                        // If the admin hasn't mapped this level, companyInternalLevel stays null.
+                        if (entry.getCompanyInternalLevel() == null && fl.getInternalLevel() != null) {
+                            entry.setCompanyInternalLevel(fl.getInternalLevel());
+                        }
+                    });
         }
 
         entry.setReviewStatus(ReviewStatus.PENDING);

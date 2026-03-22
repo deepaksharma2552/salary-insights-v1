@@ -18,4 +18,7 @@ public class FunctionLevelRequest {
 
     @NotNull @Min(0)
     private Integer sortOrder;
+
+    /** Optional mapping to InternalLevel enum — null means no mapping. */
+    private com.salaryinsights.enums.InternalLevel internalLevel;
 }

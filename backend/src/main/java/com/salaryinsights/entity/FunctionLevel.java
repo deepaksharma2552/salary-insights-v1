@@ -19,4 +19,14 @@ public class FunctionLevel extends BaseEntity {
 
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
+
+    /**
+     * Optional mapping to the standardised InternalLevel enum.
+     * Set by admin in the Job Functions page — used by SalaryService
+     * to populate company_internal_level on salary submission without
+     * brittle name-string matching.
+     */
+    @Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(name = "internal_level", length = 50)
+    private com.salaryinsights.enums.InternalLevel internalLevel;
 }
