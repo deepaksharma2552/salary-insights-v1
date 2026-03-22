@@ -199,19 +199,6 @@ function CompanyModal({ company, onClose }) {
 }
 
 // ── Main CompaniesPage ────────────────────────────────────────────────────────
-const LEVEL_CATEGORY_LABEL = {
-  STARTUP:    'Startup',
-  MID_SIZE:   'Mid-size',
-  ENTERPRISE: 'Enterprise',
-  CUSTOM:     'Custom',
-};
-const LEVEL_CATEGORY_STYLE = {
-  STARTUP:    { background: '#EAF3DE', color: '#27500A', border: '0.5px solid #97C459' },
-  MID_SIZE:   { background: '#EEEDFE', color: '#3C3489', border: '0.5px solid #AFA9EC' },
-  ENTERPRISE: { background: '#E6F1FB', color: '#0C447C', border: '0.5px solid #85B7EB' },
-  CUSTOM:     { background: 'var(--bg-2)', color: 'var(--text-3)', border: '1px solid var(--border)' },
-};
-
 function CompanyCard({ c, onClick }) {
   const [expanded,  setExpanded]  = useState(false);
   const [levels,    setLevels]    = useState(null);  // null = not loaded, [] = loaded
@@ -233,8 +220,6 @@ function CompanyCard({ c, onClick }) {
   }
 
   const maxTC = levels ? Math.max(...levels.map(l => l.avgTC ?? 0), 1) : 1;
-  const catStyle = LEVEL_CATEGORY_STYLE[c.levelCategory] ?? LEVEL_CATEGORY_STYLE.CUSTOM;
-  const catLabel = LEVEL_CATEGORY_LABEL[c.levelCategory] ?? null;
 
   return (
     <div
@@ -245,7 +230,7 @@ function CompanyCard({ c, onClick }) {
       onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
     >
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <CompanyLogo companyId={c.id} companyName={c.name} logoUrl={c.logoUrl} website={c.website} size={36} radius={8} />
           <div>
@@ -253,14 +238,9 @@ function CompanyCard({ c, onClick }) {
             <div className="company-card-industry">{c.industry}</div>
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-          {catLabel && (
-            <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 20, ...catStyle }}>{catLabel}</span>
-          )}
-          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'var(--text-3)', background: 'var(--bg-2)', padding: '2px 7px', borderRadius: 6, border: '1px solid var(--border)' }}>
-            {c.entries} entries
-          </span>
-        </div>
+        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'var(--text-3)', background: 'var(--bg-2)', padding: '2px 7px', borderRadius: 6, border: '1px solid var(--border)', flexShrink: 0 }}>
+          {c.entries} entries
+        </span>
       </div>
 
       {/* Divider */}
