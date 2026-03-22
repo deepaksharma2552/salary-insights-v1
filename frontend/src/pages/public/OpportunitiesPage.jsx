@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
+import CompanyLogo from '../../components/shared/CompanyLogo';
 
 const PAGE_SIZE = 20;
 
-const TYPE_OPTIONS  = ['REFERRAL','INTERNSHIP','FULL_TIME','CONTRACT','DRIVE'];
-const MODE_OPTIONS  = ['REMOTE','HYBRID','ONSITE'];
+const TYPE_OPTIONS = ['REFERRAL','INTERNSHIP','FULL_TIME','CONTRACT','DRIVE'];
+const MODE_OPTIONS = ['REMOTE','HYBRID','ONSITE'];
 
 const TYPE_LABEL = {
   REFERRAL:   'Referral',
@@ -57,42 +58,27 @@ function TypeBadge({ type }) {
   );
 }
 
-function CoAvatar({ name }) {
-  const abbr = name ? name.slice(0, 2).toUpperCase() : '??';
-  const colors = ['#eff6ff','#f0fdf4','#f5f3ff','#fffbeb','#fef2f2','#ecfeff'];
-  const textColors = ['#1d4ed8','#166534','#5b21b6','#92400e','#991b1b','#0e7490'];
-  const idx = name ? name.charCodeAt(0) % colors.length : 0;
-  return (
-    <div style={{
-      width: 28, height: 28, borderRadius: 6, flexShrink: 0,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: colors[idx], color: textColors[idx],
-      fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, fontWeight: 600,
-    }}>{abbr}</div>
-  );
-}
 
 export default function OpportunitiesPage() {
-  const [rows,      setRows]      = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState(null);
-  const [hasMore,   setHasMore]   = useState(false);
-  const [nextCursor, setNextCursor] = useState(null);
+  const [rows,        setRows]        = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState(null);
+  const [hasMore,     setHasMore]     = useState(false);
+  const [nextCursor,  setNextCursor]  = useState(null);
   const [cursorStack, setCursorStack] = useState([null]);
 
-  const [typeFilter,   setTypeFilter]   = useState('');
+  const [typeFilter,     setTypeFilter]     = useState('');
   const [locationFilter, setLocationFilter] = useState('');
-  const [modeFilter,   setModeFilter]   = useState('');
-  const [search,       setSearch]       = useState('');
+  const [modeFilter,     setModeFilter]     = useState('');
+  const [search,         setSearch]         = useState('');
 
-  const [stats, setStats] = useState(null);
-
-  const debounceRef = useRef(null);
-
-  const currentPage = cursorStack.length;
+  const currentPage   = cursorStack.length;
   const currentCursor = cursorStack[cursorStack.length - 1];
 
-  // ── Fetch ──────────────────────────────────────────────────────────────────
+  // ── Single fetch — only /public/opportunities ─────────────────────────────
+  // All posts (referrals, internships, full-time etc.) go through the new
+  // Opportunities system with admin approval before going LIVE.
+  // The old /public/referrals endpoint is no longer used here.
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -116,23 +102,9 @@ export default function OpportunitiesPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Load stats once
-  useEffect(() => {
-    api.get('/public/opportunities', { params: { size: 1 } })
-      .then(() => {
-        // We'll just show filter counts from the type tabs
-      }).catch(() => {});
-  }, []);
-
   // ── Navigation ─────────────────────────────────────────────────────────────
-  function goNext() {
-    if (!nextCursor) return;
-    setCursorStack(prev => [...prev, nextCursor]);
-  }
-  function goPrev() {
-    if (cursorStack.length <= 1) return;
-    setCursorStack(prev => prev.slice(0, -1));
-  }
+  function goNext() { if (nextCursor) setCursorStack(p => [...p, nextCursor]); }
+  function goPrev() { if (cursorStack.length > 1) setCursorStack(p => p.slice(0, -1)); }
   function resetPage() { setCursorStack([null]); setNextCursor(null); }
 
   function handleType(v)     { setTypeFilter(v);     resetPage(); }
@@ -141,13 +113,14 @@ export default function OpportunitiesPage() {
 
   const hasFilters = typeFilter || modeFilter || locationFilter;
 
-  // Client-side search filter on loaded rows
+  // Client-side search on loaded rows only
   const filtered = search
-    ? rows.filter(r =>
-        r.title?.toLowerCase().includes(search.toLowerCase()) ||
-        r.companyName?.toLowerCase().includes(search.toLowerCase()) ||
-        r.role?.toLowerCase().includes(search.toLowerCase())
-      )
+    ? rows.filter(r => {
+        const q = search.toLowerCase();
+        return r.title?.toLowerCase().includes(q) ||
+               r.companyName?.toLowerCase().includes(q) ||
+               r.role?.toLowerCase().includes(q);
+      })
     : rows;
 
   return (
@@ -159,31 +132,35 @@ export default function OpportunitiesPage() {
           <span className="section-tag">Community</span>
           <h2 className="section-title">Opportunities <em>Board</em></h2>
           <p style={{ color: 'var(--text-2)', fontSize: 14, marginTop: 6 }}>
-            Community-curated openings — referrals, internships, full-time and more. Click Apply to go directly.
+            Community-curated openings — referrals, internships, full-time and more. All posts are admin-verified before going live.
           </p>
         </div>
-        <Link to="/opportunities/post" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <Link to="/opportunities/post" className="btn-primary"
+          style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           + Post an opportunity
         </Link>
       </div>
 
-      {/* Type filter tabs */}
+      {/* Type tabs */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-        <button
-          onClick={() => handleType('')}
-          style={{ padding: '4px 14px', fontSize: 12, fontWeight: 500, borderRadius: 99, border: '1px solid var(--border)', background: !typeFilter ? 'var(--blue-dim)' : 'transparent', color: !typeFilter ? 'var(--blue)' : 'var(--text-2)', cursor: 'pointer' }}
-        >All</button>
-        {TYPE_OPTIONS.map(t => (
-          <button key={t} onClick={() => handleType(t)}
-            style={{ padding: '4px 14px', fontSize: 12, fontWeight: 500, borderRadius: 99, border: '1px solid var(--border)', background: typeFilter === t ? 'var(--blue-dim)' : 'transparent', color: typeFilter === t ? 'var(--blue)' : 'var(--text-2)', cursor: 'pointer' }}
-          >{TYPE_LABEL[t]}</button>
+        {[{ value: '', label: 'All' }, ...TYPE_OPTIONS.map(t => ({ value: t, label: TYPE_LABEL[t] }))].map(({ value, label }) => (
+          <button key={value || 'all'} onClick={() => handleType(value)}
+            style={{
+              padding: '4px 14px', fontSize: 12, fontWeight: 500, borderRadius: 99,
+              border: '1px solid var(--border)', cursor: 'pointer',
+              background: typeFilter === value ? 'var(--blue-dim)' : 'transparent',
+              color: typeFilter === value ? 'var(--blue)' : 'var(--text-2)',
+            }}>
+            {label}
+          </button>
         ))}
       </div>
 
       {/* Filter bar */}
       <div className="filter-bar" style={{ marginBottom: 16 }}>
         <div className="search-box" style={{ minWidth: 200 }}>
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, color: 'var(--text-3)' }}>
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"
+            style={{ flexShrink: 0, color: 'var(--text-3)' }}>
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
           <input className="input-field" placeholder="Search role, company…"
@@ -196,12 +173,18 @@ export default function OpportunitiesPage() {
         </select>
         <select className="select-field" value={locationFilter} onChange={e => handleLocation(e.target.value)}>
           <option value="">All locations</option>
-          {['Bangalore','Mumbai','Hyderabad','Delhi-NCR','Pune','Chennai','Remote'].map(l => (
-            <option key={l} value={l}>{l}</option>
-          ))}
+          <option value="BENGALURU">Bengaluru</option>
+          <option value="HYDERABAD">Hyderabad</option>
+          <option value="PUNE">Pune</option>
+          <option value="DELHI_NCR">Delhi-NCR</option>
+          <option value="KOCHI">Kochi</option>
+          <option value="COIMBATORE">Coimbatore</option>
+          <option value="MYSORE">Mysore</option>
+          <option value="MANGALURU">Mangaluru</option>
         </select>
         {hasFilters && (
-          <button onClick={() => { setTypeFilter(''); setModeFilter(''); setLocationFilter(''); resetPage(); }}
+          <button
+            onClick={() => { setTypeFilter(''); setModeFilter(''); setLocationFilter(''); resetPage(); }}
             style={{ marginLeft: 'auto', padding: '5px 12px', fontSize: 12, fontWeight: 500, color: 'var(--text-2)', background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer' }}>
             Clear
           </button>
@@ -212,6 +195,7 @@ export default function OpportunitiesPage() {
       {error && (
         <div style={{ padding: '12px 16px', background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 10, color: 'var(--red)', fontSize: 13, marginBottom: 16 }}>
           {error}
+          <button onClick={load} style={{ marginLeft: 12, padding: '3px 10px', fontSize: 11, fontWeight: 600, background: 'rgba(220,38,38,0.1)', color: 'var(--red)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 6, cursor: 'pointer' }}>Retry</button>
         </div>
       )}
 
@@ -220,7 +204,9 @@ export default function OpportunitiesPage() {
         <div style={{ color: 'var(--text-3)', fontSize: 13, fontFamily: "'IBM Plex Mono',monospace", padding: '32px 0' }}>Loading…</div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)' }}>
-          {hasFilters || search ? 'No opportunities match the current filters.' : 'No opportunities posted yet. Be the first!'}
+          {hasFilters || search
+            ? 'No opportunities match the current filters.'
+            : 'No opportunities posted yet — be the first to post one!'}
         </div>
       ) : (
         <div className="salary-table-wrap">
@@ -249,10 +235,15 @@ export default function OpportunitiesPage() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <CoAvatar name={opp.companyName} />
-                      <div>
-                        <div style={{ fontWeight: 600, color: 'var(--text-1)', fontSize: 13 }}>{opp.companyName}</div>
-                      </div>
+                      <CompanyLogo
+                        companyId={opp.companyId}
+                        companyName={opp.companyName}
+                        logoUrl={opp.logoUrl}
+                        website={opp.website}
+                        size={28}
+                        radius={6}
+                      />
+                      <span style={{ fontWeight: 600, color: 'var(--text-1)', fontSize: 13 }}>{opp.companyName}</span>
                     </div>
                   </td>
                   <td><TypeBadge type={opp.type} /></td>
@@ -264,8 +255,8 @@ export default function OpportunitiesPage() {
                   <td><DeadlineChip expiresAt={opp.expiresAt} /></td>
                   <td style={{ fontSize: 11, color: 'var(--text-3)' }}>{opp.postedByName?.trim() || '—'}</td>
                   <td>
-                    <a href={opp.applyLink} target="_blank" rel="noopener noreferrer" className="view-btn"
-                      style={{ textDecoration: 'none' }}>
+                    <a href={opp.applyLink} target="_blank" rel="noopener noreferrer"
+                      className="view-btn" style={{ textDecoration: 'none' }}>
                       Apply →
                     </a>
                   </td>
@@ -274,17 +265,20 @@ export default function OpportunitiesPage() {
             </tbody>
           </table>
 
-          {/* Pagination */}
-          <div className="pagination" style={{ padding: '12px 16px' }}>
-            <span className="page-info">
-              Page {currentPage}
-              {(hasFilters || search) && <span style={{ marginLeft: 8, color: 'var(--blue)', fontWeight: 500 }}>· filtered</span>}
-            </span>
-            <div className="page-btns">
-              <button className="page-btn" disabled={cursorStack.length <= 1 || loading} onClick={goPrev}>← Prev</button>
-              <button className="page-btn" disabled={!hasMore || loading} onClick={goNext}>Next →</button>
+          {(cursorStack.length > 1 || hasMore) && (
+            <div className="pagination" style={{ padding: '12px 16px' }}>
+              <span className="page-info">
+                Page {currentPage}
+                {(hasFilters || search) && (
+                  <span style={{ marginLeft: 8, color: 'var(--blue)', fontWeight: 500 }}>· filtered</span>
+                )}
+              </span>
+              <div className="page-btns">
+                <button className="page-btn" disabled={cursorStack.length <= 1 || loading} onClick={goPrev}>← Prev</button>
+                <button className="page-btn" disabled={!hasMore || loading} onClick={goNext}>Next →</button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </section>
