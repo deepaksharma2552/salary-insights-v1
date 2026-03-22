@@ -274,15 +274,21 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
           {tab === 'benefits' && (
             company.benefits && company.benefits.length > 0 ? (
               <div style={{ display:'flex', flexDirection:'column' }}>
-                {company.benefits.map((b, i) => (
-                  <div key={b} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'11px 0', borderBottom: i < company.benefits.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:6, height:6, borderRadius:'50%', background:'#3b82f6', flexShrink:0 }} />
-                      <span style={{ fontSize:13, color:'var(--text-1)' }}>{b}</span>
+                {company.benefits.map((b, i) => {
+                  const name   = typeof b === 'string' ? b : b.name;
+                  const amount = typeof b === 'string' ? null : b.amount;
+                  return (
+                    <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'11px 0', borderBottom: i < company.benefits.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <div style={{ width:6, height:6, borderRadius:'50%', background:'#3b82f6', flexShrink:0 }} />
+                        <span style={{ fontSize:13, color:'var(--text-1)' }}>{name}</span>
+                      </div>
+                      <span style={{ fontSize:12, fontFamily:"'IBM Plex Mono',monospace", color: amount ? 'var(--text-2)' : 'var(--text-3)', fontStyle: amount ? 'normal' : 'italic' }}>
+                        {amount || '—'}
+                      </span>
                     </div>
-                    <span style={{ fontSize:12, color:'var(--text-3)', fontStyle:'italic' }}>—</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div style={{ textAlign:'center', padding:'40px 0', color:'var(--text-3)', fontSize:13, fontStyle:'italic' }}>
@@ -396,12 +402,15 @@ function CompanyCard({ c, onViewDetails }) {
         <div style={{ fontSize:10, fontWeight:500, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:6 }}>Benefits</div>
         {previewBenefits.length > 0 ? (
           <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
-            {previewBenefits.map(b => (
-              <span key={b} style={{ fontSize:10, color:'var(--text-2)', background:'var(--bg-2)', border:'0.5px solid var(--border)', borderRadius:6, padding:'3px 8px', display:'flex', alignItems:'center', gap:4 }}>
-                <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="#3b82f6" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                {b}
-              </span>
-            ))}
+            {previewBenefits.map((b, i) => {
+              const name = typeof b === 'string' ? b : b.name;
+              return (
+                <span key={i} style={{ fontSize:10, color:'var(--text-2)', background:'var(--bg-2)', border:'0.5px solid var(--border)', borderRadius:6, padding:'3px 8px', display:'flex', alignItems:'center', gap:4 }}>
+                  <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="#3b82f6" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  {name}
+                </span>
+              );
+            })}
             {extraBenefits > 0 && (
               <button onClick={e => { e.stopPropagation(); onViewDetails('benefits'); }} style={{ fontSize:10, color:'#3b82f6', fontWeight:500, background:'none', border:'none', cursor:'pointer', padding:0 }}>
                 +{extraBenefits} more
