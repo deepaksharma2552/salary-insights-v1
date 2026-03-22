@@ -13,9 +13,9 @@ import LoginPage        from './pages/public/LoginPage';
 import RegisterPage     from './pages/public/RegisterPage';
 import OAuth2RedirectPage from './pages/public/OAuth2RedirectPage';
 import SubmitSalaryPage from './pages/public/SubmitSalaryPage';
-import SubmitReferralPage  from './pages/public/SubmitReferralPage';
-import MyReferralLinksPage     from './pages/public/MyReferralLinksPage';
-import ViewReferralsPage       from './pages/public/ViewReferralsPage';
+import OpportunitiesPage       from './pages/public/OpportunitiesPage';
+import PostOpportunityPage     from './pages/public/PostOpportunityPage';
+import AdminOpportunities      from './pages/admin/AdminOpportunities';
 import LaunchpadPage           from './pages/public/LaunchpadPage';
 import SubmitExperiencePage    from './pages/public/SubmitExperiencePage';
 import AdminLaunchpad          from './pages/admin/AdminLaunchpad';
@@ -26,10 +26,6 @@ import AdminDashboard       from './pages/admin/AdminDashboard';
 import AdminCompanies       from './pages/admin/AdminCompanies';
 import AdminPendingSalaries from './pages/admin/AdminPendingSalaries';
 import AdminAuditLogs       from './pages/admin/AdminAuditLogs';
-import AdminReferrals       from './pages/admin/AdminReferrals';
-import AdminOpportunities   from './pages/admin/AdminOpportunities';
-import OpportunitiesPage       from './pages/public/OpportunitiesPage';
-import PostOpportunityPage     from './pages/public/PostOpportunityPage';
 import AdminGuideLevels     from './pages/admin/AdminGuideLevels';
 import AdminJobFunctions    from './pages/admin/AdminJobFunctions';
 import { AppDataProvider }  from './context/AppDataContext';
@@ -91,17 +87,14 @@ export default function App() {
             <Route path="/submit"    element={
               <PrivateRoute><SubmitSalaryPage /></PrivateRoute>
             }/>
-            <Route path="/referrals"        element={<ViewReferralsPage />} />
-            <Route path="/opportunities"    element={<OpportunitiesPage />} />
-            <Route path="/opportunities/post" element={
+            <Route path="/opportunities"      element={<OpportunitiesPage />} />
+            <Route path="/opportunities/post"  element={
               <PrivateRoute><PostOpportunityPage /></PrivateRoute>
             }/>
-            <Route path="/refer" element={
-              <PrivateRoute><SubmitReferralPage /></PrivateRoute>
-            }/>
-            <Route path="/my-referral-links" element={
-              <PrivateRoute><MyReferralLinksPage /></PrivateRoute>
-            }/>
+            {/* Legacy referral routes — redirect to new Opportunities system */}
+            <Route path="/referrals"           element={<Navigate to="/opportunities" replace />} />
+            <Route path="/refer"               element={<Navigate to="/opportunities/post" replace />} />
+            <Route path="/my-referral-links"   element={<Navigate to="/opportunities/post" replace />} />
             <Route path="/launchpad" element={<LaunchpadPage />} />
             <Route path="/launchpad/submit" element={
               <PrivateRoute><SubmitExperiencePage /></PrivateRoute>
@@ -128,16 +121,13 @@ export default function App() {
                 <AdminLayout><AdminAuditLogs /></AdminLayout>
               </PrivateRoute>
             }/>
-            <Route path="/admin/referrals" element={
-              <PrivateRoute adminOnly>
-                <AdminLayout><AdminReferrals /></AdminLayout>
-              </PrivateRoute>
-            }/>
             <Route path="/admin/opportunities" element={
               <PrivateRoute adminOnly>
                 <AdminLayout><AdminOpportunities /></AdminLayout>
               </PrivateRoute>
             }/>
+            {/* Legacy redirect */}
+            <Route path="/admin/referrals"     element={<Navigate to="/admin/opportunities" replace />} />
 
             <Route path="/admin/guide-levels" element={
               <PrivateRoute adminOnly>

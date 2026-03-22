@@ -189,11 +189,11 @@ export default function Navbar() {
               Share Salary
             </Link>
             <Link
-              to="/refer"
+              to="/opportunities/post"
               className="btn-primary"
               style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
-              + Add a Referral
+              + Post Opportunity
             </Link>
 
             {/* User dropdown */}
@@ -236,13 +236,12 @@ export default function Navbar() {
                     <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2, fontFamily: "'JetBrains Mono',monospace" }}>{user.email}</div>
                   </div>
 
-                  {/* My Referral Links */}
-                  <Link to="/my-referral-links" className="dropdown-item">
+                  {/* My Opportunities */}
+                  <Link to="/opportunities/post" className="dropdown-item">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
                     </svg>
-                    My Referral Links
+                    Post Opportunity
                   </Link>
 
                   <div className="dropdown-divider" />
