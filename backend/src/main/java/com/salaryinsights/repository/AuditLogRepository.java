@@ -4,6 +4,7 @@ import com.salaryinsights.entity.AuditLog;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,58 +14,34 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Repository
-public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
+public interface AuditLogRepository
+        extends JpaRepository<AuditLog, UUID>,
+                JpaSpecificationExecutor<AuditLog> {
 
-    // ── First page (no cursor) ─────────────────────────────────────────────────
+    // ── Keyset: first page (no cursor) ────────────────────────────────────────
 
-    @Query("""
-        SELECT a FROM AuditLog a
-        WHERE (:action       IS NULL OR a.action      = :action)
-          AND (:performedBy  IS NULL OR a.performedBy = :performedBy)
-          AND (:entityType   IS NULL OR a.entityType  = :entityType)
-          AND (:from         IS NULL OR a.createdAt  >= :from)
-          AND (:to           IS NULL OR a.createdAt  <= :to)
-        ORDER BY a.createdAt DESC
-        """)
-    Slice<AuditLog> findFirstPage(
-            @Param("action")      String action,
-            @Param("performedBy") String performedBy,
-            @Param("entityType")  String entityType,
-            @Param("from")        LocalDateTime from,
-            @Param("to")          LocalDateTime to,
+    @Query("SELECT a FROM AuditLog a ORDER BY a.createdAt DESC")
+    Slice<AuditLog> findFirstPageNoCursor(Pageable pageable);
+
+    // ── Keyset: next page (cursor = createdAt of last seen row) ───────────────
+
+    @Query("SELECT a FROM AuditLog a WHERE a.createdAt < :cursor ORDER BY a.createdAt DESC")
+    Slice<AuditLog> findNextPageNoCursor(
+            @Param("cursor") LocalDateTime cursor,
             Pageable pageable
     );
 
-    // ── Subsequent pages (keyset — cursor is the createdAt of the last row) ───
+    // ── Keyset + filters ──────────────────────────────────────────────────────
+    // Built dynamically in AuditLogService via Specification — no JPQL needed.
+    // JpaSpecificationExecutor.findAll(Specification, Pageable) returns a Page
+    // (with COUNT). We use the Slice variant below instead.
 
-    @Query("""
-        SELECT a FROM AuditLog a
-        WHERE a.createdAt < :cursor
-          AND (:action       IS NULL OR a.action      = :action)
-          AND (:performedBy  IS NULL OR a.performedBy = :performedBy)
-          AND (:entityType   IS NULL OR a.entityType  = :entityType)
-          AND (:from         IS NULL OR a.createdAt  >= :from)
-          AND (:to           IS NULL OR a.createdAt  <= :to)
-        ORDER BY a.createdAt DESC
-        """)
-    Slice<AuditLog> findNextPage(
-            @Param("cursor")      LocalDateTime cursor,
-            @Param("action")      String action,
-            @Param("performedBy") String performedBy,
-            @Param("entityType")  String entityType,
-            @Param("from")        LocalDateTime from,
-            @Param("to")          LocalDateTime to,
-            Pageable pageable
-    );
+    // Spring Data does not expose findAll(Specification, Pageable) → Slice directly,
+    // so we use the Page variant and accept one COUNT query when filters are active.
+    // At filtered volumes the result set is small enough that COUNT is cheap.
 
     // ── Archival ───────────────────────────────────────────────────────────────
 
-    /**
-     * Copies rows older than :cutoff into audit_logs_archive then deletes them
-     * from the live table — all in one atomic CTE. LIMIT caps lock duration.
-     * Requires the archive table created by V19__audit_log_archive.sql.
-     * Returns the number of rows moved.
-     */
     @Modifying
     @Query(value = """
         WITH moved AS (
