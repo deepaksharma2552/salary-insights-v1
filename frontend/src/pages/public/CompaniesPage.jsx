@@ -610,11 +610,16 @@ function CompanyCard({ c, onViewDetails }) {
 
       <div style={{ height:'0.5px', background:'var(--border)' }} />
 
-      {/* TC range + breakdown toggle */}
+      {/* TC range pill + breakdown toggle */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
-        <div>
-          <div style={{ fontSize:10, color:'var(--text-3)', marginBottom:2 }}>{hasTcRange ? 'TC range' : 'Avg TC'}</div>
-          <div style={{ fontSize:15, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)' }}>{tcRangeStr}</div>
+        <div style={{ display:'flex', alignItems:'center', gap:6, background:'var(--bg-2)', border:'0.5px solid var(--border)', borderRadius:99, padding:'5px 12px', flexShrink:0, minWidth:0 }}>
+          <span style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.07em', color:'var(--text-3)', flexShrink:0 }}>
+            {hasTcRange ? 'TC' : 'Avg TC'}
+          </span>
+          <span style={{ fontSize:11, color:'var(--text-3)' }}>·</span>
+          <span style={{ fontSize:12, fontWeight:500, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', whiteSpace:'nowrap' }}>
+            {tcRangeStr}
+          </span>
         </div>
         <button
           onClick={toggleExpand}

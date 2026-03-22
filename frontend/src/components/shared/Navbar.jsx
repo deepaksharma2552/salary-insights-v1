@@ -183,17 +183,29 @@ export default function Navbar() {
             {/* Primary CTAs */}
             <Link
               to="/submit"
-              className="btn-ghost"
-              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              style={{
+                textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5,
+                fontSize: 13, fontWeight: 600, padding: '7px 15px', borderRadius: 8,
+                border: '2px solid #10b981', color: '#065f46', background: '#ecfdf5',
+                whiteSpace: 'nowrap', transition: 'background 0.15s, border-color 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#d1fae5'; e.currentTarget.style.borderColor = '#059669'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#ecfdf5'; e.currentTarget.style.borderColor = '#10b981'; }}
             >
-              Share Salary
+              <span style={{ fontSize: 14, lineHeight: 1 }}>₹</span> Share Salary
             </Link>
             <Link
               to="/opportunities/post"
-              className="btn-primary"
-              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              style={{
+                textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5,
+                fontSize: 13, fontWeight: 600, padding: '7px 15px', borderRadius: 8,
+                border: 'none', color: '#fff', background: '#1e40af',
+                whiteSpace: 'nowrap', transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#1e3a8a'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#1e40af'; }}
             >
-              + Post Opportunity
+              <span style={{ fontSize: 15, fontWeight: 400, lineHeight: 1 }}>+</span> Post Opportunity
             </Link>
 
             {/* User dropdown */}
