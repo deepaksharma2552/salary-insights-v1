@@ -357,32 +357,21 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
                     const equityPct= l.avgEquity? Math.round((l.avgEquity/ (l.avgTC ?? 1)) * 100) : null;
                     return (
                       <div key={l.internalLevel} style={{ marginBottom:4 }}>
-                        {/* Bar row */}
+                        {/* Bar row — label always in fixed column, never inside/overlapping the bar */}
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                           <span style={{ fontSize:12, color:'var(--text-2)', width:120, flexShrink:0 }}>{l.internalLevel}</span>
-                          {/* Track — no overflow:hidden so label outside is never clipped */}
-                          <div style={{ flex:1, position:'relative', height:22 }}>
-                            <div style={{ position:'absolute', inset:0, background:'var(--bg-2)', borderRadius:6 }} />
+                          {/* Track — overflow:hidden safe since label is outside */}
+                          <div style={{ flex:1, height:22, background:'var(--bg-2)', borderRadius:6, overflow:'hidden' }}>
                             <div style={{
-                              position:'absolute', left:0, top:0, height:'100%',
-                              width:`${pct}%`,
+                              height:'100%', width:`${pct}%`,
                               background:'linear-gradient(90deg,#1e40af,#3b82f6)',
-                              borderRadius:6, display:'flex', alignItems:'center',
-                              paddingLeft:8, transition:'width 0.4s ease',
-                            }}>
-                              {pct >= 28 && (
-                                <span style={{ fontSize:11, fontWeight:600, color:'#fff', fontFamily:"'IBM Plex Mono',monospace", whiteSpace:'nowrap' }}>
-                                  {fmtSalary(l.avgTC)}
-                                </span>
-                              )}
-                            </div>
-                            {/* Label outside bar — always visible, never clipped */}
-                            {pct < 28 && (
-                              <span style={{ position:'absolute', left:`calc(${pct}% + 8px)`, top:'50%', transform:'translateY(-50%)', fontSize:11, fontWeight:600, color:'var(--text-1)', fontFamily:"'IBM Plex Mono',monospace", whiteSpace:'nowrap' }}>
-                                {fmtSalary(l.avgTC)}
-                              </span>
-                            )}
+                              borderRadius:6, transition:'width 0.4s ease',
+                            }} />
                           </div>
+                          {/* TC value — always in its own fixed column, never inside bar */}
+                          <span style={{ fontSize:11, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', minWidth:56, textAlign:'right', flexShrink:0 }}>
+                            {fmtSalary(l.avgTC)}
+                          </span>
                           <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", minWidth:48, textAlign:'right', flexShrink:0 }}>
                             {l.count != null ? `${l.count} entr${l.count === 1 ? 'y' : 'ies'}` : ''}
                           </span>
