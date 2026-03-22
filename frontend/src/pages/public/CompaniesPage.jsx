@@ -230,15 +230,23 @@ function CompanyCard({ c, onClick }) {
       onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
     >
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <CompanyLogo companyId={c.id} companyName={c.name} logoUrl={c.logoUrl} website={c.website} size={36} radius={8} />
-          <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <CompanyLogo
+            companyId={c.id}
+            companyName={c.name}
+            logoUrl={c.logoUrl}
+            website={c.website}
+            size={40}
+            radius={10}
+            style={{ border: '0.5px solid var(--border)', flexShrink: 0 }}
+          />
+          <div style={{ paddingTop: 2 }}>
             <div className="company-card-name" style={{ marginBottom: 0 }}>{c.name}</div>
             <div className="company-card-industry">{c.industry}</div>
           </div>
         </div>
-        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'var(--text-3)', background: 'var(--bg-2)', padding: '2px 7px', borderRadius: 6, border: '1px solid var(--border)', flexShrink: 0 }}>
+        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'var(--text-3)', background: 'var(--bg-2)', padding: '2px 7px', borderRadius: 6, border: '1px solid var(--border)', flexShrink: 0, marginTop: 2 }}>
           {c.entries} entries
         </span>
       </div>
