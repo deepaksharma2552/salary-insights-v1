@@ -282,7 +282,10 @@ public class SalaryService {
     }
 
     @Transactional
-    @org.springframework.cache.annotation.CacheEvict(value = "analytics", allEntries = true)  // clears byLocation, byCompany, byCompanyLevel, byLocationLevel
+    @org.springframework.cache.annotation.Caching(evict = {
+        @org.springframework.cache.annotation.CacheEvict(value = "analytics",   allEntries = true),
+        @org.springframework.cache.annotation.CacheEvict(value = "companyList", allEntries = true)
+    })
     public SalaryResponse reviewSalary(UUID id, ReviewStatus status, String reason) {
         if (status == ReviewStatus.PENDING) {
             throw new BadRequestException("Cannot set status to PENDING");

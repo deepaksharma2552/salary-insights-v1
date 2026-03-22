@@ -30,6 +30,10 @@ public class CompanyService {
     private final SalaryEntryRepository salaryEntryRepository;
     private final AuditLogService auditLogService;
 
+    @org.springframework.cache.annotation.Cacheable(
+        value = "companyList",
+        key = "'page:' + #pageable.pageNumber + ':size:' + #pageable.pageSize + ':name:' + #name + ':industry:' + #industry + ':location:' + #location"
+    )
     public PagedResponse<CompanyResponse> getAllCompanies(String name, String industry, String location, Pageable pageable) {
         Page<Company> page = companyRepository.searchCompanies(CompanyStatus.ACTIVE, name, industry, location, pageable);
         List<com.salaryinsights.dto.response.CompanyResponse> enriched = page.getContent().stream()
@@ -73,6 +77,7 @@ public class CompanyService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "companyList", allEntries = true)
     public CompanyResponse createCompany(CompanyRequest request) {
         if (companyRepository.existsByName(request.getName())) {
             throw new BadRequestException("Company with name '" + request.getName() + "' already exists");
@@ -89,6 +94,7 @@ public class CompanyService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "companyList", allEntries = true)
     public CompanyResponse updateCompany(UUID id, CompanyRequest request) {
         Company company = findCompanyById(id);
         companyMapper.updateEntity(company, request);
@@ -101,6 +107,7 @@ public class CompanyService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "companyList", allEntries = true)
     public void toggleStatus(UUID id) {
         Company company = findCompanyById(id);
         CompanyStatus newStatus = company.getStatus() == CompanyStatus.ACTIVE
@@ -113,6 +120,7 @@ public class CompanyService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "companyList", allEntries = true)
     public void deleteCompany(UUID id) {
         Company company = findCompanyById(id);
         companyRepository.delete(company);
@@ -161,6 +169,7 @@ public class CompanyService {
      * Benefits are sourced from the company's official benefits page.
      */
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "companyList", allEntries = true)
     public CompanyResponse updateBenefits(UUID id, List<com.salaryinsights.dto.response.BenefitItem> benefits) {
         Company company = findCompanyById(id);
         company.setBenefits(benefits != null ? benefits : new java.util.ArrayList<>());

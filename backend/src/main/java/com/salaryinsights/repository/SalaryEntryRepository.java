@@ -292,7 +292,20 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  AND s.review_status = 'APPROVED' " +
         "  AND s.company_internal_level IS NOT NULL " +
         "GROUP BY s.company_internal_level " +
-        "ORDER BY AVG(s.total_compensation) ASC",
+        "ORDER BY CASE s.company_internal_level " +
+        "  WHEN 'SDE_1'                  THEN 1 " +
+        "  WHEN 'SDE_2'                  THEN 2 " +
+        "  WHEN 'SDE_3'                  THEN 3 " +
+        "  WHEN 'STAFF_ENGINEER'          THEN 4 " +
+        "  WHEN 'PRINCIPAL_ENGINEER'      THEN 5 " +
+        "  WHEN 'ARCHITECT'               THEN 6 " +
+        "  WHEN 'ENGINEERING_MANAGER'     THEN 7 " +
+        "  WHEN 'SR_ENGINEERING_MANAGER'  THEN 8 " +
+        "  WHEN 'DIRECTOR'                THEN 9 " +
+        "  WHEN 'SR_DIRECTOR'             THEN 10 " +
+        "  WHEN 'VP'                      THEN 11 " +
+        "  ELSE 99 " +
+        "END ASC",
         nativeQuery = true)
     List<Object[]> salarySummaryByLevel(@Param("companyId") UUID companyId);
 

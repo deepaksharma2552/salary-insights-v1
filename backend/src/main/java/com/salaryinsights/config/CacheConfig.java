@@ -71,6 +71,18 @@ public class CacheConfig {
                 .recordStats()
                 .build());
 
+        // companyList — paginated public company listing with enriched stats.
+        // Each entry = one unique (name, industry, location, page, size) combo.
+        // TTL 5 min: short enough to reflect new approvals, long enough to absorb
+        // concurrent users hitting the same page. Evicted immediately on any
+        // company or salary-approval write.
+        manager.registerCustomCache("companyList",
+            Caffeine.newBuilder()
+                .maximumSize(200)
+                .expireAfterWrite(5, TimeUnit.MINUTES)
+                .recordStats()
+                .build());
+
         return manager;
     }
 }
