@@ -610,27 +610,36 @@ function CompanyCard({ c, onViewDetails }) {
 
       <div style={{ height:'0.5px', background:'var(--border)' }} />
 
-      {/* TC range pill + breakdown toggle */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:6, background:'var(--bg-2)', border:'0.5px solid var(--border)', borderRadius:99, padding:'5px 12px', flexShrink:0, minWidth:0 }}>
-          <span style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.07em', color:'var(--text-3)', flexShrink:0 }}>
-            {hasTcRange ? 'TC' : 'Avg TC'}
-          </span>
-          <span style={{ fontSize:11, color:'var(--text-3)' }}>·</span>
-          <span style={{ fontSize:12, fontWeight:500, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', whiteSpace:'nowrap' }}>
+      {/* TC range pill — entire block clickable, two-row layout */}
+      <button
+        onClick={toggleExpand}
+        style={{
+          display:'flex', flexDirection:'column', gap:5,
+          width:'100%', background:'var(--bg-2)', border:'0.5px solid var(--border)',
+          borderRadius:10, padding:'10px 14px', cursor:'pointer', textAlign:'left',
+          transition:'border-color 0.15s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = '#3b82f6'}
+        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+      >
+        {/* Top row: label */}
+        <span style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.07em', color:'var(--text-3)' }}>
+          {hasTcRange ? 'TC range' : 'Avg TC'}
+        </span>
+        {/* Bottom row: value + breakdown link */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+          <span style={{ fontSize:15, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', whiteSpace:'nowrap' }}>
             {tcRangeStr}
           </span>
+          <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:11, fontWeight:500, color:'#3b82f6', whiteSpace:'nowrap', flexShrink:0 }}>
+            Breakdown by level
+            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"
+              style={{ transition:'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </span>
         </div>
-        <button
-          onClick={toggleExpand}
-          style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, fontWeight:500, color:'#3b82f6', background:'none', border:'none', cursor:'pointer', padding:0, flexShrink:0 }}
-        >
-          Breakdown by level
-          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" style={{ transition:'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </button>
-      </div>
+      </button>
 
       {/* Loading shimmer */}
       {loadingLvl && (
