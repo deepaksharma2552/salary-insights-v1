@@ -52,14 +52,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Invalid email or password"));
     }
 
-    @ExceptionHandler(com.salaryinsights.service.ai.AiUnavailableException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAiUnavailable(
-            com.salaryinsights.service.ai.AiUnavailableException ex) {
-        log.warn("AI service unavailable: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(ApiResponse.error("AI service unavailable: " + ex.getMessage()));
-    }
-
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
         log.error("Unhandled exception: ", ex);
