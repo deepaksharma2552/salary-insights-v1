@@ -109,6 +109,9 @@ export default function AdminOpportunities() {
 
   return (
     <div style={{ padding: 40 }}>
+      <style>{`
+        @keyframes adminSpin { to { transform: rotate(360deg); } }
+      `}</style>
 
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
@@ -145,7 +148,9 @@ export default function AdminOpportunities() {
       {fetchError && (
         <div style={{ padding: '12px 16px', background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 8, color: 'var(--red)', fontSize: 13, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span>{fetchError}</span>
-          <button onClick={load} style={{ marginLeft: 'auto', padding: '4px 10px', fontSize: 11, fontWeight: 600, background: 'rgba(220,38,38,0.1)', color: 'var(--red)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 6, cursor: 'pointer' }}>Retry</button>
+          <button onClick={load} style={{ marginLeft: 'auto', padding: '4px 10px', fontSize: 11, fontWeight: 600, background: 'rgba(220,38,38,0.1)', color: 'var(--red)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+              {loading ? <><div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid rgba(220,38,38,0.2)', borderTopColor: 'var(--red)', animation: 'adminSpin 0.7s linear infinite' }} />Loading…</> : 'Retry'}
+            </button>
         </div>
       )}
 
@@ -169,7 +174,7 @@ export default function AdminOpportunities() {
                   <th style={{ width: '11%' }}>Apply link</th>
                   <th style={{ width: '9%'  }}>Posted by</th>
                   <th style={{ width: '10%' }}>Submitted</th>
-                  <th style={{ width: '12%' }}>Actions</th>
+                  <th style={{ width: '16%' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -197,37 +202,89 @@ export default function AdminOpportunities() {
                       {opp.createdAt ? new Date(opp.createdAt).toLocaleDateString('en-IN') : '—'}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
+
+                        {/* PENDING — primary Approve, secondary Reject */}
                         {opp.status === 'PENDING' && (
                           <>
                             <button
                               onClick={() => approve(opp.id)}
                               disabled={actioning === opp.id}
-                              style={{ padding: '3px 10px', fontSize: 11, fontWeight: 600, background: 'var(--green-dim)', color: 'var(--green)', border: '1px solid rgba(22,163,74,0.25)', borderRadius: 6, cursor: 'pointer' }}>
-                              {actioning === opp.id ? '…' : 'Approve'}
+                              style={{
+                                padding: '5px 12px', fontSize: 12, fontWeight: 600,
+                                background: 'var(--green)', color: 'white',
+                                border: 'none', borderRadius: 6, cursor: actioning === opp.id ? 'not-allowed' : 'pointer',
+                                opacity: actioning === opp.id ? 0.65 : 1,
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                whiteSpace: 'nowrap', transition: 'opacity 0.2s',
+                              }}>
+                              {actioning === opp.id
+                                ? <><div style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'adminSpin 0.7s linear infinite', flexShrink: 0 }} />Approving…</>
+                                : '✓ Approve'
+                              }
                             </button>
                             <button
                               onClick={() => { setRejectTarget(opp); setRejectReason(''); }}
                               disabled={actioning === opp.id}
-                              style={{ padding: '3px 10px', fontSize: 11, fontWeight: 600, background: 'var(--red-dim)', color: 'var(--red)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 6, cursor: 'pointer' }}>
+                              style={{
+                                padding: '5px 10px', fontSize: 12, fontWeight: 500,
+                                background: 'var(--red-dim)', color: 'var(--red)',
+                                border: '1px solid rgba(220,38,38,0.2)', borderRadius: 6,
+                                cursor: actioning === opp.id ? 'not-allowed' : 'pointer',
+                                opacity: actioning === opp.id ? 0.5 : 1,
+                                whiteSpace: 'nowrap', transition: 'opacity 0.2s',
+                              }}>
                               Reject
                             </button>
                           </>
                         )}
+
+                        {/* LIVE — Pull button */}
                         {opp.status === 'LIVE' && (
                           <button
                             onClick={() => { setRejectTarget(opp); setRejectReason('Link broken or expired'); }}
                             disabled={actioning === opp.id}
-                            style={{ padding: '3px 10px', fontSize: 11, fontWeight: 600, background: 'var(--orange-dim)', color: 'var(--orange)', border: '1px solid rgba(217,119,6,0.25)', borderRadius: 6, cursor: 'pointer' }}>
-                            Pull
+                            style={{
+                              padding: '5px 10px', fontSize: 12, fontWeight: 500,
+                              background: 'var(--orange-dim)', color: 'var(--orange)',
+                              border: '1px solid rgba(217,119,6,0.25)', borderRadius: 6,
+                              cursor: actioning === opp.id ? 'not-allowed' : 'pointer',
+                              opacity: actioning === opp.id ? 0.65 : 1,
+                              display: 'flex', alignItems: 'center', gap: 6,
+                              whiteSpace: 'nowrap', transition: 'opacity 0.2s',
+                            }}>
+                            {actioning === opp.id
+                              ? <><div style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(217,119,6,0.3)', borderTopColor: 'var(--orange)', animation: 'adminSpin 0.7s linear infinite', flexShrink: 0 }} />Pulling…</>
+                              : 'Pull live'
+                            }
                           </button>
                         )}
+
+                        {/* Delete — icon only */}
                         <button
                           onClick={() => remove(opp.id, opp.title)}
                           disabled={actioning === opp.id}
-                          style={{ padding: '3px 8px', fontSize: 11, fontWeight: 600, background: 'var(--bg-3)', color: 'var(--text-3)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
-                          Del
+                          title="Delete permanently"
+                          style={{
+                            width: 28, height: 28, flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'transparent', color: 'var(--text-4)',
+                            border: '1px solid var(--border)', borderRadius: 6,
+                            cursor: actioning === opp.id ? 'not-allowed' : 'pointer',
+                            opacity: actioning === opp.id ? 0.4 : 1,
+                            transition: 'all 0.12s',
+                          }}
+                          onMouseEnter={e => { if (actioning !== opp.id) { e.currentTarget.style.background = 'var(--red-dim)'; e.currentTarget.style.color = 'var(--red)'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.25)'; }}}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-4)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                        >
+                          {actioning === opp.id
+                            ? <div style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid var(--border)', borderTopColor: 'var(--text-3)', animation: 'adminSpin 0.7s linear infinite' }} />
+                            : <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                              </svg>
+                          }
                         </button>
+
                       </div>
                     </td>
                   </tr>
@@ -273,8 +330,17 @@ export default function AdminOpportunities() {
               <button
                 onClick={confirmReject}
                 disabled={!rejectReason.trim() || actioning === rejectTarget?.id}
-                style={{ padding: '7px 16px', fontSize: 13, fontWeight: 600, color: 'white', background: 'var(--red)', border: 'none', borderRadius: 6, cursor: rejectReason.trim() ? 'pointer' : 'not-allowed', opacity: rejectReason.trim() ? 1 : 0.5 }}>
-                {actioning === rejectTarget?.id ? 'Processing…' : 'Confirm'}
+                style={{
+                  padding: '7px 16px', fontSize: 13, fontWeight: 600, color: 'white',
+                  background: 'var(--red)', border: 'none', borderRadius: 6,
+                  cursor: (!rejectReason.trim() || actioning === rejectTarget?.id) ? 'not-allowed' : 'pointer',
+                  opacity: (!rejectReason.trim() || actioning === rejectTarget?.id) ? 0.5 : 1,
+                  display: 'flex', alignItems: 'center', gap: 6, transition: 'opacity 0.2s',
+                }}>
+                {actioning === rejectTarget?.id
+                  ? <><div style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'adminSpin 0.7s linear infinite', flexShrink: 0 }} />Processing…</>
+                  : 'Confirm'
+                }
               </button>
             </div>
           </div>
