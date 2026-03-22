@@ -45,6 +45,7 @@ public class SalaryService {
         return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, null, pageable);
     }
 
+    @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getApprovedSalaries(
             UUID companyId, String companyName, String jobTitle,
             java.util.List<String> locations, java.util.List<String> experienceLevelStrs,
