@@ -50,6 +50,10 @@ export default function AdminOpportunities() {
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
 
+  // Re-open modal
+  const [reopenTarget,  setReopenTarget]  = useState(null);
+  const [fixedLink,     setFixedLink]     = useState('');
+
   const PAGE_SIZE = 20;
 
   const load = useCallback(() => {
@@ -92,6 +96,20 @@ export default function AdminOpportunities() {
       });
       setRejectTarget(null);
       setRejectReason('');
+      load();
+    } catch (e) { console.error(e); }
+    finally { setActioning(null); }
+  }
+
+  async function confirmReopen() {
+    if (!reopenTarget || !fixedLink.trim()) return;
+    setActioning(reopenTarget.id);
+    try {
+      await api.patch(`/admin/opportunities/${reopenTarget.id}/link`, {
+        applyLink: fixedLink.trim(),
+      });
+      setReopenTarget(null);
+      setFixedLink('');
       load();
     } catch (e) { console.error(e); }
     finally { setActioning(null); }
@@ -260,6 +278,24 @@ export default function AdminOpportunities() {
                           </button>
                         )}
 
+                        {/* REJECTED — Re-open with fixed link */}
+                        {opp.status === 'REJECTED' && (
+                          <button
+                            onClick={() => { setReopenTarget(opp); setFixedLink(opp.applyLink ?? ''); }}
+                            disabled={actioning === opp.id}
+                            style={{
+                              padding: '5px 10px', fontSize: 12, fontWeight: 500,
+                              background: 'var(--blue-dim)', color: 'var(--blue)',
+                              border: '1px solid rgba(59,130,246,0.25)', borderRadius: 6,
+                              cursor: actioning === opp.id ? 'not-allowed' : 'pointer',
+                              opacity: actioning === opp.id ? 0.65 : 1,
+                              display: 'flex', alignItems: 'center', gap: 5,
+                              whiteSpace: 'nowrap',
+                            }}>
+                            ↩ Re-open
+                          </button>
+                        )}
+
                         {/* Delete — icon only */}
                         <button
                           onClick={() => remove(opp.id, opp.title)}
@@ -347,6 +383,51 @@ export default function AdminOpportunities() {
         </div>
       )}
 
-    </div>
-  );
-}
+      {/* Re-open modal */}
+      {reopenTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 14, padding: 28, width: '100%', maxWidth: 460, boxShadow: 'var(--shadow-lg)' }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', marginBottom: 6 }}>
+              Fix link & re-open
+            </h3>
+            <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 4 }}>
+              "{reopenTarget.title}"
+            </p>
+            {reopenTarget.rejectionReason && (
+              <div style={{ fontSize: 12, color: 'var(--text-3)', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 10px', marginBottom: 16 }}>
+                Rejected reason: {reopenTarget.rejectionReason}
+              </div>
+            )}
+            <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>
+              Corrected apply link <span style={{ color: 'var(--red)' }}>*</span>
+            </label>
+            <input
+              value={fixedLink}
+              onChange={e => setFixedLink(e.target.value)}
+              placeholder="https://…"
+              style={{ width: '100%', padding: '9px 12px', fontSize: 13, color: 'var(--text-1)', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 6, outline: 'none', fontFamily: 'Inter,sans-serif', marginBottom: 6 }}
+            />
+            <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 16 }}>
+              The link will be updated and the opportunity set to LIVE immediately.
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => { setReopenTarget(null); setFixedLink(''); }} className="btn-ghost">Cancel</button>
+              <button
+                onClick={confirmReopen}
+                disabled={!fixedLink.trim() || actioning === reopenTarget?.id}
+                style={{
+                  padding: '7px 16px', fontSize: 13, fontWeight: 600, color: 'white',
+                  background: 'var(--blue)', border: 'none', borderRadius: 6,
+                  cursor: (!fixedLink.trim() || actioning === reopenTarget?.id) ? 'not-allowed' : 'pointer',
+                  opacity: (!fixedLink.trim() || actioning === reopenTarget?.id) ? 0.5 : 1,
+                  display: 'flex', alignItems: 'center', gap: 6, transition: 'opacity 0.2s',
+                }}>
+                {actioning === reopenTarget?.id
+                  ? <><div style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'adminSpin 0.7s linear infinite', flexShrink: 0 }} />Reopening…</>
+                  : '↩ Set live'
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
