@@ -45,6 +45,126 @@ function mapSalary(s) {
   };
 }
 
+// ── Benefits helpers ─────────────────────────────────────────────────────────
+
+const BENEFIT_ICON_MAP = {
+  // Financial
+  'esop': '💰', 'stock': '💰', 'equity': '💰',
+  'meal': '🍱', 'food': '🍱', 'lunch': '🍱',
+  'relocation': '📦', 'moving': '📦',
+  'bonus': '💵', 'incentive': '💵',
+  // Health
+  'health': '🏥', 'medical': '🏥', 'hospitalization': '🏥',
+  'dental': '🦷', 'vision': '👁️', 'optical': '👁️',
+  'gym': '💪', 'wellness': '💪', 'fitness': '💪',
+  'mental': '🧠',
+  // Growth
+  'learning': '📚', 'education': '📚', 'course': '📚', 'conference': '📚', 'training': '📚',
+  'certification': '🎓',
+  // Lifestyle
+  'wfh': '🏠', 'remote': '🏠', 'work from home': '🏠',
+  'parental': '👶', 'maternity': '👶', 'paternity': '👶',
+  'leave': '🌴', 'sabbatical': '🌴', 'pto': '🌴',
+  'commute': '🚌', 'transport': '🚌',
+};
+
+const BENEFIT_CATEGORY_MAP = {
+  financial: ['esop', 'stock', 'equity', 'meal', 'food', 'lunch', 'relocation', 'moving', 'bonus', 'incentive', 'allowance'],
+  health:    ['health', 'medical', 'hospitalization', 'dental', 'vision', 'optical', 'gym', 'wellness', 'fitness', 'mental'],
+  growth:    ['learning', 'education', 'course', 'conference', 'training', 'certification', 'budget'],
+  lifestyle: ['wfh', 'remote', 'work from home', 'parental', 'maternity', 'paternity', 'leave', 'sabbatical', 'pto', 'commute', 'transport'],
+};
+
+const CATEGORY_META = {
+  financial: { label: 'Financial', dot: '#639922', iconBg: 'rgba(99,153,34,0.12)'  },
+  health:    { label: 'Health',    dot: '#E24B4A', iconBg: 'rgba(226,75,74,0.1)'   },
+  growth:    { label: 'Growth',    dot: '#378ADD', iconBg: 'rgba(55,138,221,0.1)'  },
+  lifestyle: { label: 'Lifestyle', dot: '#BA7517', iconBg: 'rgba(186,117,23,0.1)'  },
+  other:     { label: 'Other',     dot: '#888780', iconBg: 'rgba(136,135,128,0.1)' },
+};
+
+function detectCategory(name) {
+  const lower = name.toLowerCase();
+  for (const [cat, keywords] of Object.entries(BENEFIT_CATEGORY_MAP)) {
+    if (keywords.some(k => lower.includes(k))) return cat;
+  }
+  return 'other';
+}
+
+function detectIcon(name) {
+  const lower = name.toLowerCase();
+  for (const [keyword, icon] of Object.entries(BENEFIT_ICON_MAP)) {
+    if (lower.includes(keyword)) return icon;
+  }
+  return '✦';
+}
+
+function BenefitsGrid({ benefits }) {
+  if (!benefits || benefits.length === 0) {
+    return (
+      <div style={{ textAlign:'center', padding:'40px 0', color:'var(--text-3)', fontSize:13, fontStyle:'italic' }}>
+        No benefits information added yet.
+      </div>
+    );
+  }
+
+  // Normalise + group
+  const normalised = benefits.map(b => ({
+    name:   typeof b === 'string' ? b : b.name,
+    amount: typeof b === 'string' ? null : b.amount,
+  }));
+
+  const groups = {};
+  normalised.forEach(b => {
+    const cat = detectCategory(b.name);
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(b);
+  });
+
+  // Render in fixed order: financial → health → growth → lifestyle → other
+  const ORDER = ['financial', 'health', 'growth', 'lifestyle', 'other'];
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+      {ORDER.filter(cat => groups[cat]).map(cat => {
+        const meta = CATEGORY_META[cat];
+        return (
+          <div key={cat}>
+            {/* Category header */}
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+              <div style={{ width:7, height:7, borderRadius:'50%', background:meta.dot, flexShrink:0 }} />
+              <span style={{ fontSize:10, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.07em', color:'var(--text-3)' }}>
+                {meta.label}
+              </span>
+              <div style={{ flex:1, height:'0.5px', background:'var(--border)' }} />
+            </div>
+
+            {/* 3-col tile grid */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(0,1fr))', gap:8 }}>
+              {groups[cat].map((b, i) => (
+                <div key={i} style={{ background:'var(--bg-2)', borderRadius:8, padding:'10px 12px', display:'flex', alignItems:'center', gap:10 }}>
+                  <div style={{ width:32, height:32, borderRadius:8, background:meta.iconBg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0 }}>
+                    {detectIcon(b.name)}
+                  </div>
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontSize:11, color:'var(--text-3)', marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {b.name}
+                    </div>
+                    {b.amount
+                      ? <div style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', fontFamily:"'IBM Plex Mono',monospace" }}>{b.amount}</div>
+                      : <div style={{ fontSize:11, color:'var(--text-3)', fontStyle:'italic' }}>not specified</div>
+                    }
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Company Detail Modal ──────────────────────────────────────────────────────
 function CompanyModal({ company, initialTab = 'levels', onClose }) {
   const [tab,           setTab]          = useState(initialTab);
@@ -172,14 +292,15 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
           {tab === 'levels' && (
             <>
               {loadingLvl && (
-                <div style={{ display:'flex', flexDirection:'column', gap:10, paddingTop:8 }}>
-                  {[80,60,90,45].map((w,i) => (
-                    <div key={i} style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:100, height:11, borderRadius:4, background:'var(--bg-3)', opacity:0.5 }} />
-                      <div style={{ flex:1, height:5, borderRadius:99, background:'var(--bg-3)', opacity:0.4 }} />
-                      <div style={{ width:44, height:11, borderRadius:4, background:'var(--bg-3)', opacity:0.5 }} />
-                    </div>
-                  ))}
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'48px 0', gap:14 }}>
+                  <div style={{
+                    width:28, height:28, borderRadius:'50%',
+                    border:'2.5px solid var(--border)',
+                    borderTopColor:'#3b82f6',
+                    animation:'lvlSpin 0.7s linear infinite',
+                  }} />
+                  <span style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>Loading breakdown…</span>
+                  <style>{`@keyframes lvlSpin { to { transform: rotate(360deg); } }`}</style>
                 </div>
               )}
               {!loadingLvl && levels && levels.length === 0 && (
@@ -271,31 +392,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
           )}
 
           {/* Benefits */}
-          {tab === 'benefits' && (
-            company.benefits && company.benefits.length > 0 ? (
-              <div style={{ display:'flex', flexDirection:'column' }}>
-                {company.benefits.map((b, i) => {
-                  const name   = typeof b === 'string' ? b : b.name;
-                  const amount = typeof b === 'string' ? null : b.amount;
-                  return (
-                    <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'11px 0', borderBottom: i < company.benefits.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <div style={{ width:6, height:6, borderRadius:'50%', background:'#3b82f6', flexShrink:0 }} />
-                        <span style={{ fontSize:13, color:'var(--text-1)' }}>{name}</span>
-                      </div>
-                      <span style={{ fontSize:12, fontFamily:"'IBM Plex Mono',monospace", color: amount ? 'var(--text-2)' : 'var(--text-3)', fontStyle: amount ? 'normal' : 'italic' }}>
-                        {amount || '—'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div style={{ textAlign:'center', padding:'40px 0', color:'var(--text-3)', fontSize:13, fontStyle:'italic' }}>
-                No benefits information added yet.
-              </div>
-            )
-          )}
+          {tab === 'benefits' && <BenefitsGrid benefits={company.benefits} />}
 
         </div>
       </div>
