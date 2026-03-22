@@ -285,17 +285,23 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
             <button onClick={onClose} style={{ background:'var(--ink-3)', border:'1px solid var(--border)', borderRadius:8, width:30, height:30, cursor:'pointer', color:'var(--text-2)', fontSize:15, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>✕</button>
           </div>
 
-          {/* Stat chips */}
-          <div style={{ display:'flex', gap:10, marginBottom:18, flexWrap:'wrap' }}>
+          {/* Stat bar — single surface with internal dividers */}
+          <div style={{ display:'flex', background:'var(--bg-2)', borderRadius:10, marginBottom:18, overflow:'hidden' }}>
             {[
-              { label:'Entries',  value: company.entries },
-              { label:'Avg Base', value: company.avgBase },
-              { label:'Avg TC',   value: company.avgTC },
-              { label:'TC Range', value: hasTcRange ? `${fmtSalary(company.tcMin)} – ${fmtSalary(company.tcMax)}` : '—' },
-            ].map(s => (
-              <div key={s.label} style={{ background:'var(--ink-3)', border:'1px solid var(--border)', borderRadius:10, padding:'8px 14px' }}>
-                <div style={{ fontSize:10, color:'var(--text-3)', marginBottom:3, textTransform:'uppercase', letterSpacing:'0.05em' }}>{s.label}</div>
-                <div style={{ fontSize:15, fontWeight:600, color:'var(--gold)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.value ?? '—'}</div>
+              { label:'Entries',  value: company.entries,  accent: false },
+              { label:'Avg Base', value: company.avgBase,  accent: false },
+              { label:'Avg TC',   value: company.avgTC,    accent: false },
+              { label:'TC Range', value: hasTcRange ? `${fmtSalary(company.tcMin)} – ${fmtSalary(company.tcMax)}` : '—', accent: true },
+            ].map((s, i) => (
+              <div key={s.label} style={{
+                display:'flex', flexDirection:'column', padding:'10px 16px',
+                borderLeft: i === 0 ? 'none' : '0.5px solid var(--border)',
+                flex: i === 3 ? '1.5' : '1',
+              }}>
+                <div style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-3)', marginBottom:4 }}>{s.label}</div>
+                <div style={{ fontSize:15, fontWeight:500, fontFamily:"'IBM Plex Mono',monospace", color: s.accent ? '#3b82f6' : 'var(--text-1)', whiteSpace:'nowrap' }}>
+                  {s.value ?? '—'}
+                </div>
               </div>
             ))}
           </div>
