@@ -4,7 +4,6 @@ import SalaryTable from '../../components/shared/SalaryTable';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 import { AuthContext } from '../../context/AuthContext';
-import { useLaunchpad } from '../../context/LaunchpadContext';
 
 /* ── helpers (unchanged) ────────────────────────────────────────────────── */
 function mapSalary(s) {
@@ -144,7 +143,6 @@ function JourneyCard({ emoji, title, desc, stats, actions, amber, featured }) {
 /* ── Main page ───────────────────────────────────────────────────────────── */
 export default function HomePage() {
   const { user } = useContext(AuthContext);
-  const { stats: launchpadStats } = useLaunchpad();
 
   const [recentSalaries, setRecentSalaries] = useState([]);
   const [totalEntries,   setTotalEntries]   = useState(null);
@@ -209,33 +207,31 @@ export default function HomePage() {
     },
     {
       emoji: '🔍',
-      title: 'I\'m looking for a job',
-      desc: 'Get a warm referral from the community and skip straight to the interview queue at your target company.',
+      title: "I'm looking for a job",
+      desc: 'Browse community-posted referrals, internships and openings. Get a warm referral and skip straight to the interview queue.',
       stats: [
-        { value: fmtCount(totalReferrals), label: 'active referrals' },
-        { value: fmtCount(totalCompanies), label: 'companies'        },
+        { value: fmtCount(totalReferrals), label: 'active openings' },
+        { value: fmtCount(totalCompanies), label: 'companies'       },
       ],
       actions: [
-        { to: '/referrals', label: 'Browse referrals →', bg: '#fff1f2', color: '#be123c' },
+        { to: '/opportunities',      label: 'Browse opportunities →', bg: '#eff6ff', color: '#1d4ed8' },
         { to: '/companies', label: 'Company profiles →', bg: 'var(--bg-2)', color: 'var(--text-2)', border: '1px solid var(--border)' },
       ],
     },
   ];
 
-  const launchpadCard = {
-    emoji: '🎓',
-    title: 'I\'m a college grad starting out',
-    desc: 'Crack your first product company interview with curated DSA problems, system design guides and real stories.',
+  const opportunitiesCard = {
+    emoji: '🎯',
+    title: "I'm looking for opportunities",
+    desc: 'Browse community-posted referrals, internships, full-time openings and off-campus drives — all admin-verified before going live.',
     stats: [
-      { value: launchpadStats ? `${launchpadStats.codingProblems}+`        : '—', label: 'coding problems'  },
-      { value: launchpadStats ? `${launchpadStats.systemDesignQuestions}+` : '—', label: 'design Qs'        },
-      { value: launchpadStats ? String(launchpadStats.interviewExperiences): '—', label: 'stories'          },
+      { value: fmtCount(totalReferrals), label: 'active openings' },
+      { value: fmtCount(totalCompanies), label: 'companies'       },
     ],
     actions: [
-      { to: '/launchpad',        label: 'Go to Launchpad 🚀',      bg: '#d97706', color: '#fff' },
-      { to: '/launchpad/submit', label: 'Share your experience →', bg: 'rgba(255,255,255,0.7)', color: '#92400e', border: '1px solid #fcd34d' },
+      { to: '/opportunities',      label: 'Browse opportunities →', bg: '#eff6ff', color: '#1d4ed8' },
+      { to: '/opportunities/post', label: 'Post an opportunity →',  bg: '#f0fdf4', color: '#166534' },
     ],
-    amber: true,
   };
 
 
@@ -335,7 +331,7 @@ export default function HomePage() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-          {[...journeyCards, { ...launchpadCard }].map((card, i) => (
+          {[...journeyCards, { ...opportunitiesCard }].map((card, i) => (
             <JourneyCard key={i} {...card} featured={card.featured ?? false} />
           ))}
         </div>

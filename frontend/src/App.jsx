@@ -16,10 +16,7 @@ import SubmitSalaryPage from './pages/public/SubmitSalaryPage';
 import OpportunitiesPage       from './pages/public/OpportunitiesPage';
 import PostOpportunityPage     from './pages/public/PostOpportunityPage';
 import AdminOpportunities      from './pages/admin/AdminOpportunities';
-import LaunchpadPage           from './pages/public/LaunchpadPage';
 import SubmitExperiencePage    from './pages/public/SubmitExperiencePage';
-import AdminLaunchpad          from './pages/admin/AdminLaunchpad';
-import { LaunchpadProvider }   from './context/LaunchpadContext';
 
 // Admin pages
 import AdminDashboard       from './pages/admin/AdminDashboard';
@@ -70,7 +67,6 @@ export default function App() {
   return (
     <AuthProvider>
       <AppDataProvider>
-      <LaunchpadProvider>
       <BrowserRouter>
         <Navbar />
         <RouterProgressBar />
@@ -95,10 +91,9 @@ export default function App() {
             <Route path="/referrals"           element={<Navigate to="/opportunities" replace />} />
             <Route path="/refer"               element={<Navigate to="/opportunities/post" replace />} />
             <Route path="/my-referral-links"   element={<Navigate to="/opportunities/post" replace />} />
-            <Route path="/launchpad" element={<LaunchpadPage />} />
-            <Route path="/launchpad/submit" element={
-              <PrivateRoute><SubmitExperiencePage /></PrivateRoute>
-            }/>
+            {/* Legacy launchpad routes — redirect to Opportunities */}
+            <Route path="/launchpad"        element={<Navigate to="/opportunities" replace />} />
+            <Route path="/launchpad/submit" element={<Navigate to="/opportunities/post" replace />} />
 
             {/* Admin */}
             <Route path="/admin" element={
@@ -139,12 +134,6 @@ export default function App() {
                 <AdminLayout><AdminJobFunctions /></AdminLayout>
               </PrivateRoute>
             }/>
-            <Route path="/admin/launchpad" element={
-              <PrivateRoute adminOnly>
-                <AdminLayout><AdminLaunchpad /></AdminLayout>
-              </PrivateRoute>
-            }/>
-
             <Route path="*" element={<Navigate to="/" replace />} />
           {/* Static pages */}
             <Route path="/about"       element={<AboutPage />} />
@@ -157,7 +146,6 @@ export default function App() {
         <PublicFooter />
         </div>
       </BrowserRouter>
-      </LaunchpadProvider>
       </AppDataProvider>
     </AuthProvider>
   );
