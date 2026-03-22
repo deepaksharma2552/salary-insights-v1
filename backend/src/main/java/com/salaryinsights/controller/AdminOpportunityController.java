@@ -1,5 +1,6 @@
 package com.salaryinsights.controller;
 
+import com.salaryinsights.dto.request.OpportunityLinkFixRequest;
 import com.salaryinsights.dto.request.OpportunityStatusRequest;
 import com.salaryinsights.dto.response.ApiResponse;
 import com.salaryinsights.dto.response.OpportunityResponse;
@@ -59,6 +60,21 @@ public class AdminOpportunityController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Status updated", opportunityService.updateStatus(id, request)));
+    }
+
+    /**
+     * PATCH /admin/opportunities/{id}/link
+     * Correct the apply link on a REJECTED opportunity and push it back to LIVE.
+     * Used when admin rejects due to a broken link and later fixes it.
+     */
+    @PatchMapping("/{id}/link")
+    public ResponseEntity<ApiResponse<OpportunityResponse>> fixAndReopen(
+            @PathVariable UUID id,
+            @RequestBody @Valid OpportunityLinkFixRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Link updated and opportunity is now live",
+                opportunityService.fixAndReopen(id, request.getApplyLink())));
     }
 
     /**

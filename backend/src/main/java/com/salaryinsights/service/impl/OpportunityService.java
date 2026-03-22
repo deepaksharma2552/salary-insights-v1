@@ -125,7 +125,7 @@ public class OpportunityService {
             if (type != null)
                 predicates.add(cb.equal(root.get("type"), OpportunityType.valueOf(type)));
             if (location != null)
-                predicates.add(cb.equal(cb.lower(root.get("location")), location.toLowerCase()));
+                predicates.add(cb.equal(root.get("location"), location));
             if (workMode != null)
                 predicates.add(cb.equal(root.get("workMode"), WorkMode.valueOf(workMode)));
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -179,6 +179,25 @@ public class OpportunityService {
                     PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         }
         return PagedResponse.of(pg.map(this::toResponse));
+    }
+
+    // ── Admin: fix broken link and reopen ─────────────────────────────────────
+
+    @Transactional
+    public OpportunityResponse fixAndReopen(UUID id, String newApplyLink) {
+        if (newApplyLink == null || newApplyLink.isBlank())
+            throw new BadRequestException("Apply link is required");
+        Opportunity opp = opportunityRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Opportunity not found: " + id));
+        opp.setApplyLink(newApplyLink.trim());
+        opp.setStatus(OpportunityStatus.LIVE);
+        opp.setRejectionReason(null);
+        // Reset expiry to 30 days from now so it doesn't expire immediately
+        opp.setExpiresAt(LocalDateTime.now().plusDays(DEFAULT_EXPIRY));
+        Opportunity saved = opportunityRepository.save(opp);
+        auditLogService.log("OPPORTUNITY", saved.getId().toString(),
+                "REOPENED", "Link fixed and set to LIVE: " + saved.getTitle());
+        return toResponse(saved);
     }
 
     // ── Admin: update status ───────────────────────────────────────────────────
