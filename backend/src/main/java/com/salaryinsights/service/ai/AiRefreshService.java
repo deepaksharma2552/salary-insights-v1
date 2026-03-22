@@ -3,6 +3,7 @@ package com.salaryinsights.service.ai;
 import com.salaryinsights.dto.response.AiRefreshResult;
 import com.salaryinsights.dto.response.AiSalaryData;
 import com.salaryinsights.entity.Company;
+import com.salaryinsights.entity.StandardizedLevel;
 import com.salaryinsights.enums.CompanyStatus;
 import com.salaryinsights.repository.CompanyRepository;
 import com.salaryinsights.repository.StandardizedLevelRepository;
@@ -68,8 +69,8 @@ public class AiRefreshService {
 
         List<String> standardizedLevelNames = standardizedLevelRepository.findAll()
                 .stream()
-                .sorted(Comparator.comparingInt(sl -> sl.getHierarchyRank()))
-                .map(sl -> sl.getName())
+                .sorted(Comparator.comparingInt(StandardizedLevel::getHierarchyRank))
+                .map(StandardizedLevel::getName)
                 .collect(Collectors.toList());
 
         List<AiRefreshResult.CompanyRefreshSummary> summaries = new ArrayList<>();
