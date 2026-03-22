@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import Navbar from './components/shared/Navbar';
@@ -48,11 +48,21 @@ function PrivateRoute({ children, adminOnly = false }) {
   return children;
 }
 
+/** Renders Footer on all public routes, hidden on /admin/* (admin has its own offset Footer) */
+function PublicFooter() {
+  const { pathname } = useLocation();
+  if (pathname.startsWith('/admin')) return null;
+  return <Footer />;
+}
+
 function AdminLayout({ children }) {
   return (
     <div style={{ display: 'flex' }}>
       <AdminSidebar />
-      <div style={{ flex: 1, marginLeft: 220 }}>{children}</div>
+      <div style={{ flex: 1, marginLeft: 220, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <div style={{ flex: 1 }}>{children}</div>
+        <Footer />
+      </div>
     </div>
   );
 }
@@ -142,7 +152,7 @@ export default function App() {
             <Route path="/terms"       element={<TermsPage />} />
             <Route path="/level-guide" element={<LevelGuideView />} />
           </Routes>
-        <Footer />
+        <PublicFooter />
         </div>
       </BrowserRouter>
       </LaunchpadProvider>
