@@ -70,3 +70,11 @@ app:
     allowed-origins:
       - http://localhost:3000
       - ${APP_CORS_ORIGIN:http://localhost:3000}
+  audit:
+    # Rows older than this many days are moved to audit_logs_archive nightly.
+    # 90 keeps ~3 months in the live table. Set to 180/365 for longer hot retention.
+    archive-after-days: ${AUDIT_ARCHIVE_AFTER_DAYS:90}
+    # Rows moved per transaction — keeps each DELETE short to avoid lock spikes.
+    archive-batch-size: ${AUDIT_ARCHIVE_BATCH_SIZE:1000}
+    # Set false via env var to pause archival without redeploying (e.g. during audits).
+    archive-enabled: ${AUDIT_ARCHIVE_ENABLED:true}
