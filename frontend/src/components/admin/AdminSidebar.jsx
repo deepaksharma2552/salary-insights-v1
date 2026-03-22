@@ -7,7 +7,8 @@ const NAV = [
   { label: 'Job Functions',    path: '/admin/job-functions',  icon: '⚙️' },
   { label: 'Level Guide',      path: '/admin/guide-levels',   icon: '🗂' },
   { label: 'Referrals',        path: '/admin/referrals',      icon: '🔗' },
-  { label: 'Launchpad',         path: '/admin/launchpad',      icon: '🚀' },
+  { label: 'Opportunities',    path: '/admin/opportunities',  icon: '🎯' },
+  { label: 'Launchpad',        path: '/admin/launchpad',      icon: '🚀' },
   { label: 'Audit Logs',       path: '/admin/audit',          icon: '📋' },
 ];
 

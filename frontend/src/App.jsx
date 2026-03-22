@@ -27,6 +27,9 @@ import AdminCompanies       from './pages/admin/AdminCompanies';
 import AdminPendingSalaries from './pages/admin/AdminPendingSalaries';
 import AdminAuditLogs       from './pages/admin/AdminAuditLogs';
 import AdminReferrals       from './pages/admin/AdminReferrals';
+import AdminOpportunities   from './pages/admin/AdminOpportunities';
+import OpportunitiesPage       from './pages/public/OpportunitiesPage';
+import PostOpportunityPage     from './pages/public/PostOpportunityPage';
 import AdminGuideLevels     from './pages/admin/AdminGuideLevels';
 import AdminJobFunctions    from './pages/admin/AdminJobFunctions';
 import { AppDataProvider }  from './context/AppDataContext';
@@ -89,6 +92,10 @@ export default function App() {
               <PrivateRoute><SubmitSalaryPage /></PrivateRoute>
             }/>
             <Route path="/referrals"        element={<ViewReferralsPage />} />
+            <Route path="/opportunities"    element={<OpportunitiesPage />} />
+            <Route path="/opportunities/post" element={
+              <PrivateRoute><PostOpportunityPage /></PrivateRoute>
+            }/>
             <Route path="/refer" element={
               <PrivateRoute><SubmitReferralPage /></PrivateRoute>
             }/>
@@ -124,6 +131,11 @@ export default function App() {
             <Route path="/admin/referrals" element={
               <PrivateRoute adminOnly>
                 <AdminLayout><AdminReferrals /></AdminLayout>
+              </PrivateRoute>
+            }/>
+            <Route path="/admin/opportunities" element={
+              <PrivateRoute adminOnly>
+                <AdminLayout><AdminOpportunities /></AdminLayout>
               </PrivateRoute>
             }/>
 
