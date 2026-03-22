@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class CompanyRequest {
     @NotBlank @Size(max = 255)
@@ -26,4 +28,7 @@ public class CompanyRequest {
 
     @Size(max = 500)
     private String logoUrl;
+
+    /** Admin-managed list of benefits sourced from company's official benefits page. */
+    private List<String> benefits;
 }
