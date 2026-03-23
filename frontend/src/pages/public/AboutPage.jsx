@@ -27,7 +27,7 @@ export default function AboutPage() {
 
       {/* Mission */}
       <section style={{ padding: '48px 24px' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, alignItems: 'center' }}>
+        <div className="about-mission-grid" style={{ maxWidth: 1400, margin: '0 auto' }}>
           <div>
             <span className="section-tag">Our Mission</span>
             <h2 className="section-title" style={{ margin: '8px 0 16px' }}>Transparency in compensation for every engineer in India</h2>
@@ -38,7 +38,7 @@ export default function AboutPage() {
               By crowdsourcing anonymous salary data from the community, we give everyone — from freshers to senior engineers — the information they need to make confident career decisions.
             </p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="grid-values">
             {VALUES.map(({ icon, title, desc }) => (
               <div key={title} style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 18px' }}>
                 <div style={{ fontSize: 24, marginBottom: 10 }}>{icon}</div>
@@ -53,7 +53,7 @@ export default function AboutPage() {
       {/* What we offer */}
       <section style={{ padding: '0 24px 48px' }}>
         <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-          <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 14, padding: '36px 40px', textAlign: 'center' }}>
+          <div className="join-card-padded" style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 14, textAlign: 'center' }}>
             <h2 className="section-title" style={{ marginBottom: 8 }}>Join the community</h2>
             <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 24 }}>
               The more people share, the better the data gets for everyone. It takes 2 minutes and it's completely anonymous.

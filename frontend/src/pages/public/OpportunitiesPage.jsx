@@ -217,7 +217,7 @@ export default function OpportunitiesPage() {
             : 'No opportunities posted yet — be the first to post one!'}
         </div>
       ) : (
-        <div className="salary-table-wrap">
+        <div className="salary-table-wrap opportunities-table-wrap">
           <table className="salary-table">
             <thead>
               <tr>

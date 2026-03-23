@@ -225,7 +225,7 @@ export default function AdminCompanies() {
   const showEnterHint = inputValue.length >= SEARCH_MIN && inputValue !== search;
 
   return (
-    <div style={{ padding: 40 }}>
+    <div className="admin-page-content">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24 }}>
         <div>
           <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin</span>

@@ -97,7 +97,7 @@ export default function AdminReferrals() {
   const paused  = referrals.filter(r => r.status === 'ACCEPTED' && r.active === false).length;
 
   return (
-    <div style={{ padding: 40 }}>
+    <div className="admin-page-content">
       <style>{`
         @keyframes fadeIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
         .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; animation:fadeIn 0.15s ease; }

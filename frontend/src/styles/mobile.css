@@ -1,0 +1,182 @@
+/* ═══════════════════════════════════════════════════════════════
+   mobile.css — Mobile-only responsive overrides
+   All rules are scoped to @media (max-width: 768px) to ensure
+   zero impact on desktop layout.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Footer top grid ── */
+.grid-footer-top { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+
+/* ── Admin page content padding ── */
+.admin-page-content { padding: 40px; }
+
+/* ── Utility classes used in JSX for responsive grids ── */
+/* These are the base (desktop) defaults — media query below overrides */
+.grid-2col         { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+.grid-2col-equal   { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.grid-4col         { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.grid-3col-stats   { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px; }
+.grid-contact      { display: grid; grid-template-columns: 1fr 1.6fr; gap: 32px; align-items: start; }
+.grid-contact-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid-benefits-3   { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.grid-5col         { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.grid-values       { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-salary-comp  { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* Submit/Post form card */
+.form-card-padded  { padding: 48px; border-radius: 20px; }
+
+/* Post opportunity form */
+.post-opp-card     { padding: 32px; }
+
+/* About page mission grid */
+.about-mission-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE OVERRIDES (≤ 768px)
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ── Footer: stack columns ── */
+  .grid-footer-top {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 24px !important;
+    margin-bottom: 24px !important;
+  }
+
+  /* ── Admin page padding ── */
+  .admin-page-content {
+    padding: 16px 14px !important;
+  }
+
+  /* ── Generic grid collapses ── */
+  .grid-2col,
+  .grid-2col-equal,
+  .grid-4col,
+  .grid-3col-stats,
+  .grid-contact,
+  .grid-contact-form,
+  .grid-5col,
+  .grid-values,
+  .grid-salary-comp,
+  .about-mission-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Benefits tiles: 2-col on mobile instead of 3 */
+  .grid-benefits-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  /* ── Form card: reduce padding ── */
+  .form-card-padded {
+    padding: 20px 16px !important;
+    border-radius: 12px !important;
+  }
+
+  .post-opp-card {
+    padding: 20px 16px !important;
+    border-radius: 10px !important;
+  }
+
+  /* ── HomePage hero adjustments ── */
+  .hero-eyebrow { font-size: 10px; }
+
+  /* ── Company modal stat bar: 2×2 on mobile ── */
+  .company-modal-statbar {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .company-modal-statbar > div {
+    border-left: none !important;
+    border-top: 0.5px solid var(--border);
+  }
+  .company-modal-statbar > div:first-child,
+  .company-modal-statbar > div:nth-child(2) {
+    border-top: none !important;
+  }
+
+  /* ── Company modal: full-screen on mobile ── */
+  .company-modal-root {
+    top: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  /* ── Level bar label: shorter ── */
+  .level-bar-label-wide {
+    width: 80px !important;
+  }
+
+  /* ── Opportunities table: horizontal scroll ── */
+  .opportunities-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .opportunities-table-wrap table {
+    min-width: 700px;
+  }
+
+  /* ── Dashboard cards ── */
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* ── SalariesPage view toggle + filter bar ── */
+  .salaries-view-toggle {
+    width: 100% !important;
+    justify-content: center;
+  }
+
+  /* ── CTA banner on HomePage: stack ── */
+  .cta-banner-inner {
+    flex-direction: column !important;
+    text-align: center !important;
+    align-items: center !important;
+  }
+  .cta-banner-btns {
+    justify-content: center !important;
+  }
+
+  /* ── Auth card tighter on very small screens ── */
+  .auth-card {
+    padding: 28px 20px !important;
+  }
+
+  /* ── Section heading sizes ── */
+  .section-title {
+    font-size: clamp(20px, 5.5vw, 28px) !important;
+  }
+
+  /* ── About/Join community card ── */
+  .join-card-padded {
+    padding: 24px 16px !important;
+  }
+
+  /* ── MyReferralLinks / referral cards ── */
+  .referral-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ─── Small phones (≤ 390px) ─── */
+@media (max-width: 390px) {
+  .grid-benefits-3 {
+    grid-template-columns: 1fr !important;
+  }
+  .form-card-padded {
+    padding: 16px 12px !important;
+  }
+  .company-modal-statbar {
+    grid-template-columns: 1fr !important;
+  }
+  .grid-footer-top {
+    grid-template-columns: 1fr !important;
+  }
+}

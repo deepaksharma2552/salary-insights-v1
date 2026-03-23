@@ -108,7 +108,7 @@ export default function MyReferralLinksPage() {
 
       {/* Summary cards */}
       {!loading && !error && referrals.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
+        <div className="grid-3col-stats">
           {['PENDING', 'ACCEPTED', 'REJECTED'].map(key => {
             const m = STATUS_META[key];
             return (

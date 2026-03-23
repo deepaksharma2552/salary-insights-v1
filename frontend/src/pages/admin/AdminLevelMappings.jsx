@@ -43,7 +43,7 @@ export default function AdminLevelMappings() {
   }
 
   return (
-    <div style={{ padding: 40 }}>
+    <div className="admin-page-content">
       <div style={{ marginBottom: 32 }}>
         <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin</span>
         <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, color: 'var(--text-1)', marginTop: 8, letterSpacing: '-0.02em' }}>Level Mappings</h2>
@@ -53,7 +53,7 @@ export default function AdminLevelMappings() {
       {loading ? (
         <div style={{ color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>Loading…</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24 }}>
+        <div className="grid-contact" style={{ gap: 24 }}>
 
           {/* Standardized Levels */}
           <div className="chart-card">

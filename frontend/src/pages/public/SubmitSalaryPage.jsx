@@ -220,7 +220,7 @@ export default function SubmitSalaryPage() {
           </p>
         </div>
 
-        <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 20, padding: 48 }}>
+        <div className="form-card-padded" style={{ background: 'var(--panel)', border: '1px solid var(--border)' }}>
           {error && (
             <div style={{ padding: '12px 16px', background: 'var(--rose-dim)', border: '1px solid rgba(224,92,122,0.2)', borderRadius: 10, color: 'var(--rose)', fontSize: 13, marginBottom: 20 }}>
               {error}
@@ -373,7 +373,7 @@ export default function SubmitSalaryPage() {
               </div>
 
               {/* Compensation — full-width row, internal 2-col grid matching parent */}
-              <div style={{ gridColumn:'1 / -1', display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+              <div className="grid-salary-comp" style={{ gridColumn:'1 / -1' }}>
 
                 {/* Base Salary */}
                 <div className="form-group" style={{ margin:0 }}>

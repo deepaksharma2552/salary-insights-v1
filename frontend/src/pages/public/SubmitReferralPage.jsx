@@ -131,7 +131,7 @@ export default function SubmitReferralPage() {
           </p>
         </div>
 
-        <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 20, padding: 40 }}>
+        <div className="form-card-padded" style={{ background: 'var(--panel)', border: '1px solid var(--border)' }}>
 
           {error && (
             <div style={{

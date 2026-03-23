@@ -83,7 +83,7 @@ export default function AdminAnalytics() {
       ) : (
         <>
           {/* Summary stat chips */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
+          <div className="grid-3col-stats">
             {[
               { label: 'Total Page Views',    value: fmt(totalViews),  sub: RANGES[rangeIdx].label },
               { label: 'Unique Visitors',     value: fmt(totalUnique), sub: 'estimated via session hash' },

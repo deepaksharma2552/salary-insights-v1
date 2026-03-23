@@ -141,7 +141,7 @@ function BenefitsGrid({ benefits }) {
             </div>
 
             {/* 3-col tile grid */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(0,1fr))', gap:8 }}>
+            <div className="grid-benefits-3">
               {groups[cat].map((b, i) => (
                 <div key={i} style={{ background:'var(--bg-2)', borderRadius:8, padding:'10px 12px', display:'flex', alignItems:'center', gap:10 }}>
                   <div style={{ width:32, height:32, borderRadius:8, background:meta.iconBg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0 }}>
@@ -257,7 +257,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
   return (
     <>
       <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', backdropFilter:'blur(4px)', zIndex:300 }} />
-      <div style={{
+      <div className="company-modal-root" style={{
         position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)',
         zIndex:301, width:'min(860px, 94vw)', maxHeight:'88vh',
         background:'var(--panel)', border:'1px solid var(--border)',
@@ -287,7 +287,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
           </div>
 
           {/* Stat bar — single surface with internal dividers */}
-          <div style={{ display:'flex', background:'var(--bg-2)', borderRadius:10, marginBottom:18, overflow:'hidden' }}>
+          <div className="company-modal-statbar" style={{ display:'flex', background:'var(--bg-2)', borderRadius:10, marginBottom:18, overflow:'hidden' }}>
             {[
               { label:'Entries',  value: company.entries,  accent: false },
               { label:'Median Base', value: company.avgBase,  accent: false },

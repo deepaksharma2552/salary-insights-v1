@@ -27,7 +27,7 @@ export default function ContactPage() {
       </section>
 
       <section style={{ padding: '48px 24px' }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 32, alignItems: 'start' }}>
+        <div className="grid-contact" style={{ maxWidth: 960, margin: '0 auto' }}>
 
           {/* Contact info */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -61,7 +61,7 @@ export default function ContactPage() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="grid-contact-form">
                   <div className="form-group">
                     <label className="form-label">Name</label>
                     <input className="form-input" name="name" placeholder="Your name" value={form.name} onChange={handleChange} required />

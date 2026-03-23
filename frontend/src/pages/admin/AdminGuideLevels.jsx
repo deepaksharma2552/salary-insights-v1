@@ -560,7 +560,7 @@ export default function AdminGuideLevels() {
   }, []);
 
   return (
-    <div style={{ padding: 40 }}>
+    <div className="admin-page-content">
       {/* Tab toggle */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 36, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
         {TABS.map(t => (

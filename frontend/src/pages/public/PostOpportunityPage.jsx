@@ -131,7 +131,7 @@ export default function PostOpportunityPage() {
   if (success) {
     return (
       <section className="section" style={{ maxWidth: 600 }}>
-        <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, padding: 40, textAlign: 'center' }}>
+        <div className="form-card-padded" style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, textAlign: 'center' }}>
           <div style={{ fontSize: 32, marginBottom: 16 }}>✓</div>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-1)', marginBottom: 8 }}>Opportunity submitted!</h2>
           <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6, marginBottom: 24 }}>
@@ -168,13 +168,13 @@ export default function PostOpportunityPage() {
         </div>
       )}
 
-      <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, padding: 32 }}>
+      <div className="post-opp-card" style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12 }}>
         <form onSubmit={handleSubmit}>
 
           {/* Type selector — prominent, top of form */}
           <div className="form-group full" style={{ marginBottom: 24 }}>
             <label className="form-label">Opportunity type</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+            <div className="grid-5col">
               {TYPE_OPTIONS.map(opt => (
                 <button
                   key={opt.value}

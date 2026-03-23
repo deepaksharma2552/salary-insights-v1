@@ -93,7 +93,7 @@ export default function MyReferralsPage() {
 
       {/* Summary cards */}
       {!loading && !error && referrals.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
+        <div className="grid-3col-stats">
           {[
             { key: 'PENDING',  label: 'Pending'  },
             { key: 'ACCEPTED', label: 'Accepted' },

@@ -141,7 +141,7 @@ export default function AdminAuditLogs() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ padding: 40 }}>
+    <div className="admin-page-content">
 
       {/* Header */}
       <div style={{ marginBottom: 24 }}>

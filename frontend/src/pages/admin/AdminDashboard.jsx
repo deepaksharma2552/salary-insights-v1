@@ -325,7 +325,7 @@ export default function AdminDashboard() {
   ] : [];
 
   return (
-    <div style={{ padding: 40 }}>
+    <div className="admin-page-content">
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
         <div>

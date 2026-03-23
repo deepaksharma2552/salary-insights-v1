@@ -265,7 +265,7 @@ export default function HomePage() {
       `}</style>
 
       <section className="hero" style={{ padding: '56px 24px 48px', background: 'var(--panel)', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, alignItems: 'center' }}>
+        <div className="grid-2col" style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}>
 
           {/* Left: tagline + CTAs */}
           <div>
@@ -291,7 +291,7 @@ export default function HomePage() {
           </div>
 
           {/* Right: Palette 3 stat cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, width: '100%' }}>
+          <div className="grid-2col-equal" style={{ width: '100%' }}>
             {[
               { label: '💰 Salary entries', val: totalEntries != null ? fmtCount(totalEntries) : '—', sub: 'verified & live', live: true, delay: 0 },
               { label: '🏢 Companies',      val: totalCompanies != null ? fmtCount(totalCompanies) : '—',    sub: 'tracked',        live: false, delay: 70 },
@@ -348,7 +348,7 @@ export default function HomePage() {
           <h2 className="section-title" style={{ fontSize: 28, marginTop: 4 }}>What brings you here today?</h2>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+        <div className="grid-4col">
           {[...journeyCards, { ...opportunitiesCard }].map((card, i) => (
             <JourneyCard key={i} {...card} featured={card.featured ?? false} />
           ))}
@@ -380,7 +380,7 @@ export default function HomePage() {
       ══════════════════════════════════════════════════════ */}
       {!user && (
         <section style={{ padding: '18px 24px', background: '#0ea5e9' }}>
-          <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
+          <div className="cta-banner-inner" style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 3 }}>
                 This platform runs on community contributions.
@@ -389,7 +389,7 @@ export default function HomePage() {
                 Share your salary anonymously — every entry makes the data better for everyone.
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+            <div className="cta-banner-btns" style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
               <Link to="/register" style={{ padding: '8px 18px', background: 'white', color: '#0284c7', borderRadius: 7, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
                 Create free account
               </Link>

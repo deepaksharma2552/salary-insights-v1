@@ -212,7 +212,7 @@ export default function SalariesPage() {
       </div>
 
       {/* ── View toggle ── */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 28, background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
+      <div className="salaries-view-toggle" style={{ display: 'flex', gap: 0, marginBottom: 28, background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
         {[
           { id: 'salaries', label: '📄 Salary Database' },
           { id: 'levels',   label: '🗂 Level Guide' },

@@ -139,7 +139,7 @@ export default function AdminJobFunctions() {
 
   /* ── Render ── */
   return (
-    <div style={{ padding: 40 }}>
+    <div className="admin-page-content">
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
         <div>

@@ -126,7 +126,7 @@ export default function AdminOpportunities() {
   const pendingCount = statusFilter === 'PENDING' ? totalElements : null;
 
   return (
-    <div style={{ padding: 40 }}>
+    <div className="admin-page-content">
       <style>{`
         @keyframes adminSpin { to { transform: rotate(360deg); } }
       `}</style>

@@ -68,7 +68,7 @@ export default function AdminPendingSalaries() {
   const fmt = (val) => val ? `₹${(val/100000).toFixed(1)}L` : '—';
 
   return (
-    <div style={{ padding: 40 }}>
+    <div className="admin-page-content">
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes progressCrawl {
