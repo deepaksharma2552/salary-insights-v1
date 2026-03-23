@@ -8,6 +8,7 @@ const NAV = [
   { label: 'Level Guide',      path: '/admin/guide-levels',   icon: '🗂' },
   { label: 'Opportunities',    path: '/admin/opportunities',  icon: '🎯' },
   { label: 'Audit Logs',       path: '/admin/audit',          icon: '📋' },
+  { label: 'Analytics',        path: '/admin/analytics',      icon: '📈' },
 ];
 
 export default function AdminSidebar() {

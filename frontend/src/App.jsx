@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { usePageTracking } from './hooks/usePageTracking';
 import { useContext } from 'react';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import Navbar from './components/shared/Navbar';
@@ -24,6 +25,7 @@ import AdminPendingSalaries from './pages/admin/AdminPendingSalaries';
 import AdminAuditLogs       from './pages/admin/AdminAuditLogs';
 import AdminGuideLevels     from './pages/admin/AdminGuideLevels';
 import AdminJobFunctions    from './pages/admin/AdminJobFunctions';
+import AdminAnalytics       from './pages/admin/AdminAnalytics';
 import { AppDataProvider }  from './context/AppDataContext';
 import AdminSidebar         from './components/admin/AdminSidebar';
 import Footer              from './components/shared/Footer';
@@ -62,11 +64,17 @@ function AdminLayout({ children }) {
   );
 }
 
+function PageTracker() {
+  usePageTracking();
+  return null;
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <AppDataProvider>
       <BrowserRouter>
+        <PageTracker />
         <Navbar />
         <RouterProgressBar />
         <div style={{ paddingTop: 56 }}>
@@ -131,6 +139,11 @@ export default function App() {
             <Route path="/admin/job-functions" element={
               <PrivateRoute adminOnly>
                 <AdminLayout><AdminJobFunctions /></AdminLayout>
+              </PrivateRoute>
+            }/>
+            <Route path="/admin/analytics" element={
+              <PrivateRoute adminOnly>
+                <AdminLayout><AdminAnalytics /></AdminLayout>
               </PrivateRoute>
             }/>
             <Route path="*" element={<Navigate to="/" replace />} />
