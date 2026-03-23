@@ -2,6 +2,19 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
+import ScrollableSelect from '../../components/shared/ScrollableSelect';
+
+const LOCATION_OPTIONS_OPP = [
+  { value: '', label: 'All Locations' },
+  { value: 'BENGALURU', label: 'Bengaluru' },
+  { value: 'HYDERABAD', label: 'Hyderabad' },
+  { value: 'PUNE', label: 'Pune' },
+  { value: 'DELHI_NCR', label: 'Delhi-NCR' },
+  { value: 'KOCHI', label: 'Kochi' },
+  { value: 'COIMBATORE', label: 'Coimbatore' },
+  { value: 'MYSORE', label: 'Mysore' },
+  { value: 'MANGALURU', label: 'Mangaluru' },
+];
 
 const PAGE_SIZE = 20;
 
@@ -171,17 +184,12 @@ export default function OpportunitiesPage() {
           <option value="">Work mode</option>
           {MODE_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
-        <select className="select-field" value={locationFilter} onChange={e => handleLocation(e.target.value)}>
-          <option value="">All locations</option>
-          <option value="BENGALURU">Bengaluru</option>
-          <option value="HYDERABAD">Hyderabad</option>
-          <option value="PUNE">Pune</option>
-          <option value="DELHI_NCR">Delhi-NCR</option>
-          <option value="KOCHI">Kochi</option>
-          <option value="COIMBATORE">Coimbatore</option>
-          <option value="MYSORE">Mysore</option>
-          <option value="MANGALURU">Mangaluru</option>
-        </select>
+        <ScrollableSelect
+          value={locationFilter}
+          onChange={v => handleLocation(v)}
+          options={LOCATION_OPTIONS_OPP}
+          placeholder="All Locations"
+        />
         {hasFilters && (
           <button
             onClick={() => { setTypeFilter(''); setModeFilter(''); setLocationFilter(''); resetPage(); }}

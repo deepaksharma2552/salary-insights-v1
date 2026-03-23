@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
+import ScrollableSelect from '../../components/shared/ScrollableSelect';
 
 const VIZ_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#6366f1','#a78bfa','#818cf8'];
 const SEARCH_MIN_CHARS = 3;
@@ -805,10 +806,12 @@ export default function CompaniesPage() {
             </div>
           )}
         </div>
-        <select className="select-field" value={industry} onChange={e => { setIndustry(e.target.value); setPage(0); }}>
-          <option value="">All Industries</option>
-          {industries.map(i => <option key={i}>{i}</option>)}
-        </select>
+        <ScrollableSelect
+          value={industry}
+          onChange={v => { setIndustry(v); setPage(0); }}
+          options={[{ value: '', label: 'All Industries' }, ...industries.map(i => ({ value: i, label: i }))]}
+          placeholder="All Industries"
+        />
       </div>
 
       {loading && (

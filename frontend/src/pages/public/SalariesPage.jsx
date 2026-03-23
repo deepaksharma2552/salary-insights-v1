@@ -3,6 +3,33 @@ import SalaryTable from '../../components/shared/SalaryTable';
 import api from '../../services/api';
 import TopProgressBar from '../../components/shared/TopProgressBar';
 import LevelGuideView from './LevelGuideView';
+import ScrollableSelect from '../../components/shared/ScrollableSelect';
+
+const LEVEL_OPTIONS = [
+  { value: '', label: 'All Levels' },
+  { value: 'junior', label: 'Junior' },
+  { value: 'mid', label: 'Mid' },
+  { value: 'senior', label: 'Senior' },
+  { value: 'lead', label: 'Lead' },
+];
+
+const LOCATION_OPTIONS = [
+  { value: '', label: 'All Locations' },
+  { value: 'BENGALURU', label: 'Bengaluru' },
+  { value: 'HYDERABAD', label: 'Hyderabad' },
+  { value: 'PUNE', label: 'Pune' },
+  { value: 'DELHI_NCR', label: 'Delhi-NCR' },
+  { value: 'KOCHI', label: 'Kochi' },
+  { value: 'COIMBATORE', label: 'Coimbatore' },
+  { value: 'MYSORE', label: 'Mysore' },
+  { value: 'MANGALURU', label: 'Mangaluru' },
+];
+
+const EMP_TYPE_OPTIONS = [
+  { value: '', label: 'Employment Type' },
+  { value: 'Full-time', label: 'Full-time' },
+  { value: 'Contract', label: 'Contract' },
+];
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const DEFAULT_SIZE      = 10;
@@ -256,31 +283,26 @@ export default function SalariesPage() {
           )}
         </div>
 
-        <select className="select-field" value={level} onChange={handleFilterChange(setLevel)}>
-          <option value="">All Levels</option>
-          <option value="junior">Junior</option>
-          <option value="mid">Mid</option>
-          <option value="senior">Senior</option>
-          <option value="lead">Lead</option>
-        </select>
+        <ScrollableSelect
+          value={level}
+          onChange={v => { setLevel(v); setPage(0); }}
+          options={LEVEL_OPTIONS}
+          placeholder="All Levels"
+        />
 
-        <select className="select-field" value={location} onChange={handleFilterChange(setLocation)}>
-          <option value="">All Locations</option>
-          <option value="BENGALURU">Bengaluru</option>
-          <option value="HYDERABAD">Hyderabad</option>
-          <option value="PUNE">Pune</option>
-          <option value="DELHI_NCR">Delhi-NCR</option>
-          <option value="KOCHI">Kochi</option>
-          <option value="COIMBATORE">Coimbatore</option>
-          <option value="MYSORE">Mysore</option>
-          <option value="MANGALURU">Mangaluru</option>
-        </select>
+        <ScrollableSelect
+          value={location}
+          onChange={v => { setLocation(v); setPage(0); }}
+          options={LOCATION_OPTIONS}
+          placeholder="All Locations"
+        />
 
-        <select className="select-field" value={empType} onChange={handleFilterChange(setEmpType)}>
-          <option value="">Employment Type</option>
-          <option>Full-time</option>
-          <option>Contract</option>
-        </select>
+        <ScrollableSelect
+          value={empType}
+          onChange={v => { setEmpType(v); setPage(0); }}
+          options={EMP_TYPE_OPTIONS}
+          placeholder="Employment Type"
+        />
 
         {isFiltering && (
           <button
