@@ -219,7 +219,7 @@ export default function HomePage() {
       ],
       actions: [
         { to: '/salaries',         label: 'Browse salaries →', bg: '#eff6ff', color: '#1d4ed8' },
-        { to: '/salaries?tab=levels', label: 'Compare levels →', bg: '#ecfeff', color: '#0e7490' },
+        { to: '/level-guide',         label: 'Compare levels →', bg: '#ecfeff', color: '#0e7490' },
       ],
     },
     {
