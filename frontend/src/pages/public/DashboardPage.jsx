@@ -644,14 +644,14 @@ export default function DashboardPage() {
         }}>
 
           {/* ══════════════════════════════════════════════════════════════
-              CHART 1 — Avg Salary by Location × Internal Level
+              CHART 1 — Median Salary by Location × Internal Level
           ══════════════════════════════════════════════════════════════ */}
           <div className="chart-card">
 
             {/* Card header */}
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4, gap: 8 }}>
               <div>
-                <div className="chart-title">Avg Salary by Location &amp; Level</div>
+                <div className="chart-title">Median Salary by Location &amp; Level</div>
                 <div className="chart-subtitle">
                   {selLocations.length > 0
                     ? `${selLocations.length} location${selLocations.length > 1 ? 's' : ''} selected · hover each bar for breakdown`
@@ -715,13 +715,13 @@ export default function DashboardPage() {
           </div>
 
           {/* ══════════════════════════════════════════════════════════════
-              CHART 2 — Avg Salary by Company × Internal Level
+              CHART 2 — Median Salary by Company × Internal Level
           ══════════════════════════════════════════════════════════════ */}
           <div className="chart-card">
 
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4, gap: 8 }}>
               <div>
-                <div className="chart-title">Avg Salary by Company &amp; Level</div>
+                <div className="chart-title">Median Salary by Company &amp; Level</div>
                 <div className="chart-subtitle">
                   {selLocationsForCompany.length > 0 || selLevels.length > 0
                     ? `${selLocationsForCompany.length > 0 ? selLocationsForCompany.length + ' location' + (selLocationsForCompany.length > 1 ? 's' : '') + ' · ' : ''}${selCompanies.length > 0 ? selCompanies.length + ' companies' : 'all companies'}${selLevels.length > 0 ? ' · ' + selLevels.length + ' level' + (selLevels.length > 1 ? 's' : '') : ''} · hover for breakdown`

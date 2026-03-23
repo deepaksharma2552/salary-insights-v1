@@ -290,8 +290,8 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
           <div style={{ display:'flex', background:'var(--bg-2)', borderRadius:10, marginBottom:18, overflow:'hidden' }}>
             {[
               { label:'Entries',  value: company.entries,  accent: false },
-              { label:'Avg Base', value: company.avgBase,  accent: false },
-              { label:'Avg TC',   value: company.avgTC,    accent: false },
+              { label:'Median Base', value: company.avgBase,  accent: false },
+              { label:'Median TC',   value: company.avgTC,    accent: false },
               { label:'TC Range', value: hasTcRange ? `${fmtSalary(company.tcMin)} – ${fmtSalary(company.tcMax)}` : '—', accent: true },
             ].map((s, i) => (
               <div key={s.label} style={{
@@ -355,7 +355,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
               {!loadingLvl && levels && levels.length > 0 && (
                 <div style={{ display:'flex', flexDirection:'column', gap:8, paddingTop:4 }}>
                   <div style={{ fontSize:11, color:'var(--text-3)', marginBottom:6 }}>
-                    Avg TC per internal level · {company.entries} approved {company.entries === 1 ? 'entry' : 'entries'}
+                    Median TC per internal level · {company.entries} approved {company.entries === 1 ? 'entry' : 'entries'}
                   </div>
                   {levels.map(l => {
                     const pct = Math.round(((l.avgTC ?? 0) / maxTC) * 100);
@@ -625,7 +625,7 @@ function CompanyCard({ c, onViewDetails }) {
       >
         {/* Top row: label */}
         <span style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.07em', color:'var(--text-3)' }}>
-          {hasTcRange ? 'TC range' : 'Avg TC'}
+          {hasTcRange ? 'TC range' : 'Median TC'}
         </span>
         {/* Bottom row: value left, breakdown right — each on own line if narrow */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, flexWrap:'wrap' }}>
