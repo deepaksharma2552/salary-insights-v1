@@ -1145,3 +1145,74 @@ body {
   }
 
 }
+
+/* =========================
+   MOBILE APP-LIKE CARDS
+   ========================= */
+
+.salary-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.salary-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-main {
+  flex: 1;
+}
+
+.card-company {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.card-role {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.card-middle {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.label {
+  font-size: 10px;
+  color: var(--text-3);
+}
+
+.value {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.value.small {
+  font-size: 13px;
+}
+
+.card-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.meta {
+  font-size: 11px;
+  color: var(--text-3);
+}
