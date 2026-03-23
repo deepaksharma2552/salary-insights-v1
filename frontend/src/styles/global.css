@@ -1032,7 +1032,7 @@ body {
   .admin-sidebar { display: none; }
 
   /* Show mobile admin top nav bar */
-  .admin-mobile-topbar { display: flex; }
+  .admin-mobile-topbar {
     display: flex;
     align-items: center;
     gap: 8px;
