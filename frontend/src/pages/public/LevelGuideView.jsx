@@ -155,7 +155,7 @@ function ComparisonGrid({ grid, standardLevels, companies }) {
               fontSize: 10, fontWeight: 600, color: 'var(--text-3)',
               textTransform: 'uppercase', letterSpacing: '0.08em',
               borderBottom: '1px solid var(--border)', background: 'var(--bg-2)',
-              whiteSpace: 'nowrap', minWidth: 200,
+              whiteSpace: 'nowrap', width: '30%', minWidth: 220,
             }}>
               Standard level
             </th>
@@ -163,9 +163,10 @@ function ComparisonGrid({ grid, standardLevels, companies }) {
               const p = palettes[i];
               return (
                 <th key={co.id} style={{
-                  padding: '10px 12px', textAlign: 'center',
+                  padding: '12px 16px', textAlign: 'center',
                   borderBottom: '1px solid var(--border)', background: 'var(--bg-2)',
-                  minWidth: 130, borderLeft: '1px solid var(--border)',
+                  minWidth: 140, width: `${70 / companies.length}%`,
+                  borderLeft: '1px solid var(--border)',
                 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                     <CompanyLogo
@@ -191,16 +192,17 @@ function ComparisonGrid({ grid, standardLevels, companies }) {
             return (
               <tr key={sl.id} style={{ background: rowBg }}>
                 {/* Standard level label */}
-                <td style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', verticalAlign: 'middle' }}>
+                <td style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', verticalAlign: 'middle' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{
-                      width: 3, height: 32, borderRadius: 2, flexShrink: 0,
+                      width: 3, borderRadius: 2, flexShrink: 0, alignSelf: 'stretch',
+                      minHeight: 28,
                       background: 'var(--border-2,var(--border))',
                     }} />
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{sl.name}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', lineHeight: 1.3 }}>{sl.name}</div>
                       {sl.description && (
-                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{sl.description}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 3, lineHeight: 1.5, maxWidth: 340 }}>{sl.description}</div>
                       )}
                     </div>
                   </div>
@@ -213,7 +215,7 @@ function ComparisonGrid({ grid, standardLevels, companies }) {
 
                   return (
                     <td key={co.id} style={{
-                      padding: '10px 8px', textAlign: 'center',
+                      padding: '16px 12px', textAlign: 'center',
                       borderBottom: '1px solid var(--border)',
                       borderLeft: '1px solid var(--border)',
                       verticalAlign: 'middle',
@@ -221,7 +223,7 @@ function ComparisonGrid({ grid, standardLevels, companies }) {
                       {cells.length === 0 ? (
                         <span style={{ color: 'var(--border)', fontSize: 18, lineHeight: 1, fontWeight: 300 }}>—</span>
                       ) : (
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                           {cells.map((cell, ci2) => {
                             const pct = cell.overlapPct ?? 100;
                             return (
