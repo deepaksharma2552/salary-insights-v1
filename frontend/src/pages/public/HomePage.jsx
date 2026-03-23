@@ -29,7 +29,7 @@ function fmtCount(n) {
 }
 
 /* ── JourneyCard — equal-height, pixel-aligned ──────────────────────────── */
-function JourneyCard({ emoji, title, desc, stats, actions, amber, featured }) {
+function JourneyCard({ emoji, title, desc, stats, actions, amber, featured, green, purple }) {
   return (
     <div style={{
       background: amber ? 'linear-gradient(135deg,#fffbeb,#fef3c7)' : featured ? 'linear-gradient(135deg,#f0f9ff,#e0f2fe)' : 'var(--panel)',
@@ -53,6 +53,16 @@ function JourneyCard({ emoji, title, desc, stats, actions, amber, featured }) {
           Most popular
         </div>
       )}
+      {purple && (
+        <div style={{
+          position: 'absolute', top: 12, right: 12,
+          fontSize: 9, fontWeight: 700, color: '#6d28d9',
+          background: '#ede9fe', padding: '2px 8px',
+          borderRadius: 20, letterSpacing: '.05em', textTransform: 'uppercase',
+        }}>
+          New
+        </div>
+      )}
       {/* Emoji */}
       <div style={{ fontSize: 22, marginBottom: 10, height: 30, display: 'flex', alignItems: 'center' }}>
         {emoji}
@@ -61,7 +71,7 @@ function JourneyCard({ emoji, title, desc, stats, actions, amber, featured }) {
       {/* Title — locked to 2 lines */}
       <div style={{
         fontSize: 14, fontWeight: 700,
-        color: amber ? '#78350f' : featured ? '#0284c7' : 'var(--text-1)',
+        color: amber ? '#78350f' : featured ? '#0284c7' : purple ? '#6d28d9' : 'var(--text-1)',
         lineHeight: 1.35,
         minHeight: 38,
         marginBottom: 8,
@@ -104,7 +114,7 @@ function JourneyCard({ emoji, title, desc, stats, actions, amber, featured }) {
           }}>
             <div style={{
               fontSize: 15, fontWeight: 800,
-              color: amber ? '#78350f' : featured ? '#0284c7' : 'var(--text-1)',
+              color: amber ? '#78350f' : featured ? '#0284c7' : purple ? '#6d28d9' : 'var(--text-1)',
               fontFamily: "'IBM Plex Mono',monospace",
               lineHeight: 1,
             }}>
@@ -221,16 +231,17 @@ export default function HomePage() {
   ];
 
   const opportunitiesCard = {
-    emoji: '🎯',
-    title: "I'm looking for opportunities",
-    desc: 'Browse community-posted referrals, internships, full-time openings and off-campus drives — all admin-verified before going live.',
+    emoji: '🎓',
+    title: "I'm looking for an internship",
+    purple: true,
+    desc: 'Browse verified internship openings posted by the community. See stipends, duration, and get a referral to jump straight to the queue.',
     stats: [
-      { value: fmtCount(totalReferrals), label: 'active openings' },
+      { value: fmtCount(totalReferrals), label: 'internships'     },
       { value: fmtCount(totalCompanies), label: 'companies'       },
     ],
     actions: [
-      { to: '/opportunities',      label: 'Browse opportunities →', bg: '#eff6ff', color: '#1d4ed8' },
-      { to: '/opportunities/post', label: 'Post an opportunity →',  bg: '#f0fdf4', color: '#166534' },
+      { to: '/opportunities',      label: 'Browse internships →',  bg: '#f5f3ff', color: '#6d28d9' },
+      { to: '/opportunities/post', label: 'Post an opening →',     bg: '#f5f3ff', color: '#6d28d9' },
     ],
   };
 
