@@ -150,14 +150,13 @@ public class OpportunityService {
 
     // ── My posts ──────────────────────────────────────────────────────────────
 
-    @Transactional(readOnly = true)
     /**
      * Returns a map of OpportunityType → count for all LIVE opportunities.
      * Single GROUP BY query — O(types) not O(rows).
      * Used by the homepage to show accurate counts per card without N+1 fetches.
      */
     @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'opportunityCounts'")
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public java.util.Map<String, Long> getCountsByType() {
         java.util.List<Object[]> rows = opportunityRepository.countByType(OpportunityStatus.LIVE);
         java.util.Map<String, Long> counts = new java.util.HashMap<>();
