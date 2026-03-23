@@ -36,26 +36,5 @@ public interface PageViewEventRepository extends JpaRepository<PageViewEvent, UU
         """, nativeQuery = true)
     void markProcessed(@Param("ids") String ids);  // comma-joined UUIDs cast to uuid[]
 
-    /** Auto-create next month's partition if it doesn't exist yet */
-    @Modifying
-    @Query(value = """
-        DO $$
-        DECLARE
-            partition_name TEXT;
-            start_date     DATE := DATE_TRUNC('month', NOW() + INTERVAL '1 month');
-            end_date       DATE := DATE_TRUNC('month', NOW() + INTERVAL '2 months');
-        BEGIN
-            partition_name := 'page_view_events_' || TO_CHAR(start_date, 'YYYY_MM');
-            IF NOT EXISTS (
-                SELECT 1 FROM pg_class
-                WHERE relname = partition_name
-            ) THEN
-                EXECUTE FORMAT(
-                    'CREATE TABLE %I PARTITION OF page_view_events FOR VALUES FROM (%L) TO (%L)',
-                    partition_name, start_date, end_date
-                );
-            END IF;
-        END $$;
-        """, nativeQuery = true)
-    void ensureNextMonthPartition();
+
 }

@@ -3,6 +3,9 @@ package com.salaryinsights.service.impl;
 import com.salaryinsights.entity.PageViewEvent;
 import com.salaryinsights.repository.PageViewDailyRepository;
 import com.salaryinsights.repository.PageViewEventRepository;
+import jakarta.persistence.EntityManager;
+import org.springframework.beans.factory.annotation.Value;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -25,7 +28,14 @@ public class PageViewService {
     private final PageViewEventRepository eventRepository;
     private final PageViewDailyRepository dailyRepository;
 
-    private static final int BATCH_LIMIT = 5000; // max events per job run
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Value("${app.analytics.aggregate-batch-size:5000}")
+    private int batchLimit;
+
+    @Value("${app.analytics.aggregate-enabled:true}")
+    private boolean aggregateEnabled; // max events per job run
 
     // ── Record a page view — fire-and-forget, never blocks request ────────────
 
@@ -49,20 +59,25 @@ public class PageViewService {
 
     // ── Hourly aggregation job ─────────────────────────────────────────────────
 
-    @Scheduled(fixedRate = 3_600_000) // every 1 hour in ms
+    @Scheduled(fixedRateString = "${app.analytics.aggregate-interval-ms:3600000}")
     @Transactional
     public void aggregateHourly() {
+        if (!aggregateEnabled) {
+            log.debug("PageView aggregation disabled via app.analytics.aggregate-enabled");
+            return;
+        }
         log.debug("PageView aggregation job starting");
         long start = System.currentTimeMillis();
 
-        // Ensure next month's partition exists (idempotent)
-        eventRepository.ensureNextMonthPartition();
+        // Ensure next month's partition exists — executed via EntityManager
+        // to avoid Hibernate parameter parsing of PL/pgSQL ':' colons
+        ensureNextMonthPartition();
 
         // Only process events from before 1 minute ago — avoids edge cases
         // with events written mid-second while we're reading
         OffsetDateTime cutoff = OffsetDateTime.now().minusMinutes(1);
 
-        List<PageViewEvent> events = eventRepository.findUnprocessed(cutoff, BATCH_LIMIT);
+        List<PageViewEvent> events = eventRepository.findUnprocessed(cutoff, batchLimit);
         if (events.isEmpty()) {
             log.debug("PageView aggregation: no unprocessed events");
             return;
@@ -133,6 +148,38 @@ public class PageViewService {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Auto-create next month's partition if it doesn't exist.
+     * Executed via EntityManager.createNativeQuery() to bypass Hibernate's
+     * parameter parser — which incorrectly flags ':' in PL/pgSQL as bind params.
+     */
+    @Transactional
+    private void ensureNextMonthPartition() {
+        String sql = """
+            DO $do$
+            DECLARE
+                partition_name TEXT;
+                start_date     DATE := DATE_TRUNC('month', NOW() + INTERVAL '1 month');
+                end_date       DATE := DATE_TRUNC('month', NOW() + INTERVAL '2 months');
+            BEGIN
+                partition_name := 'page_view_events_' || TO_CHAR(start_date, 'YYYY_MM');
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_class WHERE relname = partition_name
+                ) THEN
+                    EXECUTE FORMAT(
+                        'CREATE TABLE %I PARTITION OF page_view_events FOR VALUES FROM (%L) TO (%L)',
+                        partition_name, start_date, end_date
+                    );
+                END IF;
+            END $do$;
+            """;
+        try {
+            entityManager.createNativeQuery(sql).executeUpdate();
+        } catch (Exception e) {
+            log.warn("Partition creation skipped (may already exist): {}", e.getMessage());
+        }
+    }
 
     /** SHA-256(ip + ua + today's date) — unique per visitor per day, no PII stored */
     private String hashSession(String ip, String ua) {

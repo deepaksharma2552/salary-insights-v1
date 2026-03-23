@@ -67,6 +67,15 @@ app:
     allowed-origins:
       - http://localhost:3000
       - ${APP_CORS_ORIGIN:http://localhost:3000}
+  analytics:
+    # How often the page view aggregation job runs (ms). Default 1 hour.
+    # Override via PAGE_VIEW_AGGREGATE_INTERVAL_MS env var without redeploying.
+    aggregate-interval-ms: ${PAGE_VIEW_AGGREGATE_INTERVAL_MS:3600000}
+    # Max raw events processed per job run — prevents runaway on backlog.
+    aggregate-batch-size: ${PAGE_VIEW_AGGREGATE_BATCH_SIZE:5000}
+    # Set false to pause aggregation without redeploying.
+    aggregate-enabled: ${PAGE_VIEW_AGGREGATE_ENABLED:true}
+
   audit:
     # Rows older than this many days are moved to audit_logs_archive nightly.
     # 90 keeps ~3 months in the live table. Set to 180/365 for longer hot retention.
