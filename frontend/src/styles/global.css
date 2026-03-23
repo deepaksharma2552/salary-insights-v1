@@ -1100,3 +1100,48 @@ body {
   .section { padding: 16px 12px 32px; }
   .mobile-nav-drawer { width: 88vw; }
 }
+
+/* =========================
+   EXTRA MOBILE FIXES (SAFE)
+   ========================= */
+
+@media (max-width: 768px) {
+
+  /* Prevent any accidental overflow */
+  html, body {
+    overflow-x: hidden;
+  }
+
+  /* Improve tap targets */
+  button, a {
+    min-height: 44px;
+  }
+
+  /* Better spacing for small screens */
+  .section {
+    padding: 16px 12px 32px;
+  }
+
+  /* Fix long text overflow */
+  .company-name,
+  .company-industry {
+    word-break: break-word;
+  }
+
+  /* Salary table readability */
+  .salary-table td,
+  .salary-table th {
+    padding: 10px 12px;
+  }
+
+  /* Improve filter usability */
+  .filter-bar {
+    gap: 12px;
+  }
+
+  /* Make buttons full width where needed */
+  .btn-auth {
+    width: 100%;
+  }
+
+}
