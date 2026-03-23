@@ -800,17 +800,303 @@ body {
 /* ── SALARIES SECTION ── */
 .salaries-section { background: var(--bg-2); }
 
+/* ── DESKTOP DEFAULTS for mobile-responsive classes ──
+   These ensure mobile-only elements are invisible on desktop
+   and desktop-only elements are always visible above 768px. ── */
+.nav-hamburger       { display: none; }        /* hidden on desktop */
+.nav-cta-desktop     { display: inline-flex; } /* shown on desktop, hidden on mobile */
+.nav-user-dropdown   { display: block; }       /* shown on desktop, hidden on mobile */
+.admin-mobile-topbar { display: none; }        /* hidden on desktop, shown on mobile */
+
+/* ── ADMIN LAYOUT ── */
+.admin-layout-root {
+  display: flex;
+}
+.admin-main-offset {
+  flex: 1;
+  margin-left: 220px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
 /* ── RESPONSIVE ── */
+
+/* ─── Tablet (≤ 1024px) ─── */
+@media (max-width: 1024px) {
+  .admin-sidebar     { width: 180px; }
+  .admin-main-offset { margin-left: 180px; }
+}
+
+/* ─── Mobile (≤ 768px) ─── */
 @media (max-width: 768px) {
-  .navbar { padding: 0 16px; }
+
+  /* ── Navbar ── */
+  .navbar { padding: 0 16px; height: 56px; }
   .nav-links { display: none; }
-  .section { padding: 72px 16px 40px; }
-  .hero { padding: 72px 16px 40px; }
+  /* Hide desktop-only nav elements on mobile */
+  .nav-cta-desktop   { display: none !important; }
+  .nav-user-dropdown { display: none !important; }
+
+  /* Show hamburger on mobile */
+  .nav-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px; height: 36px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .nav-hamburger:hover { background: var(--bg-3); }
+
+  /* Mobile drawer overlay */
+  .mobile-nav-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 149;
+    animation: overlayIn 0.2s ease;
+  }
+  @keyframes overlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Mobile drawer panel */
+  .mobile-nav-drawer {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(80vw, 300px);
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    z-index: 150;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    box-shadow: -8px 0 32px rgba(0,0,0,0.15);
+    animation: drawerSlideIn 0.25s cubic-bezier(0.32,0.72,0,1);
+    overflow-y: auto;
+  }
+  @keyframes drawerSlideIn {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
+  }
+
+  .mobile-nav-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .mobile-nav-close {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-2);
+  }
+
+  .mobile-nav-links {
+    list-style: none;
+    margin: 0; padding: 12px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+  }
+  .mobile-nav-links li a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-2);
+    text-decoration: none;
+    border-radius: var(--radius);
+    transition: background 0.12s, color 0.12s;
+  }
+  .mobile-nav-links li a:hover,
+  .mobile-nav-links li a.active {
+    background: var(--bg-3);
+    color: var(--text-1);
+  }
+  .mobile-nav-links li a.active { color: #3b82f6; background: #f0f9ff; }
+
+  .mobile-nav-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 8px;
+  }
+
+  .mobile-nav-footer {
+    padding: 12px 8px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .mobile-nav-footer a,
+  .mobile-nav-footer button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s;
+    width: 100%;
+  }
+  .mobile-nav-footer .mob-btn-green {
+    border: 2px solid #10b981;
+    color: #065f46;
+    background: #ecfdf5;
+  }
+  .mobile-nav-footer .mob-btn-blue {
+    border: none;
+    color: #fff;
+    background: #1e40af;
+  }
+  .mobile-nav-footer .mob-btn-ghost {
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    background: transparent;
+  }
+  .mobile-nav-footer .mob-btn-danger {
+    border: 1px solid var(--rose);
+    color: var(--rose);
+    background: var(--rose-dim);
+  }
+
+  /* Theme toggle stays visible on mobile */
+  .theme-toggle { display: flex; }
+
+  /* ── Layout & Sections ── */
+  .section { padding: 20px 14px 40px; }
+  .hero     { padding: 32px 16px 40px; }
+
+  /* ── Forms ── */
   .form-grid { grid-template-columns: 1fr; }
-  .charts-row { grid-template-columns: 1fr; }
-  .detail-grid { grid-template-columns: 1fr; }
-  .comp-breakdown { grid-template-columns: 1fr; }
+
+  /* ── Filter bar: stack vertically ── */
+  .filter-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .filter-bar .search-box,
+  .filter-bar .select-field,
+  .filter-bar .input-field {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  /* ── Charts & grids ── */
+  .charts-row        { grid-template-columns: 1fr; }
+  .detail-grid       { grid-template-columns: 1fr; }
+  .comp-breakdown    { grid-template-columns: 1fr; }
   .comp-item.highlight { grid-column: span 1; }
-  .drawer { width: 100vw; }
+
+  /* ── Salary table: horizontal scroll ── */
+  .salary-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+  }
+  .salary-table { min-width: 700px; }
+
+  /* ── Drawer full-width ── */
+  .drawer { width: 100vw; right: 0; }
+
+  /* ── Pagination: compact ── */
+  .page-btns { gap: 4px; flex-wrap: wrap; justify-content: center; }
+  .page-btn  { min-width: 32px; height: 32px; font-size: 12px; padding: 0 8px; }
+
+  /* ── Admin sidebar: hide fixed sidebar, use top bar instead ── */
   .admin-sidebar { display: none; }
+
+  /* Show mobile admin top nav bar */
+  .admin-mobile-topbar { display: flex; }
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    position: sticky;
+    top: 56px;
+    z-index: 80;
+    flex-shrink: 0;
+  }
+  .admin-mobile-topbar::-webkit-scrollbar { display: none; }
+  .admin-mobile-topbar a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-2);
+    text-decoration: none;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    background: var(--bg-2);
+  }
+  .admin-mobile-topbar a.active {
+    background: #f0f9ff;
+    color: #3b82f6;
+    border-color: #bfdbfe;
+  }
+
+  /* ── Admin layout: stack vertically on mobile, no left margin ── */
+  .admin-layout-root  { display: block; }
+  .admin-main-offset  { margin-left: 0; min-height: unset; }
+
+  /* Admin tables: horizontal scroll */
+  .admin-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .admin-table-wrap table { min-width: 600px; }
+
+  /* ── Company cards: 1 col ── */
+  .company-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── Section header ── */
+  .section-header { align-items: flex-start !important; }
+  .section-title  { font-size: clamp(22px, 6vw, 32px); }
+
+  /* ── Hide non-essential columns in tables on mobile ── */
+  .col-hide-mobile { display: none !important; }
+}
+
+/* ─── Small phones (≤ 390px) ─── */
+@media (max-width: 390px) {
+  .navbar { padding: 0 12px; }
+  .section { padding: 16px 12px 32px; }
+  .mobile-nav-drawer { width: 88vw; }
 }
