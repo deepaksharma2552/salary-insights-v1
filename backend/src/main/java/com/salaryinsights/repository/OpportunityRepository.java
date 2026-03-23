@@ -81,6 +81,16 @@ public interface OpportunityRepository
             Pageable pageable
     );
 
+    // ── Homepage counts — single GROUP BY query, no pagination ─────────────────
+
+    @Query("""
+        SELECT o.type, COUNT(o)
+        FROM Opportunity o
+        WHERE o.status = :status
+        GROUP BY o.type
+        """)
+    java.util.List<Object[]> countByType(@Param("status") OpportunityStatus status);
+
     // ── Expiry job — bulk UPDATE, enum-safe ───────────────────────────────────
 
     @Modifying

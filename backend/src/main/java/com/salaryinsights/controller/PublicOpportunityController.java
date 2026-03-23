@@ -38,6 +38,17 @@ public class PublicOpportunityController {
     }
 
     /**
+     * GET /public/opportunities/counts
+     * Returns live opportunity counts grouped by type.
+     * Used by homepage cards — no auth required.
+     * Cached via analytics cache (evicted on any opportunity approval).
+     */
+    @GetMapping("/counts")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Long>>> getCounts() {
+        return ResponseEntity.ok(ApiResponse.success(opportunityService.getCountsByType()));
+    }
+
+    /**
      * POST /public/opportunities
      * Submit a new opportunity — auth required, goes to PENDING.
      */

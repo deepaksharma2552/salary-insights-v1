@@ -151,6 +151,24 @@ public class OpportunityService {
     // ── My posts ──────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
+    /**
+     * Returns a map of OpportunityType → count for all LIVE opportunities.
+     * Single GROUP BY query — O(types) not O(rows).
+     * Used by the homepage to show accurate counts per card without N+1 fetches.
+     */
+    @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'opportunityCounts'")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public java.util.Map<String, Long> getCountsByType() {
+        java.util.List<Object[]> rows = opportunityRepository.countByType(OpportunityStatus.LIVE);
+        java.util.Map<String, Long> counts = new java.util.HashMap<>();
+        for (Object[] row : rows) {
+            OpportunityType type = (OpportunityType) row[0];
+            Long count          = (Long) row[1];
+            counts.put(type.name(), count);
+        }
+        return counts;
+    }
+
     public PagedResponse<OpportunityResponse> getMyPosts(int page, int size) {
         User caller = currentUser();
         Page<Opportunity> pg = opportunityRepository.findByPostedByIdFetched(
@@ -185,6 +203,7 @@ public class OpportunityService {
     // ── Admin: fix broken link and reopen ─────────────────────────────────────
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "analytics", key = "'opportunityCounts'")
     public OpportunityResponse fixAndReopen(UUID id, String newApplyLink) {
         if (newApplyLink == null || newApplyLink.isBlank())
             throw new BadRequestException("Apply link is required");
@@ -204,6 +223,7 @@ public class OpportunityService {
     // ── Admin: update status ───────────────────────────────────────────────────
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "analytics", key = "'opportunityCounts'")
     public OpportunityResponse updateStatus(UUID id, OpportunityStatusRequest req) {
         Opportunity opp = opportunityRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Opportunity not found: " + id));
