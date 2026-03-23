@@ -35,6 +35,27 @@ public class BeansConfig {
      *     CallerRunsPolicy kicks in — plenty for any realistic burst.
      *   - Max pool of 4 caps thread creation during prolonged bursts.
      */
+    /**
+     * Dedicated executor for @Async page view tracking writes.
+     * Unlike audit logs, dropping a page view under extreme load is acceptable —
+     * so we use DiscardPolicy instead of CallerRunsPolicy.
+     * 2 core threads handle normal traffic; queue of 1000 absorbs bursts.
+     */
+    @Bean(name = "trackingExecutor")
+    public Executor trackingExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(2);
+        executor.setQueueCapacity(1000);
+        executor.setThreadNamePrefix("tracking-");
+        executor.setKeepAliveSeconds(60);
+        executor.setAllowCoreThreadTimeOut(true);
+        // DiscardPolicy: if queue full, silently drop — tracking must never block requests
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
+        executor.initialize();
+        return executor;
+    }
+
     @Bean(name = "auditExecutor")
     public Executor auditExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
