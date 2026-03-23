@@ -157,7 +157,7 @@ export default function HomePage() {
   const [recentSalaries, setRecentSalaries] = useState([]);
   const [totalEntries,   setTotalEntries]   = useState(null);
   const [totalCompanies, setTotalCompanies] = useState(null);
-  const [totalReferrals,  setTotalReferrals]  = useState(null);
+  const [oppCounts,       setOppCounts]       = useState({});  // { REFERRAL:n, INTERNSHIP:n, ... }
   const [thisMonth,       setThisMonth]       = useState(null);
 
   useEffect(() => {
@@ -174,9 +174,9 @@ export default function HomePage() {
       .then(res => setTotalCompanies(res.data?.data?.totalElements ?? null))
       .catch(console.error);
 
-    // Active referrals count
-    api.get('/public/referrals', { params: { page: 0, size: 1 } })
-      .then(res => setTotalReferrals(res.data?.data?.totalElements ?? null))
+    // Opportunity counts by type — single endpoint, one GROUP BY query
+    api.get('/public/opportunities/counts')
+      .then(res => setOppCounts(res.data?.data ?? {}))
       .catch(console.error);
 
     // Submissions this month
@@ -184,6 +184,13 @@ export default function HomePage() {
       .then(res => setThisMonth(res.data?.data ?? null))
       .catch(console.error);
   }, []);
+
+  /* ── Derived opportunity counts ── */
+  const internshipCount  = oppCounts.INTERNSHIP ?? null;
+  const jobCount         = (oppCounts.REFERRAL ?? 0) + (oppCounts.FULL_TIME ?? 0)
+                         + (oppCounts.CONTRACT ?? 0) + (oppCounts.DRIVE ?? 0)
+                         || null;  // null if all zeros (nothing live yet)
+  const totalOpportunities = Object.values(oppCounts).reduce((a, b) => a + b, 0) || null;
 
   /* ── Journey card definitions ── */
   const journeyCards = [
@@ -220,7 +227,7 @@ export default function HomePage() {
       title: "I'm looking for a job",
       desc: 'Browse community-posted referrals, internships and openings. Get a warm referral and skip straight to the interview queue.',
       stats: [
-        { value: fmtCount(totalReferrals), label: 'active openings' },
+        { value: fmtCount(jobCount),      label: 'active openings' },
         { value: fmtCount(totalCompanies), label: 'companies'       },
       ],
       actions: [
@@ -236,7 +243,7 @@ export default function HomePage() {
     purple: true,
     desc: 'Browse verified internship openings posted by the community. See stipends, duration, and get a referral to jump straight to the queue.',
     stats: [
-      { value: fmtCount(totalReferrals), label: 'internships'     },
+      { value: fmtCount(internshipCount), label: 'internships'     },
       { value: fmtCount(totalCompanies), label: 'companies'       },
     ],
     actions: [
@@ -288,7 +295,7 @@ export default function HomePage() {
             {[
               { label: '💰 Salary entries', val: totalEntries != null ? fmtCount(totalEntries) : '—', sub: 'verified & live', live: true, delay: 0 },
               { label: '🏢 Companies',      val: totalCompanies != null ? fmtCount(totalCompanies) : '—',    sub: 'tracked',        live: false, delay: 70 },
-              { label: '🤝 Active referrals', val: totalReferrals != null ? fmtCount(totalReferrals) : '—', sub: 'live now',       live: true, delay: 140 },
+              { label: '🤝 Opportunities',   val: totalOpportunities != null ? fmtCount(totalOpportunities) : '—', sub: 'live now', live: true, delay: 140 },
               { label: '📅 This month',     val: thisMonth != null ? String(thisMonth) : '—',                sub: 'new submissions', live: true,  delay: 210 },
             ].map(({ label, val, sub, live, delay }) => (
               <div key={label} style={{
