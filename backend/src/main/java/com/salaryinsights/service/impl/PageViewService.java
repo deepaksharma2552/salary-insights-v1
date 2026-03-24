@@ -39,22 +39,36 @@ public class PageViewService {
 
     // ── Record a page view — fire-and-forget, never blocks request ────────────
 
+    // Entry point — @Async only. Delegates DB write to doRecord() which carries
+    // @Transactional. Keeping both annotations on the same method causes Spring
+    // to apply the @Async proxy first (dispatching to a pool thread) before the
+    // @Transactional proxy can wrap the call, so the save runs outside any
+    // transaction and is silently lost.
     @Async("trackingExecutor")
-    @Transactional
     public void record(String page, String ipAddress, String userAgent, String referrer) {
         try {
+            // hashSession (SHA-256) runs here, outside the transaction — DB
+            // connection is not held open during the CPU work.
             String sessionHash = hashSession(ipAddress, userAgent);
-            PageViewEvent event = PageViewEvent.builder()
-                    .page(normalisePage(page))
-                    .sessionHash(sessionHash)
-                    .referrer(referrer != null && referrer.length() > 500
-                            ? referrer.substring(0, 500) : referrer)
-                    .build();
-            eventRepository.save(event);
+            doRecord(normalisePage(page), sessionHash, referrer);
         } catch (Exception e) {
             log.warn("Failed to record page view for '{}': {}", page, e.getMessage());
             // Silently swallow — tracking must never affect the main request
         }
+    }
+
+    // Separate method so @Transactional is applied by its own proxy on a
+    // clean call boundary — Spring self-invocation limitation means this
+    // must be a public method on the Spring bean (not a private helper).
+    @Transactional
+    public void doRecord(String page, String sessionHash, String referrer) {
+        PageViewEvent event = PageViewEvent.builder()
+                .page(page)
+                .sessionHash(sessionHash)
+                .referrer(referrer != null && referrer.length() > 500
+                        ? referrer.substring(0, 500) : referrer)
+                .build();
+        eventRepository.save(event);
     }
 
     // ── Hourly aggregation job ─────────────────────────────────────────────────
