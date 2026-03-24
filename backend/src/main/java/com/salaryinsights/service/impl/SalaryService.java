@@ -491,7 +491,7 @@ public class SalaryService {
     @Transactional(readOnly = true)
     @org.springframework.cache.annotation.Cacheable(
         value = "analytics",
-        key = "'byCompanyLevel_' + T(java.util.Arrays).toString(#locationDisplayNames.stream().sorted().toArray())"
+        key = "'byCompanyLevel_' + T(java.util.Arrays).toString(new java.util.ArrayList(new java.util.TreeSet(#locationDisplayNames)).toArray())"
     )
     public List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevelFiltered(
             List<String> locationDisplayNames) {
