@@ -3,9 +3,11 @@ package com.salaryinsights.repository;
 import com.salaryinsights.entity.PageViewDaily;
 import com.salaryinsights.entity.PageViewDailyId;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -40,7 +42,8 @@ public interface PageViewDailyRepository extends JpaRepository<PageViewDaily, Pa
     );
 
     /** UPSERT a single (page, date) counter — increment atomically */
-    @org.springframework.data.jpa.repository.Modifying
+    @Transactional
+    @Modifying
     @Query(value = """
         INSERT INTO page_view_daily (page, date, views, unique_sessions)
         VALUES (:page, :date, :views, :uniqueSessions)

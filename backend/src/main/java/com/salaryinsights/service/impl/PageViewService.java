@@ -167,8 +167,12 @@ public class PageViewService {
      * Auto-create next month's partition if it doesn't exist.
      * Executed via EntityManager.createNativeQuery() to bypass Hibernate's
      * parameter parser — which incorrectly flags ':' in PL/pgSQL as bind params.
+     *
+     * NOTE: No @Transactional here — this runs inside the caller's transaction
+     * (aggregateHourly). Private methods cannot be proxied by Spring, so
+     * @Transactional on a private method is silently ignored and would cause
+     * the EntityManager call to run outside any transaction, throwing an error.
      */
-    @Transactional
     private void ensureNextMonthPartition() {
         String sql = """
             DO $do$
