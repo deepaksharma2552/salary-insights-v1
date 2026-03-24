@@ -194,8 +194,8 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
     List<Object[]> avgSalaryByCompanyAndLevelRaw();
 
     // Avg base/bonus/equity per location × internal level.
-    // loc_recency CTE ranks the 5 most recently updated locations.
-    // loc_lvl aggregates salary data only for those 5 locations.
+    // loc_recency CTE collects ALL locations with approved entries, ordered by most recent activity.
+    // loc_lvl aggregates salary data for all of them — no artificial cap.
     @Query(value =
         "WITH loc_recency AS ( " +
         "  SELECT location, MAX(created_at) AS most_recent_entry " +
@@ -203,7 +203,6 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  WHERE review_status = 'APPROVED' AND location IS NOT NULL " +
         "  GROUP BY location " +
         "  ORDER BY most_recent_entry DESC " +
-        "  LIMIT 5 " +
         "), " +
         "loc_lvl AS ( " +
         "  SELECT " +
