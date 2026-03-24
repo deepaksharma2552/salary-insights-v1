@@ -42,7 +42,7 @@ public class SalaryService {
             UUID companyId, String companyName, String jobTitle,
             java.util.List<String> locations, java.util.List<String> experienceLevelStrs,
             Pageable pageable) {
-        return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, null, pageable);
+        return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, null, null, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -50,6 +50,25 @@ public class SalaryService {
             UUID companyId, String companyName, String jobTitle,
             java.util.List<String> locations, java.util.List<String> experienceLevelStrs,
             java.util.List<String> internalLevelStrs,
+            Pageable pageable) {
+        return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, internalLevelStrs, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<SalaryResponse> getApprovedSalaries(
+            UUID companyId, String companyName, String jobTitle,
+            java.util.List<String> locations, java.util.List<String> experienceLevelStrs,
+            String employmentTypeStr,
+            Pageable pageable) {
+        return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, null, employmentTypeStr, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<SalaryResponse> getApprovedSalaries(
+            UUID companyId, String companyName, String jobTitle,
+            java.util.List<String> locations, java.util.List<String> experienceLevelStrs,
+            java.util.List<String> internalLevelStrs,
+            String employmentTypeStr,
             Pageable pageable) {
 
         final String companyNameFilter = (companyName != null && !companyName.isBlank()) ? companyName.toLowerCase() : null;
@@ -84,6 +103,14 @@ public class SalaryService {
                 .filter(java.util.Objects::nonNull)
                 .collect(java.util.stream.Collectors.toList())
             : null;
+
+        // Convert employmentType string → EmploymentType enum, null if blank/unknown
+        com.salaryinsights.enums.EmploymentType employmentTypeFilterTmp = null;
+        if (employmentTypeStr != null && !employmentTypeStr.isBlank()) {
+            try { employmentTypeFilterTmp = com.salaryinsights.enums.EmploymentType.valueOf(employmentTypeStr.toUpperCase()); }
+            catch (IllegalArgumentException ignored) { }
+        }
+        final com.salaryinsights.enums.EmploymentType employmentTypeFilter = employmentTypeFilterTmp;
 
         org.springframework.data.jpa.domain.Specification<SalaryEntry> spec =
             (root, query, cb) -> {
@@ -122,6 +149,10 @@ public class SalaryService {
                 // Multi-internalLevel IN predicate (company-specific levels e.g. SDE_1)
                 if (internalLevelFilters != null && !internalLevelFilters.isEmpty()) {
                     predicates.add(root.get("companyInternalLevel").in(internalLevelFilters));
+                }
+                // Employment type filter
+                if (employmentTypeFilter != null) {
+                    predicates.add(cb.equal(root.get("employmentType"), employmentTypeFilter));
                 }
 
                 return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
