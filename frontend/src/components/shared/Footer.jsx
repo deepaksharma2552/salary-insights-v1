@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 const PLATFORM = [
   { label: 'Salary Database', to: '/salaries' },
@@ -25,6 +26,10 @@ const COMPANY = [
 
 export default function Footer() {
   const year = new Date().getFullYear();
+  const isMobile = useIsMobile();
+
+  // Desktop: 4-col brand+links. Mobile: 2-col links, brand full-width on top.
+  const gridCols = isMobile ? '1fr 1fr' : '1.6fr 1fr 1fr 1fr';
 
   return (
     <footer style={{
@@ -47,53 +52,69 @@ export default function Footer() {
       `}</style>
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px' }}>
 
-        {/* Top row */}
-        <div className="grid-footer-top">
-
-          {/* Brand */}
-          <div>
-            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', marginBottom: 14 }}>
-              <svg width="32" height="32" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"
-                style={{ flexShrink: 0 }}>
-                <circle cx="19" cy="19" r="18" stroke="#3b82f6" strokeWidth="0.8" fill="none"
-                  style={{ transformOrigin: '19px 19px', animation: 'siOrbitPing 3s ease-out infinite' }} />
-                <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitTrack 20s linear infinite' }}>
-                  <circle cx="19" cy="19" r="15" stroke="#3b82f6" strokeWidth="0.7" fill="none" opacity="0.25" strokeDasharray="2.5 2.5" />
-                </g>
-                <circle cx="19" cy="19" r="9" stroke="#3b82f6" strokeWidth="0.5" fill="none" opacity="0.12" strokeDasharray="1.5 2" />
-                <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepA 6s linear infinite' }}>
-                  <circle cx="19" cy="4" r="2.2" fill="#3b82f6" />
-                </g>
-                <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepB 6s linear infinite' }}>
-                  <circle cx="19" cy="4" r="1.8" fill="#2563eb" />
-                </g>
-                <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepC 9s linear infinite' }}>
-                  <circle cx="19" cy="4" r="1.4" fill="#60a5fa" opacity="0.7" />
-                </g>
-                <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitCore 3s ease-in-out infinite' }}>
-                  <circle cx="19" cy="19" r="6"   fill="#3b82f6" opacity="0.1" />
-                  <circle cx="19" cy="19" r="4"   fill="#3b82f6" opacity="0.2" />
-                  <circle cx="19" cy="19" r="2.5" fill="#3b82f6" />
-                </g>
-              </svg>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', letterSpacing: '-0.03em' }}>
-                  Salary<span style={{ color: '#3b82f6' }}>Insights</span>
-                </div>
-                <div style={{ fontSize: 8.5, fontWeight: 500, color: '#3b82f6', letterSpacing: '0.12em', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', opacity: 0.75 }}>
-                  360° Career Clarity
-                </div>
+        {/* Brand block — full width on mobile, first column on desktop */}
+        {isMobile && (
+          <div style={{ marginBottom: 28 }}>
+            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', marginBottom: 10 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', letterSpacing: '-0.03em' }}>
+                Salary<span style={{ color: '#3b82f6' }}>Insights</span>
               </div>
             </Link>
-            <p style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.7, maxWidth: 280 }}>
-              India's community-powered salary intelligence platform. Anonymous, verified and built by engineers, for engineers.
+            <p style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.7 }}>
+              India's community-powered salary intelligence platform.
             </p>
-            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-              <Link to="/submit" style={{ padding: '7px 14px', background: '#3b82f6', color: 'white', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none' }}>
-                Share Salary →
-              </Link>
-            </div>
           </div>
+        )}
+
+        {/* Link columns grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: isMobile ? 24 : 40, marginBottom: 40 }}>
+
+          {/* Brand column — desktop only */}
+          {!isMobile && (
+            <div>
+              <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', marginBottom: 14 }}>
+                <svg width="32" height="32" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"
+                  style={{ flexShrink: 0 }}>
+                  <circle cx="19" cy="19" r="18" stroke="#3b82f6" strokeWidth="0.8" fill="none"
+                    style={{ transformOrigin: '19px 19px', animation: 'siOrbitPing 3s ease-out infinite' }} />
+                  <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitTrack 20s linear infinite' }}>
+                    <circle cx="19" cy="19" r="15" stroke="#3b82f6" strokeWidth="0.7" fill="none" opacity="0.25" strokeDasharray="2.5 2.5" />
+                  </g>
+                  <circle cx="19" cy="19" r="9" stroke="#3b82f6" strokeWidth="0.5" fill="none" opacity="0.12" strokeDasharray="1.5 2" />
+                  <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepA 6s linear infinite' }}>
+                    <circle cx="19" cy="4" r="2.2" fill="#3b82f6" />
+                  </g>
+                  <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepB 6s linear infinite' }}>
+                    <circle cx="19" cy="4" r="1.8" fill="#2563eb" />
+                  </g>
+                  <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepC 9s linear infinite' }}>
+                    <circle cx="19" cy="4" r="1.4" fill="#60a5fa" opacity="0.7" />
+                  </g>
+                  <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitCore 3s ease-in-out infinite' }}>
+                    <circle cx="19" cy="19" r="6"   fill="#3b82f6" opacity="0.1" />
+                    <circle cx="19" cy="19" r="4"   fill="#3b82f6" opacity="0.2" />
+                    <circle cx="19" cy="19" r="2.5" fill="#3b82f6" />
+                  </g>
+                </svg>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', letterSpacing: '-0.03em' }}>
+                    Salary<span style={{ color: '#3b82f6' }}>Insights</span>
+                  </div>
+                  <div style={{ fontSize: 8.5, fontWeight: 500, color: '#3b82f6', letterSpacing: '0.12em', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', opacity: 0.75 }}>
+                    360° Career Clarity
+                  </div>
+                </div>
+              </Link>
+              <p style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.7, maxWidth: 280 }}>
+                India's community-powered salary intelligence platform. Anonymous, verified and built by engineers, for engineers.
+              </p>
+              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                <Link to="/submit" style={{ padding: '7px 14px', background: '#3b82f6', color: 'white', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none' }}>
+                  Share Salary →
+                </Link>
+              </div>
+            </div>
+          )}
 
           {/* Platform */}
           <div>
@@ -133,6 +154,7 @@ export default function Footer() {
               ))}
             </div>
           </div>
+
         </div>
 
         {/* Bottom bar */}
