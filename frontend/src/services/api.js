@@ -3,6 +3,20 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
+  // Serialize arrays as repeated params (?locations=Bengaluru&locations=Pune)
+  // so Spring's @RequestParam List<String> binds them correctly.
+  // Default Axios behaviour adds brackets (?locations[]=…) which Spring ignores.
+  paramsSerializer: (params) => {
+    const parts = [];
+    Object.entries(params).forEach(([key, val]) => {
+      if (Array.isArray(val)) {
+        val.forEach(v => parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(v)}`));
+      } else if (val !== undefined && val !== null) {
+        parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(val)}`);
+      }
+    });
+    return parts.join('&');
+  },
 });
 
 // Attach JWT token to every request automatically
