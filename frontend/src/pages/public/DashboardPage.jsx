@@ -3,6 +3,7 @@ import React from 'react';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { useLocations } from '../../hooks/useLocations';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    DESIGN TOKENS
@@ -537,6 +538,10 @@ function EmptyState({ filtered = false, filterLabel = '' }) {
 ═══════════════════════════════════════════════════════════════════════════ */
 export default function DashboardPage() {
   const isMobile = useIsMobile();
+  const { locations: ALL_LOCATIONS_RAW } = useLocations();
+  // Flat display-name list used by both chart filters
+  const ALL_LOCATIONS = ALL_LOCATIONS_RAW.map(l => l.label);
+
   const [byLocationLevel, setByLocationLevel] = useState([]);
   const [byCompanyLevel,  setByCompanyLevel]  = useState([]);
   const [initialLoading,  setInitialLoading]  = useState(true);  // first paint only
@@ -546,12 +551,6 @@ export default function DashboardPage() {
   const [selCompanies, setSelCompanies] = useState([]);
   const [selLocationsForCompany, setSelLocationsForCompany] = useState([]);
   const [selLevels, setSelLevels] = useState([]);
-
-  // All valid location display names (from the Location enum — matches what the DB stores)
-  const ALL_LOCATIONS = [
-    'Bengaluru', 'Hyderabad', 'Pune', 'Delhi-NCR',
-    'Kochi', 'Coimbatore', 'Mysore', 'Mangaluru',
-  ];
 
   // Fetch company-level data — re-runs whenever location filter changes
   const fetchCompanyLevel = React.useCallback(() => {
@@ -603,7 +602,9 @@ export default function DashboardPage() {
     }, {}),
   [byCompanyLevel]);
 
-  const allLocations    = useMemo(() => Object.keys(locationGrouped), [locationGrouped]);
+  // Chart 1 filter: always show ALL locations from the enum (not just ones with data).
+  // This means users can see the full list and the empty-state message guides them to contribute.
+  const allLocations    = ALL_LOCATIONS;
   const allCompanyNames = useMemo(() => Object.keys(companyGrouped),  [companyGrouped]);
   const allLevelNames   = useMemo(() => {
     const seen = new Set();

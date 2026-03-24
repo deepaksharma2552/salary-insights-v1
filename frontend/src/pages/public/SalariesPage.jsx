@@ -4,6 +4,7 @@ import api from '../../services/api';
 import TopProgressBar from '../../components/shared/TopProgressBar';
 import LevelGuideView from './LevelGuideView';
 import ScrollableSelect from '../../components/shared/ScrollableSelect';
+import { useLocations } from '../../hooks/useLocations';
 
 const LEVEL_OPTIONS = [
   { value: '', label: 'All Levels' },
@@ -11,18 +12,6 @@ const LEVEL_OPTIONS = [
   { value: 'mid', label: 'Mid' },
   { value: 'senior', label: 'Senior' },
   { value: 'lead', label: 'Lead' },
-];
-
-const LOCATION_OPTIONS = [
-  { value: '', label: 'All Locations' },
-  { value: 'BENGALURU', label: 'Bengaluru' },
-  { value: 'HYDERABAD', label: 'Hyderabad' },
-  { value: 'PUNE', label: 'Pune' },
-  { value: 'DELHI_NCR', label: 'Delhi-NCR' },
-  { value: 'KOCHI', label: 'Kochi' },
-  { value: 'COIMBATORE', label: 'Coimbatore' },
-  { value: 'MYSORE', label: 'Mysore' },
-  { value: 'MANGALURU', label: 'Mangaluru' },
 ];
 
 const EMP_TYPE_OPTIONS = [
@@ -92,6 +81,9 @@ function getPageRange(current, total) {
 }
 
 export default function SalariesPage() {
+  const { locations } = useLocations();
+  const locationOptions = [{ value: '', label: 'All Locations' }, ...locations];
+
   const [view, setView] = useState('salaries'); // 'salaries' | 'levels'
 
   const [rows,          setRows]          = useState([]);
@@ -297,7 +289,7 @@ export default function SalariesPage() {
         <ScrollableSelect
           value={location}
           onChange={v => { setLocation(v); setPage(0); }}
-          options={LOCATION_OPTIONS}
+          options={locationOptions}
           placeholder="All Locations"
         />
 

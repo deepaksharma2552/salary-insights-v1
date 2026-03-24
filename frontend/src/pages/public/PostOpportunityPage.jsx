@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { useLocations } from '../../hooks/useLocations';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 import { useIsMobile } from '../../hooks/useIsMobile';
 
@@ -17,6 +18,7 @@ const MODE_OPTIONS = ['ONSITE', 'HYBRID', 'REMOTE'];
 export default function PostOpportunityPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { locations } = useLocations();
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState('');
   const [success,    setSuccess]    = useState(false);
@@ -301,14 +303,7 @@ export default function PostOpportunityPage() {
               <label className="form-label">Location</label>
               <select className="form-input" name="location" value={form.location} onChange={handleChange} style={{ cursor: 'pointer' }}>
                 <option value="">Select location</option>
-                <option value="BENGALURU">Bengaluru</option>
-                <option value="HYDERABAD">Hyderabad</option>
-                <option value="PUNE">Pune</option>
-                <option value="DELHI_NCR">Delhi-NCR</option>
-                <option value="KOCHI">Kochi</option>
-                <option value="COIMBATORE">Coimbatore</option>
-                <option value="MYSORE">Mysore</option>
-                <option value="MANGALURU">Mangaluru</option>
+                {locations.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
               </select>
             </div>
 
