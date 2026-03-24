@@ -64,7 +64,8 @@ function AdminLayout({ children }) {
   );
 }
 
-function PageTracker() {
+/** Renders inside BrowserRouter so useLocation() re-fires on every navigation */
+function AppShell() {
   usePageTracking();
   return null;
 }
@@ -74,7 +75,7 @@ export default function App() {
     <AuthProvider>
       <AppDataProvider>
       <BrowserRouter>
-        <PageTracker />
+        <AppShell />
         <Navbar />
         <RouterProgressBar />
         <div style={{ paddingTop: 56 }}>
