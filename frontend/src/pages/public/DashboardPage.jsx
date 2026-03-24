@@ -496,11 +496,41 @@ function GroupHeader({ dot, children, meta }) {
 }
 
 /* ─── Empty state ────────────────────────────────────────────────────────── */
-const EmptyState = () => (
-  <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-3)', fontSize: 13 }}>
-    No data available yet.
-  </div>
-);
+function EmptyState({ filtered = false, filterLabel = '' }) {
+  return (
+    <div style={{
+      textAlign: 'center', padding: '36px 16px',
+      background: 'var(--bg-2)', borderRadius: 12,
+      border: '1px dashed var(--border)',
+    }}>
+      <div style={{ fontSize: 28, marginBottom: 10 }}>
+        {filtered ? '🔍' : '📭'}
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', marginBottom: 6 }}>
+        {filtered
+          ? `No salary data for ${filterLabel || 'this selection'} yet`
+          : 'No data available yet'}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 16, lineHeight: 1.6 }}>
+        {filtered
+          ? 'Be the first to contribute data for this location and help the community.'
+          : 'Salary data will appear here once submissions are approved.'}
+      </div>
+      <a
+        href="/submit"
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '8px 18px', borderRadius: 8,
+          background: 'linear-gradient(135deg,#2563eb,#3b82f6)',
+          color: '#fff', fontSize: 12, fontWeight: 600,
+          textDecoration: 'none',
+        }}
+      >
+        + Submit your salary
+      </a>
+    </div>
+  );
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MAIN PAGE
@@ -683,7 +713,13 @@ export default function DashboardPage() {
 
             <BarLegend />
 
-            {byLocationLevel.length === 0 ? <EmptyState /> : (
+            {byLocationLevel.length === 0 ? <EmptyState /> :
+             visibleLocations.length === 0 ? (
+              <EmptyState
+                filtered
+                filterLabel={selLocations.join(', ')}
+              />
+             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {visibleLocations.map((loc, li) => {
                   const rows  = locationGrouped[loc] ?? [];
@@ -793,7 +829,13 @@ export default function DashboardPage() {
 
             <BarLegend />
 
-            {byCompanyLevel.length === 0 ? <EmptyState /> : (
+            {byCompanyLevel.length === 0 ? <EmptyState /> :
+             visibleCompanies.length === 0 ? (
+              <EmptyState
+                filtered
+                filterLabel={selLocationsForCompany.join(', ')}
+              />
+             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {visibleCompanies.map((company, ci) => {
                   const allRows  = companyGrouped[company] ?? [];
