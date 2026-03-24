@@ -27,8 +27,11 @@ const LOCATION_OPTIONS = [
 
 const EMP_TYPE_OPTIONS = [
   { value: '', label: 'Employment Type' },
-  { value: 'Full-time', label: 'Full-time' },
-  { value: 'Contract', label: 'Contract' },
+  { value: 'FULL_TIME', label: 'Full-time' },
+  { value: 'CONTRACT', label: 'Contract' },
+  { value: 'PART_TIME', label: 'Part-time' },
+  { value: 'INTERNSHIP', label: 'Internship' },
+  { value: 'FREELANCE', label: 'Freelance' },
 ];
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -182,6 +185,7 @@ export default function SalariesPage() {
       ...(location && { location }),
       ...(level    && { experienceLevel: LEVEL_MAP[level] }),
       ...(search   && { companyName: search, jobTitle: search }),
+      ...(empType  && { employmentType: empType }),
     };
     api.get('/public/salaries', { params })
       .then(res => {
@@ -195,7 +199,7 @@ export default function SalariesPage() {
         setError(`Failed to load salaries (${err.response?.status ?? 'network error'})`);
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, search, level, location]);
+  }, [page, pageSize, search, level, location, empType]);
 
   useEffect(() => { fetchSalaries(); }, [fetchSalaries]);
 
