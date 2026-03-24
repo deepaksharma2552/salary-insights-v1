@@ -6,14 +6,12 @@ const PLATFORM = [
   { label: 'Companies',       to: '/companies' },
   { label: 'Analytics',       to: '/dashboard' },
   { label: 'Level Guide',     to: '/level-guide' },
-  { label: 'Referral Board',  to: '/referrals' },
-  { label: 'Launchpad',       to: '/launchpad' },
+  { label: 'Opportunities',   to: '/opportunities' },
 ];
 
 const CONTRIBUTE = [
-  { label: 'Share My Salary',    to: '/submit' },
-  { label: 'Submit a Referral',  to: '/refer' },
-  { label: 'Share Experience',   to: '/launchpad/submit' },
+  { label: 'Share My Salary',     to: '/submit' },
+  { label: 'Post an Opportunity', to: '/opportunities/post' },
 ];
 
 const COMPANY = [

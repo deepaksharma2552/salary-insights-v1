@@ -37,6 +37,7 @@ import FAQPage             from './pages/public/FAQPage';
 import ContactPage         from './pages/public/ContactPage';
 import PrivacyPage         from './pages/public/PrivacyPage';
 import TermsPage           from './pages/public/TermsPage';
+import NotFoundPage        from './pages/public/NotFoundPage';
 
 function PrivateRoute({ children, adminOnly = false }) {
   const { user } = useContext(AuthContext);
@@ -147,14 +148,35 @@ export default function App() {
                 <AdminLayout><AdminAnalytics /></AdminLayout>
               </PrivateRoute>
             }/>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          {/* Static pages */}
+            {/* Legacy redirect */}
+            <Route path="/admin/referrals"     element={<Navigate to="/admin/opportunities" replace />} />
+
+            <Route path="/admin/guide-levels" element={
+              <PrivateRoute adminOnly>
+                <AdminLayout><AdminGuideLevels /></AdminLayout>
+              </PrivateRoute>
+            }/>
+            <Route path="/admin/job-functions" element={
+              <PrivateRoute adminOnly>
+                <AdminLayout><AdminJobFunctions /></AdminLayout>
+              </PrivateRoute>
+            }/>
+            <Route path="/admin/analytics" element={
+              <PrivateRoute adminOnly>
+                <AdminLayout><AdminAnalytics /></AdminLayout>
+              </PrivateRoute>
+            }/>
+
+            {/* Static pages */}
             <Route path="/about"       element={<AboutPage />} />
             <Route path="/faq"         element={<FAQPage />} />
             <Route path="/contact"     element={<ContactPage />} />
             <Route path="/privacy"     element={<PrivacyPage />} />
             <Route path="/terms"       element={<TermsPage />} />
             <Route path="/level-guide" element={<LevelGuideView />} />
+
+            {/* 404 — must be last */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         <PublicFooter />
         </div>
