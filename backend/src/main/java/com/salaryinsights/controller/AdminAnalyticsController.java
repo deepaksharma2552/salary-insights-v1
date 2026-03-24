@@ -47,4 +47,16 @@ public class AdminAnalyticsController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(pageViewService.getDailyTotals(from, to)));
     }
+
+    /**
+     * POST /admin/analytics/aggregate
+     * Manually triggers the hourly aggregation job — useful immediately after
+     * deploy or when verifying tracking is working without waiting up to 1 hour.
+     * Idempotent: safe to call multiple times.
+     */
+    @PostMapping("/aggregate")
+    public ResponseEntity<ApiResponse<String>> triggerAggregation() {
+        pageViewService.aggregateHourly();
+        return ResponseEntity.ok(ApiResponse.success("Aggregation complete"));
+    }
 }
