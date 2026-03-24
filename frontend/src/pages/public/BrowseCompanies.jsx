@@ -1,39 +1,25 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from 'react';
+import api from '../../services/api';
+import CompanyLogo from '../../components/shared/CompanyLogo';
 
-// ── DATA (from salaryData.js) ──────────────────────────────────────────────
-const ALL_COMPANIES = [
-  { name: 'Zepto',        industry: 'Quick Commerce', abbr: 'Z',  color: '#3ecfb0', colorBg: 'rgba(62,207,176,0.15)',   entries: 128, tcRange: '₹42L – ₹90L',  updatedLabel: '2h ago',  benefits: ['ESOP', 'Health insurance', 'Remote'] },
-  { name: 'Google',       industry: 'Big Tech',       abbr: 'G',  color: '#3ecfb0', colorBg: 'rgba(62,207,176,0.15)',   entries: 842, tcRange: '₹38L – ₹1.9Cr',updatedLabel: '5h ago',  benefits: ['ESOP', 'Health insurance', 'Dental & vision', '401k', 'Remote', 'Gym'] },
-  { name: 'Amazon',       industry: 'E-Commerce',     abbr: 'A',  color: '#e05c7a', colorBg: 'rgba(224,92,122,0.15)',   entries: 785, tcRange: '₹5.6L – ₹1.9Cr',updatedLabel: '12h ago', benefits: ['ESOP', 'Health insurance', 'Dental & vision', 'Relocation', 'Gym'] },
-  { name: 'Razorpay',     industry: 'Fintech',        abbr: 'R',  color: '#e89050', colorBg: 'rgba(232,144,80,0.15)',   entries: 302, tcRange: '₹28L – ₹80L',  updatedLabel: '8h ago',  benefits: ['ESOP', 'Health insurance', 'Remote'] },
-  { name: 'Microsoft',    industry: 'Big Tech',       abbr: 'M',  color: '#d4a853', colorBg: 'rgba(212,168,83,0.15)',   entries: 612, tcRange: '₹30L – ₹1.4Cr',updatedLabel: '1d ago',  benefits: ['ESOP', 'Health insurance', 'Dental & vision', 'Remote'] },
-  { name: 'Flipkart',     industry: 'E-Commerce',     abbr: 'F',  color: '#a08ff0', colorBg: 'rgba(160,144,240,0.15)',  entries: 534, tcRange: '₹24L – ₹1.1Cr',updatedLabel: '3d ago',  benefits: ['ESOP', 'Health insurance'] },
-  { name: 'PhonePe',      industry: 'Fintech',        abbr: 'P',  color: '#c07df0', colorBg: 'rgba(192,125,240,0.15)',  entries: 218, tcRange: '₹18L – ₹65L',  updatedLabel: '1d ago',  benefits: ['ESOP', 'Health insurance', 'Dental & vision'] },
-  { name: 'Swiggy',       industry: 'Food Tech',      abbr: 'Sw', color: '#d4a853', colorBg: 'rgba(212,168,83,0.15)',   entries: 248, tcRange: '₹20L – ₹80L',  updatedLabel: '2d ago',  benefits: ['ESOP', 'Health insurance'] },
-  { name: 'Meesho',       industry: 'E-Commerce',     abbr: 'Me', color: '#3ecfb0', colorBg: 'rgba(62,207,176,0.15)',   entries: 184, tcRange: '₹18L – ₹72L',  updatedLabel: '2d ago',  benefits: ['ESOP', 'Health insurance'] },
-  { name: 'CRED',         industry: 'Fintech',        abbr: 'CR', color: '#e05c7a', colorBg: 'rgba(224,92,122,0.15)',   entries: 96,  tcRange: '₹30L – ₹1.1Cr',updatedLabel: '3d ago',  benefits: ['ESOP', 'Remote', 'Gym'] },
-  { name: 'Groww',        industry: 'Fintech',        abbr: 'Gr', color: '#a08ff0', colorBg: 'rgba(160,144,240,0.15)',  entries: 168, tcRange: '₹22L – ₹75L',  updatedLabel: '1w ago',  benefits: ['ESOP', 'Health insurance'] },
-  { name: 'Zomato',       industry: 'Food Tech',      abbr: 'Zo', color: '#e89050', colorBg: 'rgba(232,144,80,0.15)',   entries: 294, tcRange: '₹18L – ₹70L',  updatedLabel: '1w ago',  benefits: ['ESOP', 'Health insurance'] },
-  { name: 'Freshworks',   industry: 'SaaS',           abbr: 'Fr', color: '#3ecfb0', colorBg: 'rgba(62,207,176,0.15)',   entries: 382, tcRange: '₹20L – ₹85L',  updatedLabel: '2w ago',  benefits: ['ESOP', 'Health insurance', 'Remote'] },
-  { name: 'Dream11',      industry: 'Gaming',         abbr: 'Dr', color: '#a08ff0', colorBg: 'rgba(160,144,240,0.15)',  entries: 66,  tcRange: '₹28L – ₹90L',  updatedLabel: '1mo ago', benefits: ['ESOP', 'Health insurance', 'Gym'] },
-  { name: 'Paytm',        industry: 'Fintech',        abbr: 'Pa', color: '#e89050', colorBg: 'rgba(232,144,80,0.15)',   entries: 316, tcRange: '₹14L – ₹55L',  updatedLabel: '4d ago',  benefits: ['ESOP', 'Health insurance'] },
-  { name: 'Zoho',         industry: 'SaaS',           abbr: 'Zh', color: '#c07df0', colorBg: 'rgba(192,125,240,0.15)',  entries: 446, tcRange: '₹12L – ₹42L',  updatedLabel: '2w ago',  benefits: ['Health insurance'] },
-  { name: "Byju's",       industry: 'EdTech',         abbr: 'By', color: '#d4a853', colorBg: 'rgba(212,168,83,0.15)',   entries: 228, tcRange: '₹14L – ₹40L',  updatedLabel: '2w ago',  benefits: ['Health insurance'] },
-  { name: 'Ola',          industry: 'Mobility',       abbr: 'Ol', color: '#c07df0', colorBg: 'rgba(192,125,240,0.15)',  entries: 142, tcRange: '₹16L – ₹52L',  updatedLabel: '5d ago',  benefits: ['ESOP', 'Health insurance'] },
-];
-
-const INDUSTRIES = ['All Industries', ...Array.from(new Set(ALL_COMPANIES.map(c => c.industry))).sort()];
+const PAGE_SIZE = 20;
 
 const INDUSTRY_COLORS = {
-  'Big Tech': '#3b82f6',
-  'E-Commerce': '#e05c7a',
-  'Fintech': '#a08ff0',
-  'Food Tech': '#f59e0b',
+  'Big Tech':       '#3b82f6',
+  'E-Commerce':     '#e05c7a',
+  'Fintech':        '#a08ff0',
+  'Food Tech':      '#f59e0b',
   'Quick Commerce': '#3ecfb0',
-  'SaaS': '#06b6d4',
-  'EdTech': '#d4a853',
-  'Gaming': '#8b5cf6',
-  'Mobility': '#e89050',
+  'SaaS':           '#06b6d4',
+  'EdTech':         '#d4a853',
+  'Gaming':         '#8b5cf6',
+  'Mobility':       '#e89050',
+};
+
+const fmt = (val) => {
+  if (!val && val !== 0) return null;
+  const l = val / 100000;
+  return l >= 100 ? `₹${(l / 100).toFixed(1)}Cr` : `₹${l.toFixed(1)}L`;
 };
 
 // ── ICONS ─────────────────────────────────────────────────────────────────
@@ -61,33 +47,48 @@ const CheckIcon = () => (
 
 // ── COMPANY CARD ──────────────────────────────────────────────────────────
 function CompanyCard({ company }) {
-  const [expanded, setExpanded] = useState(false);
-  const visibleBenefits = company.benefits.slice(0, 2);
-  const hiddenCount = company.benefits.length - 2;
+  const [expanded,    setExpanded]    = useState(false);
+  const [summary,     setSummary]     = useState(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+
+  const tcMin = fmt(company.tcMin);
+  const tcMax = fmt(company.tcMax);
+  const tcRange = tcMin && tcMax ? `${tcMin} – ${tcMax}` : tcMin || tcMax || '—';
+
+  const benefits = company.benefits ?? [];
+  const visibleBenefits = benefits.slice(0, 2);
+  const hiddenCount = benefits.length - 2;
+
+  function toggleExpand() {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && !summary && !loadingSummary) {
+      setLoadingSummary(true);
+      api.get(`/public/companies/${company.id}/salary-summary`)
+        .then(r => setSummary(r.data?.data ?? null))
+        .catch(() => setSummary(null))
+        .finally(() => setLoadingSummary(false));
+    }
+  }
 
   return (
     <div style={{
-      background: '#ffffff',
-      borderRadius: '16px',
-      border: '1px solid #e8ecf0',
-      overflow: 'hidden',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-      transition: 'box-shadow 0.2s',
+      background: '#ffffff', borderRadius: '16px',
+      border: '1px solid #e8ecf0', overflow: 'hidden',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.06)', transition: 'box-shadow 0.2s',
     }}>
       {/* Card Header */}
       <div style={{ padding: '16px 16px 12px' }}>
-        {/* Top row: logo + info + entry count */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
           {/* Logo */}
-          <div style={{
-            width: '44px', height: '44px', borderRadius: '12px',
-            background: company.colorBg,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: '700', fontSize: '14px', color: company.color,
-            flexShrink: 0, letterSpacing: '0.02em',
-          }}>
-            {company.abbr}
-          </div>
+          <CompanyLogo
+            companyId={company.id}
+            companyName={company.name}
+            logoUrl={company.logoUrl}
+            website={company.website}
+            size={44}
+            radius={12}
+          />
 
           {/* Name + industry */}
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -95,22 +96,23 @@ function CompanyCard({ company }) {
               <span style={{ fontWeight: '700', fontSize: '15px', color: '#0f172a', lineHeight: 1.3 }}>
                 {company.name}
               </span>
-              <span style={{
-                fontSize: '11px', fontWeight: '600', color: '#64748b',
-                background: '#f1f5f9', borderRadius: '20px', padding: '3px 8px',
-                whiteSpace: 'nowrap', flexShrink: 0,
-              }}>
-                {company.entries} entries
-              </span>
+              {company.entryCount > 0 && (
+                <span style={{
+                  fontSize: '11px', fontWeight: '600', color: '#64748b',
+                  background: '#f1f5f9', borderRadius: '20px', padding: '3px 8px',
+                  whiteSpace: 'nowrap', flexShrink: 0,
+                }}>
+                  {company.entryCount} {company.entryCount === 1 ? 'entry' : 'entries'}
+                </span>
+              )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
               <span style={{
                 display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%',
-                background: INDUSTRY_COLORS[company.industry] || '#94a3b8',
-                flexShrink: 0,
+                background: INDUSTRY_COLORS[company.industry] || '#94a3b8', flexShrink: 0,
               }}/>
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>
-                {company.industry}
+                {company.industry || 'Other'}
               </span>
             </div>
           </div>
@@ -120,26 +122,26 @@ function CompanyCard({ company }) {
         <div style={{
           marginTop: '12px',
           background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-          border: '1px solid #e2e8f0',
-          borderRadius: '10px',
-          padding: '10px 12px',
+          border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px 12px',
         }}>
           <div style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>
             TC Range
           </div>
           <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a', letterSpacing: '-0.02em' }}>
-            {company.tcRange}
+            {tcRange}
           </div>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            style={{
-              marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px',
-              color: '#3b82f6', fontSize: '12px', fontWeight: '600', background: 'none',
-              border: 'none', padding: 0, cursor: 'pointer',
-            }}
-          >
-            View breakdown <ChevronIcon open={expanded} />
-          </button>
+          {(company.entryCount > 0) && (
+            <button
+              onClick={toggleExpand}
+              style={{
+                marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px',
+                color: '#3b82f6', fontSize: '12px', fontWeight: '600', background: 'none',
+                border: 'none', padding: 0, cursor: 'pointer',
+              }}
+            >
+              View breakdown <ChevronIcon open={expanded} />
+            </button>
+          )}
         </div>
 
         {/* Breakdown (expanded) */}
@@ -148,19 +150,22 @@ function CompanyCard({ company }) {
             marginTop: '8px', padding: '10px 12px',
             background: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe',
           }}>
-            {[
-              { label: 'Base', val: '₹28L – ₹80L', color: '#3b82f6' },
-              { label: 'Bonus', val: '₹4L – ₹18L', color: '#8b5cf6' },
-              { label: 'Equity', val: '₹10L – ₹92L', color: '#06b6d4' },
-            ].map(({ label, val, color }) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: color, display: 'inline-block' }}/>
-                  <span style={{ fontSize: '12px', color: '#475569', fontWeight: '500' }}>{label}</span>
+            {loadingSummary ? (
+              <div style={{ fontSize: 12, color: '#64748b', textAlign: 'center', padding: '8px 0' }}>Loading…</div>
+            ) : summary?.levels?.length > 0 ? (
+              summary.levels.map(row => (
+                <div key={row.internalLevel} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '12px', color: '#475569', fontWeight: '600' }}>{row.internalLevel}</span>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    {row.avgBase   && <span style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600' }}>B {fmt(row.avgBase)}</span>}
+                    {row.avgBonus  && <span style={{ fontSize: '11px', color: '#8b5cf6', fontWeight: '600' }}>Bon {fmt(row.avgBonus)}</span>}
+                    {row.avgTC     && <span style={{ fontSize: '11px', color: '#0f172a', fontWeight: '700' }}>{fmt(row.avgTC)} TC</span>}
+                  </div>
                 </div>
-                <span style={{ fontSize: '12px', fontWeight: '700', color: '#0f172a' }}>{val}</span>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div style={{ fontSize: 12, color: '#64748b', textAlign: 'center', padding: '8px 0' }}>No breakdown available</div>
+            )}
           </div>
         )}
       </div>
@@ -170,39 +175,39 @@ function CompanyCard({ company }) {
 
       {/* Benefits + Footer */}
       <div style={{ padding: '10px 16px 14px' }}>
-        <div style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
-          Benefits
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-          {visibleBenefits.map(b => (
-            <span key={b} style={{
-              display: 'inline-flex', alignItems: 'center', gap: '4px',
-              background: '#f8fafc', border: '1px solid #e2e8f0',
-              borderRadius: '20px', padding: '4px 9px',
-              fontSize: '11px', fontWeight: '600', color: '#475569',
-            }}>
-              <span style={{ color: '#22c55e' }}><CheckIcon /></span>
-              {b}
-            </span>
-          ))}
-          {hiddenCount > 0 && (
-            <span style={{
-              fontSize: '11px', fontWeight: '700', color: '#3b82f6', cursor: 'pointer',
-            }}>+{hiddenCount} more</span>
-          )}
-        </div>
+        {benefits.length > 0 && (
+          <>
+            <div style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
+              Benefits
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+              {visibleBenefits.map(b => (
+                <span key={b.name ?? b} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                  background: '#f8fafc', border: '1px solid #e2e8f0',
+                  borderRadius: '20px', padding: '4px 9px',
+                  fontSize: '11px', fontWeight: '600', color: '#475569',
+                }}>
+                  <span style={{ color: '#22c55e' }}><CheckIcon /></span>
+                  {b.name ?? b}
+                </span>
+              ))}
+              {hiddenCount > 0 && (
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#3b82f6' }}>+{hiddenCount} more</span>
+              )}
+            </div>
+          </>
+        )}
 
-        {/* Footer row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px' }}>
           <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>
-            Updated {company.updatedLabel}
+            {company.entryCount > 0 ? `${company.entryCount} salary ${company.entryCount === 1 ? 'entry' : 'entries'}` : 'No entries yet'}
           </span>
           <button style={{
             display: 'inline-flex', alignItems: 'center', gap: '5px',
             background: '#eff6ff', color: '#3b82f6',
             border: '1px solid #bfdbfe', borderRadius: '8px',
-            padding: '7px 12px', fontSize: '12px', fontWeight: '700',
-            cursor: 'pointer',
+            padding: '7px 12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
           }}>
             View details <ArrowIcon />
           </button>
@@ -212,24 +217,20 @@ function CompanyCard({ company }) {
   );
 }
 
-// ── INDUSTRY FILTER PILL ──────────────────────────────────────────────────
+// ── FILTER PILL ────────────────────────────────────────────────────────────
 function FilterPill({ label, active, onClick }) {
   const color = INDUSTRY_COLORS[label];
   return (
-    <button
-      onClick={onClick}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: '5px',
-        padding: '7px 13px', borderRadius: '20px', border: 'none',
-        background: active ? '#0f172a' : '#ffffff',
-        color: active ? '#ffffff' : '#475569',
-        fontSize: '12px', fontWeight: '600',
-        boxShadow: active ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
-        border: active ? 'none' : '1px solid #e2e8f0',
-        cursor: 'pointer', whiteSpace: 'nowrap',
-        transition: 'all 0.15s',
-      }}
-    >
+    <button onClick={onClick} style={{
+      display: 'inline-flex', alignItems: 'center', gap: '5px',
+      padding: '7px 13px', borderRadius: '20px',
+      background: active ? '#0f172a' : '#ffffff',
+      color: active ? '#ffffff' : '#475569',
+      fontSize: '12px', fontWeight: '600',
+      boxShadow: active ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
+      border: active ? 'none' : '1px solid #e2e8f0',
+      cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s',
+    }}>
       {color && (
         <span style={{
           width: '6px', height: '6px', borderRadius: '50%',
@@ -242,19 +243,90 @@ function FilterPill({ label, active, onClick }) {
   );
 }
 
-// ── MAIN PAGE ─────────────────────────────────────────────────────────────
-export default function BrowseCompanies() {
-  const [search, setSearch] = useState('');
-  const [industry, setIndustry] = useState('All Industries');
+// ── SKELETON CARD ──────────────────────────────────────────────────────────
+function SkeletonCard() {
+  return (
+    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e8ecf0', padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: '#f1f5f9' }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ height: 14, width: '55%', background: '#f1f5f9', borderRadius: 6, marginBottom: 8 }} />
+          <div style={{ height: 11, width: '35%', background: '#f1f5f9', borderRadius: 6 }} />
+        </div>
+      </div>
+      <div style={{ marginTop: 12, height: 60, background: '#f8fafc', borderRadius: 10 }} />
+      <div style={{ marginTop: 12, height: 1, background: '#f1f5f9' }} />
+      <div style={{ marginTop: 10, display: 'flex', gap: 6 }}>
+        <div style={{ height: 24, width: 70, background: '#f1f5f9', borderRadius: 20 }} />
+        <div style={{ height: 24, width: 90, background: '#f1f5f9', borderRadius: 20 }} />
+      </div>
+    </div>
+  );
+}
 
-  const filtered = useMemo(() => {
-    return ALL_COMPANIES.filter(c => {
-      const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-                         c.industry.toLowerCase().includes(search.toLowerCase());
-      const matchInd = industry === 'All Industries' || c.industry === industry;
-      return matchSearch && matchInd;
-    });
-  }, [search, industry]);
+// ── MAIN PAGE ──────────────────────────────────────────────────────────────
+export default function BrowseCompanies() {
+  const [companies,  setCompanies]  = useState([]);
+  const [industries, setIndustries] = useState([]);
+  const [search,     setSearch]     = useState('');
+  const [industry,   setIndustry]   = useState('');
+  const [page,       setPage]       = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [total,      setTotal]      = useState(0);
+  const [loading,    setLoading]    = useState(true);
+  const [loadingMore,setLoadingMore]= useState(false);
+  const [error,      setError]      = useState(null);
+  const debounceRef = useRef(null);
+
+  // Fetch industry list once
+  useEffect(() => {
+    api.get('/public/companies/industries')
+      .then(r => setIndustries(r.data?.data ?? []))
+      .catch(() => {});
+  }, []);
+
+  const fetchCompanies = useCallback((pg, searchVal, industryVal, append = false) => {
+    if (pg === 0) setLoading(true); else setLoadingMore(true);
+    setError(null);
+    const params = { page: pg, size: PAGE_SIZE };
+    if (searchVal)  params.name     = searchVal;
+    if (industryVal) params.industry = industryVal;
+    api.get('/public/companies', { params })
+      .then(r => {
+        const paged = r.data?.data;
+        const content = paged?.content ?? [];
+        setCompanies(prev => append ? [...prev, ...content] : content);
+        setTotalPages(paged?.totalPages ?? 0);
+        setTotal(paged?.totalElements ?? 0);
+        setPage(pg);
+      })
+      .catch(() => setError('Failed to load companies. Please try again.'))
+      .finally(() => { setLoading(false); setLoadingMore(false); });
+  }, []);
+
+  // Initial load + whenever industry changes
+  useEffect(() => {
+    setPage(0);
+    fetchCompanies(0, search, industry, false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [industry]);
+
+  // Debounced search
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setPage(0);
+      fetchCompanies(0, search, industry, false);
+    }, 350);
+    return () => clearTimeout(debounceRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  function loadMore() {
+    fetchCompanies(page + 1, search, industry, true);
+  }
+
+  const allIndustries = ['All Industries', ...industries];
 
   return (
     <div style={{
@@ -263,22 +335,23 @@ export default function BrowseCompanies() {
       fontFamily: "'Inter', -apple-system, sans-serif",
       WebkitFontSmoothing: 'antialiased',
     }}>
-      {/* ── STATUS BAR spacer ── */}
       <div style={{ height: '44px', background: '#f5f7fa' }} />
 
-      {/* ── HEADER ── */}
+      {/* Header */}
       <div style={{ padding: '4px 20px 20px', background: '#f5f7fa' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.2 }}>
             Browse <span style={{ color: '#3b82f6' }}>Companies</span>
           </h1>
-          <span style={{
-            background: '#0f172a', color: '#ffffff',
-            fontSize: '12px', fontWeight: '700', borderRadius: '20px',
-            padding: '5px 11px', letterSpacing: '0.01em',
-          }}>
-            {filtered.length} companies
-          </span>
+          {!loading && (
+            <span style={{
+              background: '#0f172a', color: '#ffffff',
+              fontSize: '12px', fontWeight: '700', borderRadius: '20px',
+              padding: '5px 11px', letterSpacing: '0.01em',
+            }}>
+              {total} {total === 1 ? 'company' : 'companies'}
+            </span>
+          )}
         </div>
 
         {/* Search */}
@@ -306,33 +379,65 @@ export default function BrowseCompanies() {
           )}
         </div>
 
-        {/* Filter pills */}
+        {/* Industry filter pills */}
         <div style={{
           marginTop: '12px', display: 'flex', gap: '8px',
           overflowX: 'auto', paddingBottom: '4px',
           scrollbarWidth: 'none', msOverflowStyle: 'none',
         }}>
-          {INDUSTRIES.map(ind => (
+          {allIndustries.map(ind => (
             <FilterPill
               key={ind}
               label={ind}
-              active={industry === ind}
-              onClick={() => setIndustry(ind)}
+              active={ind === 'All Industries' ? !industry : industry === ind}
+              onClick={() => setIndustry(ind === 'All Industries' ? '' : ind)}
             />
           ))}
         </div>
       </div>
 
-      {/* ── CARD GRID ── */}
+      {/* Card list */}
       <div style={{ padding: '0 16px 100px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {filtered.length === 0 ? (
+        {loading ? (
+          Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+            <div style={{ fontSize: '36px', marginBottom: '12px' }}>⚠️</div>
+            <div style={{ fontWeight: '600', fontSize: '14px', color: '#0f172a' }}>{error}</div>
+            <button
+              onClick={() => fetchCompanies(0, search, industry, false)}
+              style={{ marginTop: 16, padding: '8px 20px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}
+            >
+              Retry
+            </button>
+          </div>
+        ) : companies.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
             <div style={{ fontSize: '36px', marginBottom: '12px' }}>🔍</div>
             <div style={{ fontWeight: '600', fontSize: '14px' }}>No companies found</div>
             <div style={{ fontSize: '13px', marginTop: '4px' }}>Try a different search or filter</div>
           </div>
         ) : (
-          filtered.map(company => <CompanyCard key={company.name} company={company} />)
+          <>
+            {companies.map(company => <CompanyCard key={company.id} company={company} />)}
+
+            {/* Load more */}
+            {page + 1 < totalPages && (
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                style={{
+                  marginTop: 4, padding: '12px', borderRadius: 12,
+                  border: '1px solid #e2e8f0', background: '#fff',
+                  fontSize: 13, fontWeight: 600, color: '#3b82f6',
+                  cursor: loadingMore ? 'not-allowed' : 'pointer',
+                  opacity: loadingMore ? 0.6 : 1,
+                }}
+              >
+                {loadingMore ? 'Loading…' : `Load more (${total - companies.length} remaining)`}
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>

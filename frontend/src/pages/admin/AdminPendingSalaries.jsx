@@ -78,12 +78,28 @@ export default function AdminPendingSalaries() {
           100% { width: 90%; }
         }
       `}</style>
-      <div style={{ marginBottom: 32 }}>
+      <div style={{ marginBottom: 24 }}>
         <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin</span>
         <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, color: 'var(--text-1)', marginTop: 8, letterSpacing: '-0.02em' }}>
           Pending Salaries <span style={{ fontSize: 18, color: 'var(--text-3)' }}>({total})</span>
         </h2>
       </div>
+
+      {/* Notice: approvals drive all public data */}
+      {total > 0 && (
+        <div style={{
+          marginBottom: 28, padding: '12px 18px', borderRadius: 10, fontSize: 13,
+          background: 'rgba(245,158,11,0.07)', border: '0.5px solid rgba(245,158,11,0.35)',
+          color: 'var(--text-2)', display: 'flex', alignItems: 'flex-start', gap: 10,
+        }}>
+          <span style={{ fontSize: 16, lineHeight: 1.4 }}>⚠️</span>
+          <span>
+            <strong style={{ color: 'var(--text-1)' }}>Dashboard, Companies, and Salaries pages show no data until entries are approved.</strong>
+            {' '}All public salary charts and company stats are built exclusively from approved entries.
+            Approve entries below to make them visible.
+          </span>
+        </div>
+      )}
 
       {loading ? (
         <div style={{ color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>Loading…</div>
