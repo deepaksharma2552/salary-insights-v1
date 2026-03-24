@@ -212,7 +212,7 @@ export default function SalariesPage() {
       </div>
 
       {/* ── View toggle ── */}
-      <div className="salaries-view-toggle" style={{ display: 'flex', gap: 0, marginBottom: 28, background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
+      <div style={{ display: 'flex', gap: 0, marginBottom: 28, background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
         {[
           { id: 'salaries', label: '📄 Salary Database' },
           { id: 'levels',   label: '🗂 Level Guide' },
@@ -353,10 +353,12 @@ export default function SalariesPage() {
 
       {!loading && !error && rows.length > 0 && (
         <>
-          <SalaryTable rows={rows} />
+          <div className="table-scroll-wrap">
+            <SalaryTable rows={rows} />
+          </div>
 
           {/* ── PAGINATION ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginTop: 24 }}>
+          <div className="pagination" style={{ marginTop: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <span style={{ fontSize: 13, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
                 {totalElements === 0 ? 'No entries' : `Showing ${from}–${to} of ${totalElements} entries`}

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import React from 'react';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    DESIGN TOKENS
@@ -505,6 +506,7 @@ const EmptyState = () => (
    MAIN PAGE
 ═══════════════════════════════════════════════════════════════════════════ */
 export default function DashboardPage() {
+  const isMobile = useIsMobile();
   const [byLocationLevel, setByLocationLevel] = useState([]);
   const [byCompanyLevel,  setByCompanyLevel]  = useState([]);
   const [initialLoading,  setInitialLoading]  = useState(true);  // first paint only
@@ -639,7 +641,7 @@ export default function DashboardPage() {
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(360px, 1fr))',
           gap: 12,
         }}>
 

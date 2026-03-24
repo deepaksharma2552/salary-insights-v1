@@ -54,9 +54,9 @@ function PublicFooter() {
 
 function AdminLayout({ children }) {
   return (
-    <div className="admin-layout-root">
+    <div style={{ display: 'flex' }}>
       <AdminSidebar />
-      <div className="admin-main-offset">
+      <div className="admin-content-wrap" style={{ flex: 1, marginLeft: 220, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <div style={{ flex: 1 }}>{children}</div>
         <Footer />
       </div>

@@ -1,5 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
-@import './mobile.css';
 
 /* ── DESIGN TOKENS ── */
 :root {
@@ -414,6 +413,8 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .salary-table {
   width: 100%;
@@ -801,305 +802,202 @@ body {
 /* ── SALARIES SECTION ── */
 .salaries-section { background: var(--bg-2); }
 
-/* ── DESKTOP DEFAULTS for mobile-responsive classes ──
-   These ensure mobile-only elements are invisible on desktop
-   and desktop-only elements are always visible above 768px. ── */
-.nav-hamburger       { display: none; }        /* hidden on desktop */
-.nav-cta-desktop     { display: inline-flex; } /* shown on desktop, hidden on mobile */
-.nav-user-dropdown   { display: block; }       /* shown on desktop, hidden on mobile */
-.admin-mobile-topbar { display: none; }        /* hidden on desktop, shown on mobile */
-
-/* ── ADMIN LAYOUT ── */
-.admin-layout-root {
-  display: flex;
+/* ── HAMBURGER / MOBILE NAV ── */
+.nav-hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px; height: 36px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
 }
-.admin-main-offset {
-  flex: 1;
-  margin-left: 220px;
+.nav-hamburger:hover { background: var(--bg-3); color: var(--text-1); }
+
+.mobile-nav-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.5);
+  backdrop-filter: blur(4px);
+  z-index: 150;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.mobile-nav-overlay.open { opacity: 1; pointer-events: all; }
+
+.mobile-nav-drawer {
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: 280px;
+  max-width: 85vw;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  z-index: 151;
+  transform: translateX(-100%);
+  transition: transform 0.25s cubic-bezier(0.16,1,0.3,1);
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  padding: 0 0 24px;
+}
+.mobile-nav-drawer.open { transform: translateX(0); }
+
+.mobile-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.mobile-nav-close {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.15s;
+}
+.mobile-nav-close:hover { background: var(--bg-3); color: var(--text-1); }
+
+.mobile-nav-links {
+  list-style: none;
+  padding: 12px 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mobile-nav-links a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-2);
+  text-decoration: none;
+  border-radius: var(--radius);
+  transition: all 0.15s;
+}
+.mobile-nav-links a:hover { background: var(--bg-3); color: var(--text-1); }
+.mobile-nav-links a.active { background: #f0f9ff; color: #3b82f6; }
+
+.mobile-nav-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 12px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+}
+
+/* Admin mobile toggle */
+.admin-mobile-toggle {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: white;
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  z-index: 95;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+/* Table scroll wrapper */
+.table-scroll-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── RESPONSIVE ── */
-
-/* ─── Tablet (≤ 1024px) ─── */
-@media (max-width: 1024px) {
-  .admin-sidebar     { width: 180px; }
-  .admin-main-offset { margin-left: 180px; }
-}
-
-/* ─── Mobile (≤ 768px) ─── */
 @media (max-width: 768px) {
-
-  /* ── Navbar ── */
-  .navbar { padding: 0 16px; height: 56px; }
+  /* Navbar */
+  .navbar { padding: 0 16px; }
   .nav-links { display: none; }
-  /* Hide desktop-only nav elements on mobile */
-  .nav-cta-desktop   { display: none !important; }
-  .nav-user-dropdown { display: none !important; }
+  .nav-hamburger { display: flex; }
+  .mobile-nav-overlay { display: block; }
+  /* Hide desktop CTAs in navbar on mobile (they're in the drawer) */
+  .nav-cta-desktop { display: none !important; }
 
-  /* Show hamburger on mobile */
-  .nav-hamburger {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px; height: 36px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: transparent;
-    color: var(--text-2);
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background 0.15s;
-  }
-  .nav-hamburger:hover { background: var(--bg-3); }
+  /* Layout */
+  .section { padding: 64px 16px 40px; }
+  .hero { padding: 64px 16px 36px; }
 
-  /* Mobile drawer overlay */
-  .mobile-nav-overlay {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.35);
-    z-index: 149;
-    animation: overlayIn 0.2s ease;
-  }
-  @keyframes overlayIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
-
-  /* Mobile drawer panel */
-  .mobile-nav-drawer {
-    position: fixed;
-    top: 0; right: 0; bottom: 0;
-    width: min(80vw, 300px);
-    background: var(--panel);
-    border-left: 1px solid var(--border);
-    z-index: 150;
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    box-shadow: -8px 0 32px rgba(0,0,0,0.15);
-    animation: drawerSlideIn 0.25s cubic-bezier(0.32,0.72,0,1);
-    overflow-y: auto;
-  }
-  @keyframes drawerSlideIn {
-    from { transform: translateX(100%); }
-    to   { transform: translateX(0); }
-  }
-
-  .mobile-nav-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .mobile-nav-close {
-    width: 32px; height: 32px;
-    display: flex; align-items: center; justify-content: center;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: transparent;
-    cursor: pointer;
-    color: var(--text-2);
-  }
-
-  .mobile-nav-links {
-    list-style: none;
-    margin: 0; padding: 12px 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    flex: 1;
-  }
-  .mobile-nav-links li a {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 11px 14px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-2);
-    text-decoration: none;
-    border-radius: var(--radius);
-    transition: background 0.12s, color 0.12s;
-  }
-  .mobile-nav-links li a:hover,
-  .mobile-nav-links li a.active {
-    background: var(--bg-3);
-    color: var(--text-1);
-  }
-  .mobile-nav-links li a.active { color: #3b82f6; background: #f0f9ff; }
-
-  .mobile-nav-divider {
-    height: 1px;
-    background: var(--border);
-    margin: 8px 8px;
-  }
-
-  .mobile-nav-footer {
-    padding: 12px 8px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    border-top: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .mobile-nav-footer a,
-  .mobile-nav-footer button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 10px 16px;
-    border-radius: var(--radius);
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-    transition: background 0.15s;
-    width: 100%;
-  }
-  .mobile-nav-footer .mob-btn-green {
-    border: 2px solid #10b981;
-    color: #065f46;
-    background: #ecfdf5;
-  }
-  .mobile-nav-footer .mob-btn-blue {
-    border: none;
-    color: #fff;
-    background: #1e40af;
-  }
-  .mobile-nav-footer .mob-btn-ghost {
-    border: 1px solid var(--border);
-    color: var(--text-2);
-    background: transparent;
-  }
-  .mobile-nav-footer .mob-btn-danger {
-    border: 1px solid var(--rose);
-    color: var(--rose);
-    background: var(--rose-dim);
-  }
-
-  /* Theme toggle stays visible on mobile */
-  .theme-toggle { display: flex; }
-
-  /* ── Layout & Sections ── */
-  .section { padding: 20px 14px 40px; }
-  .hero     { padding: 32px 16px 40px; }
-
-  /* ── Forms ── */
+  /* Forms */
   .form-grid { grid-template-columns: 1fr; }
 
-  /* ── Filter bar: stack vertically ── */
-  .filter-bar {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .filter-bar .search-box,
-  .filter-bar .select-field,
-  .filter-bar .input-field {
-    width: 100% !important;
-    min-width: unset !important;
-  }
+  /* Charts */
+  .charts-row { grid-template-columns: 1fr; }
 
-  /* ── Charts & grids ── */
-  .charts-row        { grid-template-columns: 1fr; }
-  .detail-grid       { grid-template-columns: 1fr; }
-  .comp-breakdown    { grid-template-columns: 1fr; }
+  /* Detail panels */
+  .detail-grid { grid-template-columns: 1fr; }
+  .comp-breakdown { grid-template-columns: 1fr; }
   .comp-item.highlight { grid-column: span 1; }
 
-  /* ── Salary table: horizontal scroll ── */
-  .salary-table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border);
+  /* Drawer */
+  .drawer { width: 100vw; }
+
+  /* Filter bar — stack vertically on mobile */
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
   }
-  .salary-table { min-width: 700px; }
+  .filter-bar .search-box { min-width: unset; }
+  .filter-bar .select-field { width: 100%; }
 
-  /* ── Drawer full-width ── */
-  .drawer { width: 100vw; right: 0; }
+  /* Hero stats */
+  .hero-stats-float {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat-card-float { min-width: unset; }
 
-  /* ── Pagination: compact ── */
-  .page-btns { gap: 4px; flex-wrap: wrap; justify-content: center; }
-  .page-btn  { min-width: 32px; height: 32px; font-size: 12px; padding: 0 8px; }
+  /* Company cards — smaller min so 2 fit side by side */
+  .companies-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
 
-  /* ── Admin sidebar: hide fixed sidebar, use top bar instead ── */
-  .admin-sidebar { display: none; }
+  /* Dashboard KPI grid — 2 col */
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
-  /* Show mobile admin top nav bar */
-  .admin-mobile-topbar {
-    display: flex;
+  /* Pagination — center & stack */
+  .pagination {
+    flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    background: var(--panel);
-    border-bottom: 1px solid var(--border);
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    position: sticky;
-    top: 56px;
-    z-index: 80;
-    flex-shrink: 0;
-  }
-  .admin-mobile-topbar::-webkit-scrollbar { display: none; }
-  .admin-mobile-topbar a {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-2);
-    text-decoration: none;
-    border-radius: 99px;
-    border: 1px solid var(--border);
-    white-space: nowrap;
-    flex-shrink: 0;
-    transition: all 0.15s;
-    background: var(--bg-2);
-  }
-  .admin-mobile-topbar a.active {
-    background: #f0f9ff;
-    color: #3b82f6;
-    border-color: #bfdbfe;
+    text-align: center;
   }
 
-  /* ── Admin layout: stack vertically on mobile, no left margin ── */
-  .admin-layout-root  { display: block; }
-  .admin-main-offset  { margin-left: 0; min-height: unset; }
-
-  /* Admin tables: horizontal scroll */
-  .admin-table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  /* Admin sidebar hidden by default on mobile, toggle shows it */
+  .admin-sidebar {
+    display: none;
+    transform: translateX(-100%);
+    z-index: 90;
   }
-  .admin-table-wrap table { min-width: 600px; }
+  .admin-mobile-toggle { display: flex; }
 
-  /* ── Company cards: 1 col ── */
-  .company-cards-grid {
-    grid-template-columns: 1fr !important;
-  }
+  /* Admin layout — remove sidebar offset */
+  .admin-content-wrap { margin-left: 0 !important; }
 
-  /* ── Section header ── */
-  .section-header { align-items: flex-start !important; }
-  .section-title  { font-size: clamp(22px, 6vw, 32px); }
-
-  /* ── Hide non-essential columns in tables on mobile ── */
-  .col-hide-mobile { display: none !important; }
+  /* Buttons full-width on mobile forms */
+  .btn-auth { font-size: 15px; }
 }
-
-/* ─── Small phones (≤ 390px) ─── */
-@media (max-width: 390px) {
-  .navbar { padding: 0 12px; }
-  .section { padding: 16px 12px 32px; }
-  .mobile-nav-drawer { width: 88vw; }
-}
-
-

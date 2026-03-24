@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useAppData } from '../../context/AppDataContext';
 import CompanyLogo from '../../components/shared/CompanyLogo';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 export default function SubmitSalaryPage() {
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { functions, getLevelsForFunction, functionsReady } = useAppData();
 
@@ -220,7 +222,7 @@ export default function SubmitSalaryPage() {
           </p>
         </div>
 
-        <div className="form-card-padded" style={{ background: 'var(--panel)', border: '1px solid var(--border)' }}>
+        <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 20, padding: 48 }}>
           {error && (
             <div style={{ padding: '12px 16px', background: 'var(--rose-dim)', border: '1px solid rgba(224,92,122,0.2)', borderRadius: 10, color: 'var(--rose)', fontSize: 13, marginBottom: 20 }}>
               {error}
@@ -373,7 +375,7 @@ export default function SubmitSalaryPage() {
               </div>
 
               {/* Compensation — full-width row, internal 2-col grid matching parent */}
-              <div className="grid-salary-comp" style={{ gridColumn:'1 / -1' }}>
+              <div style={{ gridColumn:'1 / -1', display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:14 }}>
 
                 {/* Base Salary */}
                 <div className="form-group" style={{ margin:0 }}>

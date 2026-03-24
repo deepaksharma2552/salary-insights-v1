@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 const TYPE_OPTIONS = [
   { value: 'REFERRAL',   label: 'Referral',          hint: 'I can refer someone to this company' },
@@ -15,6 +16,7 @@ const MODE_OPTIONS = ['ONSITE', 'HYBRID', 'REMOTE'];
 
 export default function PostOpportunityPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState('');
   const [success,    setSuccess]    = useState(false);
@@ -131,7 +133,7 @@ export default function PostOpportunityPage() {
   if (success) {
     return (
       <section className="section" style={{ maxWidth: 600 }}>
-        <div className="form-card-padded" style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, textAlign: 'center' }}>
+        <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, padding: 40, textAlign: 'center' }}>
           <div style={{ fontSize: 32, marginBottom: 16 }}>✓</div>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-1)', marginBottom: 8 }}>Opportunity submitted!</h2>
           <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6, marginBottom: 24 }}>
@@ -168,13 +170,13 @@ export default function PostOpportunityPage() {
         </div>
       )}
 
-      <div className="post-opp-card" style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12 }}>
+      <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, padding: 32 }}>
         <form onSubmit={handleSubmit}>
 
           {/* Type selector — prominent, top of form */}
           <div className="form-group full" style={{ marginBottom: 24 }}>
             <label className="form-label">Opportunity type</label>
-            <div className="grid-5col">
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(5, 1fr)', gap: 8 }}>
               {TYPE_OPTIONS.map(opt => (
                 <button
                   key={opt.value}

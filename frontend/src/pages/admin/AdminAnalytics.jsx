@@ -83,7 +83,7 @@ export default function AdminAnalytics() {
       ) : (
         <>
           {/* Summary stat chips */}
-          <div className="grid-3col-stats">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
             {[
               { label: 'Total Page Views',    value: fmt(totalViews),  sub: RANGES[rangeIdx].label },
               { label: 'Unique Visitors',     value: fmt(totalUnique), sub: 'estimated via session hash' },
@@ -132,6 +132,7 @@ export default function AdminAnalytics() {
             {pageStats.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-3)', fontSize: 13, fontStyle: 'italic' }}>No data yet</div>
             ) : (
+              <div className="table-scroll-wrap">
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
@@ -162,6 +163,7 @@ export default function AdminAnalytics() {
                   })}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
 

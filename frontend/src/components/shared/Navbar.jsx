@@ -8,7 +8,7 @@ export default function Navbar() {
   const { user, logout }  = useContext(AuthContext);
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [mobileOpen,   setMobileOpen]   = useState(false);
+  const [mobileOpen, setMobileOpen]     = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -16,6 +16,7 @@ export default function Navbar() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -26,15 +27,11 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Close dropdown and mobile menu on route change
   useEffect(() => {
     setDropdownOpen(false);
     setMobileOpen(false);
   }, [location.pathname]);
-
-  useEffect(() => {
-    document.body.style.overflow = mobileOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [mobileOpen]);
 
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
   const isActive    = (path) => location.pathname === path ? 'active' : '';
@@ -45,29 +42,24 @@ export default function Navbar() {
 
   function handleLogout() {
     setDropdownOpen(false);
-    setMobileOpen(false);
     logout();
     navigate('/');
   }
-
-  const NAV_LINKS = [
-    { to: '/',              label: 'Home',          icon: '🏠' },
-    { to: '/salaries',      label: 'Salaries',      icon: '💰' },
-    { to: '/companies',     label: 'Companies',     icon: '🏢' },
-    { to: '/dashboard',     label: 'Analytics',     icon: '📊' },
-    { to: '/opportunities', label: 'Opportunities', icon: '🎯' },
-    ...(user?.role === 'ADMIN' ? [{ to: '/admin', label: 'Admin', icon: '⚙️' }] : []),
-  ];
 
   return (
     <nav className="navbar">
       <style>{`
         .user-dropdown-menu {
-          position: absolute; top: calc(100% + 8px); right: 0;
-          min-width: 200px; background: var(--panel);
-          border: 1px solid var(--border); border-radius: 12px;
+          position: absolute;
+          top: calc(100% + 8px);
+          right: 0;
+          min-width: 200px;
+          background: var(--panel);
+          border: 1px solid var(--border);
+          border-radius: 12px;
           box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-          overflow: hidden; z-index: 200;
+          overflow: hidden;
+          z-index: 200;
           animation: dropdownIn 0.15s ease;
         }
         @keyframes dropdownIn {
@@ -75,44 +67,59 @@ export default function Navbar() {
           to   { opacity: 1; transform: translateY(0); }
         }
         .dropdown-item {
-          display: flex; align-items: center; gap: 10px;
-          padding: 10px 16px; font-size: 13px; color: var(--text-2);
-          text-decoration: none; cursor: pointer; background: transparent;
-          border: none; width: 100%; text-align: left;
-          transition: background 0.12s; font-family: 'Inter', sans-serif;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 16px;
+          font-size: 13px;
+          color: var(--text-2);
+          text-decoration: none;
+          cursor: pointer;
+          background: transparent;
+          border: none;
+          width: 100%;
+          text-align: left;
+          transition: background 0.12s;
+          font-family: 'Inter', sans-serif;
         }
-        .dropdown-item:hover { background: var(--bg-3); color: var(--text-1); }
+        .dropdown-item:hover { background: var(--ink-3); color: var(--text-1); }
         .dropdown-item.danger { color: var(--rose); }
         .dropdown-item.danger:hover { background: var(--rose-dim); }
-        .dropdown-divider { height: 1px; background: var(--border); margin: 4px 0; }
-        .dropdown-header { padding: 12px 16px 8px; border-bottom: 1px solid var(--border); }
-
-        /* Desktop-only elements — use display:flex as default, CSS overrides to none on mobile */
-        .nav-cta-desktop { display: inline-flex; }
-        .nav-user-dropdown { display: block; }
-        /* Hamburger hidden on desktop */
-        .nav-hamburger { display: none; }
-
-        @keyframes siOrbitSweepA { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
-        @keyframes siOrbitSweepB { from { transform: rotate(90deg);  } to { transform: rotate(450deg); } }
-        @keyframes siOrbitSweepC { from { transform: rotate(30deg);  } to { transform: rotate(390deg); } }
-        @keyframes siOrbitTrack  { from { transform: rotate(0deg);   } to { transform: rotate(-360deg); } }
-        @keyframes siOrbitCore   { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
-        @keyframes siOrbitPing   { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.3); opacity: 0; } }
-        @media (prefers-reduced-motion: reduce) {
-          .si-sweep-a,.si-sweep-b,.si-sweep-c,.si-track,.si-core,.si-ping { animation: none !important; }
+        .dropdown-divider {
+          height: 1px;
+          background: var(--border);
+          margin: 4px 0;
+        }
+        .dropdown-header {
+          padding: 12px 16px 8px;
+          border-bottom: 1px solid var(--border);
         }
       `}</style>
 
       {/* ── LOGO ── */}
       <Link to="/" className="nav-logo" style={{ textDecoration: 'none' }}>
+        <style>{`
+          @keyframes siOrbitSweepA { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
+          @keyframes siOrbitSweepB { from { transform: rotate(90deg);  } to { transform: rotate(450deg); } }
+          @keyframes siOrbitSweepC { from { transform: rotate(30deg);  } to { transform: rotate(390deg); } }
+          @keyframes siOrbitTrack  { from { transform: rotate(0deg);   } to { transform: rotate(-360deg); } }
+          @keyframes siOrbitCore   { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+          @keyframes siOrbitPing   { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.3); opacity: 0; } }
+          @media (prefers-reduced-motion: reduce) {
+            .si-sweep-a,.si-sweep-b,.si-sweep-c,.si-track,.si-core,.si-ping { animation: none !important; }
+          }
+        `}</style>
         <svg width="36" height="36" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          {/* outer ping — blue */}
           <circle className="si-ping" cx="19" cy="19" r="18" stroke="#3b82f6" strokeWidth="0.8" fill="none"
             style={{ transformOrigin: '19px 19px', animation: 'siOrbitPing 3s ease-out infinite' }} />
+          {/* orbit track — blue, counter-rotates */}
           <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitTrack 20s linear infinite' }}>
             <circle cx="19" cy="19" r="15" stroke="#3b82f6" strokeWidth="0.7" fill="none" opacity="0.25" strokeDasharray="2.5 2.5" />
           </g>
+          {/* inner track — blue subtle */}
           <circle cx="19" cy="19" r="9" stroke="#3b82f6" strokeWidth="0.5" fill="none" opacity="0.12" strokeDasharray="1.5 2" />
+          {/* comets — blue shades */}
           <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepA 6s linear infinite' }}>
             <circle cx="19" cy="4" r="2.4" fill="#3b82f6" />
           </g>
@@ -122,6 +129,7 @@ export default function Navbar() {
           <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepC 9s linear infinite' }}>
             <circle cx="19" cy="4" r="1.6" fill="#60a5fa" opacity="0.7" />
           </g>
+          {/* core — blue */}
           <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitCore 3s ease-in-out infinite' }}>
             <circle cx="19" cy="19" r="7"   fill="#3b82f6" opacity="0.1" />
             <circle cx="19" cy="19" r="4.5" fill="#3b82f6" opacity="0.2" />
@@ -138,17 +146,23 @@ export default function Navbar() {
         </span>
       </Link>
 
-      {/* ── NAV LINKS — desktop, hidden on mobile via global.css .nav-links rule ── */}
+      {/* ── NAV LINKS ── */}
       <ul className="nav-links">
-        {NAV_LINKS.map(({ to, label }) => (
-          <li key={to}><Link to={to} className={isActive(to)}>{label}</Link></li>
-        ))}
+        <li><Link to="/"          className={isActive('/')}>Home</Link></li>
+        <li><Link to="/salaries"  className={isActive('/salaries')}>Salaries</Link></li>
+        <li><Link to="/companies" className={isActive('/companies')}>Companies</Link></li>
+        <li><Link to="/dashboard" className={isActive('/dashboard')}>Analytics</Link></li>
+        <li><Link to="/opportunities"  className={isActive('/opportunities')}>Opportunities</Link></li>
+
+        {user?.role === 'ADMIN' && (
+          <li><Link to="/admin" className={isActive('/admin')}>Admin</Link></li>
+        )}
       </ul>
 
       {/* ── ACTIONS ── */}
       <div className="nav-actions">
 
-        {/* Theme toggle — always visible */}
+        {/* Theme toggle */}
         <button className="theme-toggle" onClick={toggleTheme}
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           aria-label="Toggle theme"
@@ -170,7 +184,7 @@ export default function Navbar() {
 
         {user ? (
           <>
-            {/* Share Salary — .nav-cta-desktop: inline-flex on desktop, none on mobile */}
+            {/* Primary CTAs — hidden on mobile, available in drawer */}
             <Link
               to="/submit"
               className="nav-cta-desktop"
@@ -185,8 +199,6 @@ export default function Navbar() {
             >
               <span style={{ fontSize: 14, lineHeight: 1 }}>₹</span> Share Salary
             </Link>
-
-            {/* Post Opportunity — .nav-cta-desktop: inline-flex on desktop, none on mobile */}
             <Link
               to="/opportunities/post"
               className="nav-cta-desktop"
@@ -202,17 +214,19 @@ export default function Navbar() {
               <span style={{ fontSize: 15, fontWeight: 400, lineHeight: 1 }}>+</span> Post Opportunity
             </Link>
 
-            {/* User dropdown — .nav-user-dropdown: block on desktop, none on mobile */}
-            <div ref={dropdownRef} className="nav-user-dropdown" style={{ position: 'relative' }}>
+            {/* User dropdown */}
+            <div ref={dropdownRef} style={{ position: 'relative' }}>
               <button
                 onClick={() => setDropdownOpen(o => !o)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '6px 12px', borderRadius: 99, cursor: 'pointer',
-                  background: dropdownOpen ? 'var(--bg-3)' : 'transparent',
-                  border: '1px solid var(--border)', transition: 'background 0.15s',
+                  background: dropdownOpen ? 'var(--ink-3)' : 'transparent',
+                  border: '1px solid var(--border)',
+                  transition: 'background 0.15s',
                 }}
               >
+                {/* Avatar initials */}
                 <div style={{
                   width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
                   background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)',
@@ -224,6 +238,7 @@ export default function Navbar() {
                 <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-1)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {displayName}
                 </span>
+                {/* Chevron */}
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="2.5"
                   style={{ transition: 'transform 0.2s', transform: dropdownOpen ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>
                   <polyline points="6 9 12 15 18 9"/>
@@ -232,17 +247,24 @@ export default function Navbar() {
 
               {dropdownOpen && (
                 <div className="user-dropdown-menu">
+
+                  {/* User info header */}
                   <div className="dropdown-header">
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{displayName}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2, fontFamily: "'JetBrains Mono',monospace" }}>{user.email}</div>
                   </div>
+
+                  {/* My Opportunities */}
                   <Link to="/opportunities/post" className="dropdown-item">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
                     </svg>
                     Post Opportunity
                   </Link>
+
                   <div className="dropdown-divider" />
+
+                  {/* Sign out */}
                   <button className="dropdown-item danger" onClick={handleLogout}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -251,21 +273,25 @@ export default function Navbar() {
                     </svg>
                     Sign out
                   </button>
+
                 </div>
               )}
             </div>
           </>
         ) : (
           <>
-            {/* Sign in / Sign up — .nav-cta-desktop hidden on mobile */}
-            <Link to="/login"    className="btn-ghost nav-cta-desktop"   style={{ textDecoration: 'none' }}>Sign in</Link>
-            <Link to="/register" className="btn-primary nav-cta-desktop" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Sign up</Link>
+            <Link to="/login"    className="btn-ghost"   style={{ textDecoration: 'none' }}>Sign in</Link>
+            <Link to="/register" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Sign up</Link>
           </>
         )}
 
-        {/* Hamburger — .nav-hamburger: none on desktop, flex on mobile */}
-        <button className="nav-hamburger" onClick={() => setMobileOpen(true)} aria-label="Open menu">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+        {/* Hamburger — mobile only */}
+        <button
+          className="nav-hamburger"
+          onClick={() => setMobileOpen(o => !o)}
+          aria-label="Open navigation menu"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <line x1="3" y1="6"  x2="21" y2="6"/>
             <line x1="3" y1="12" x2="21" y2="12"/>
             <line x1="3" y1="18" x2="21" y2="18"/>
@@ -273,71 +299,76 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* ── MOBILE DRAWER — only mounted when open, so zero cost on desktop ── */}
-      {mobileOpen && (
-        <>
-          <div className="mobile-nav-overlay" onClick={() => setMobileOpen(false)} />
-          <div className="mobile-nav-drawer" role="dialog" aria-modal="true" aria-label="Navigation menu">
-            <div className="mobile-nav-header">
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>Menu</span>
-              <button className="mobile-nav-close" onClick={() => setMobileOpen(false)} aria-label="Close menu">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
+      {/* ── MOBILE DRAWER ── */}
+      <div className={`mobile-nav-overlay${mobileOpen ? ' open' : ''}`} onClick={() => setMobileOpen(false)} />
+      <div className={`mobile-nav-drawer${mobileOpen ? ' open' : ''}`}>
+        {/* Header */}
+        <div className="mobile-nav-header">
+          <Link to="/" className="nav-logo" style={{ textDecoration: 'none' }} onClick={() => setMobileOpen(false)}>
+            <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--text-1)' }}>
+              Salary<span style={{ color: '#3b82f6' }}>Insights</span>
+            </span>
+          </Link>
+          <button className="mobile-nav-close" onClick={() => setMobileOpen(false)}>✕</button>
+        </div>
 
-            {user && (
-              <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                  background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, fontWeight: 700, color: '#3b82f6',
-                }}>
-                  {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{displayName}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>{user.email}</div>
-                </div>
+        {/* Nav links */}
+        <ul className="mobile-nav-links">
+          <li><Link to="/"             className={isActive('/')}>🏠 Home</Link></li>
+          <li><Link to="/salaries"     className={isActive('/salaries')}>💰 Salaries</Link></li>
+          <li><Link to="/companies"    className={isActive('/companies')}>🏢 Companies</Link></li>
+          <li><Link to="/dashboard"    className={isActive('/dashboard')}>📊 Analytics</Link></li>
+          <li><Link to="/opportunities" className={isActive('/opportunities')}>🎯 Opportunities</Link></li>
+          <li><Link to="/level-guide"  className={isActive('/level-guide')}>🗂 Level Guide</Link></li>
+          {user?.role === 'ADMIN' && (
+            <li><Link to="/admin" className={isActive('/admin')}>⚙️ Admin</Link></li>
+          )}
+        </ul>
+
+        {/* CTAs / auth */}
+        <div className="mobile-nav-actions">
+          {user ? (
+            <>
+              <Link to="/submit" style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                padding: '10px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600,
+                border: '2px solid #10b981', color: '#065f46', background: '#ecfdf5',
+                textDecoration: 'none',
+              }}>
+                <span>₹</span> Share Salary
+              </Link>
+              <Link to="/opportunities/post" style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                padding: '10px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600,
+                border: 'none', color: '#fff', background: '#1e40af',
+                textDecoration: 'none',
+              }}>
+                + Post Opportunity
+              </Link>
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-3)', padding: '0 12px 8px' }}>{displayName}</div>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    width: '100%', padding: '10px 12px', borderRadius: 8,
+                    fontSize: 13, fontWeight: 500, color: 'var(--rose)',
+                    background: 'transparent', border: '1px solid var(--border)', cursor: 'pointer',
+                    fontFamily: 'Inter,sans-serif',
+                  }}
+                >
+                  Sign out
+                </button>
               </div>
-            )}
-
-            <ul className="mobile-nav-links">
-              {NAV_LINKS.map(({ to, label, icon }) => (
-                <li key={to}>
-                  <Link to={to} className={isActive(to)}>
-                    <span style={{ fontSize: 16 }}>{icon}</span>{label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-
-            <div className="mobile-nav-footer">
-              {user ? (
-                <>
-                  <Link to="/submit" className="mob-btn-green"><span>₹</span> Share Salary</Link>
-                  <Link to="/opportunities/post" className="mob-btn-blue"><span>+</span> Post Opportunity</Link>
-                  <div className="mobile-nav-divider" />
-                  <button className="mob-btn-danger" onClick={handleLogout}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                      <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-                    </svg>
-                    Sign out
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login"    className="mob-btn-ghost">Sign in</Link>
-                  <Link to="/register" className="mob-btn-blue">Sign up</Link>
-                </>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+            </>
+          ) : (
+            <>
+              <Link to="/login"    style={{ display:'block', padding:'10px 16px', borderRadius:8, fontSize:14, fontWeight:600, color:'var(--text-1)', background:'var(--bg-3)', border:'1px solid var(--border)', textDecoration:'none', textAlign:'center' }}>Sign in</Link>
+              <Link to="/register" style={{ display:'block', padding:'10px 16px', borderRadius:8, fontSize:14, fontWeight:600, color:'white', background:'#3b82f6', textDecoration:'none', textAlign:'center' }}>Sign up</Link>
+            </>
+          )}
+        </div>
+      </div>
     </nav>
   );
 }

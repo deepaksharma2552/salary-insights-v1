@@ -4,6 +4,7 @@ import SalaryTable from '../../components/shared/SalaryTable';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 import { AuthContext } from '../../context/AuthContext';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 /* ── helpers (unchanged) ────────────────────────────────────────────────── */
 function mapSalary(s) {
@@ -153,6 +154,7 @@ function JourneyCard({ emoji, title, desc, stats, actions, amber, featured, gree
 /* ── Main page ───────────────────────────────────────────────────────────── */
 export default function HomePage() {
   const { user } = useContext(AuthContext);
+  const isMobile = useIsMobile();
 
   const [recentSalaries, setRecentSalaries] = useState([]);
   const [totalEntries,   setTotalEntries]   = useState(null);
@@ -264,8 +266,8 @@ export default function HomePage() {
         @keyframes countFlash { 0%{opacity:.4;transform:translateY(-4px)} 100%{opacity:1;transform:translateY(0)} }
       `}</style>
 
-      <section className="hero" style={{ padding: '56px 24px 48px', background: 'var(--panel)', borderBottom: '1px solid var(--border)' }}>
-        <div className="grid-2col" style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+      <section className="hero" style={{ padding: isMobile ? '48px 16px 36px' : '56px 24px 48px', background: 'var(--panel)', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 24 : 40, alignItems: 'center' }}>
 
           {/* Left: tagline + CTAs */}
           <div>
@@ -291,7 +293,7 @@ export default function HomePage() {
           </div>
 
           {/* Right: Palette 3 stat cards */}
-          <div className="grid-2col-equal" style={{ width: '100%' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, width: '100%' }}>
             {[
               { label: '💰 Salary entries', val: totalEntries != null ? fmtCount(totalEntries) : '—', sub: 'verified & live', live: true, delay: 0 },
               { label: '🏢 Companies',      val: totalCompanies != null ? fmtCount(totalCompanies) : '—',    sub: 'tracked',        live: false, delay: 70 },
@@ -348,7 +350,7 @@ export default function HomePage() {
           <h2 className="section-title" style={{ fontSize: 28, marginTop: 4 }}>What brings you here today?</h2>
         </div>
 
-        <div className="grid-4col">
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 14 }}>
           {[...journeyCards, { ...opportunitiesCard }].map((card, i) => (
             <JourneyCard key={i} {...card} featured={card.featured ?? false} />
           ))}
@@ -380,7 +382,7 @@ export default function HomePage() {
       ══════════════════════════════════════════════════════ */}
       {!user && (
         <section style={{ padding: '18px 24px', background: '#0ea5e9' }}>
-          <div className="cta-banner-inner" style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 3 }}>
                 This platform runs on community contributions.
@@ -389,7 +391,7 @@ export default function HomePage() {
                 Share your salary anonymously — every entry makes the data better for everyone.
               </div>
             </div>
-            <div className="cta-banner-btns" style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
               <Link to="/register" style={{ padding: '8px 18px', background: 'white', color: '#0284c7', borderRadius: 7, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
                 Create free account
               </Link>

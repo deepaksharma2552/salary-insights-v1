@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 
 const NAV = [
   { label: 'Dashboard',        path: '/admin',                icon: '📊' },
@@ -13,10 +14,45 @@ const NAV = [
 
 export default function AdminSidebar() {
   const { pathname } = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close sidebar on route change
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+
   return (
     <>
-      {/* ── Desktop sidebar (hidden on mobile via CSS) ── */}
-      <div className="admin-sidebar">
+      {/* Mobile toggle button */}
+      <button
+        className="admin-mobile-toggle"
+        onClick={() => setMobileOpen(o => !o)}
+        aria-label="Toggle admin menu"
+      >
+        ☰
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(15,23,42,0.5)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 89,
+          }}
+        />
+      )}
+
+      {/* Sidebar — always visible on desktop, slide-in on mobile */}
+      <div
+        className="admin-sidebar"
+        style={mobileOpen ? {
+          display: 'flex',
+          flexDirection: 'column',
+          transform: 'translateX(0)',
+          transition: 'transform 0.25s cubic-bezier(0.16,1,0.3,1)',
+        } : undefined}
+      >
         <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-4)', marginBottom: 12, padding: '0 4px' }}>
           Admin Panel
         </div>
@@ -34,19 +70,6 @@ export default function AdminSidebar() {
             ← Back to site
           </Link>
         </div>
-      </div>
-
-      {/* ── Mobile horizontal scroll nav (shown only on mobile via CSS) ── */}
-      <div className="admin-mobile-topbar">
-        {NAV.map(({ label, path, icon }) => (
-          <Link key={path} to={path} className={pathname === path ? 'active' : ''}>
-            <span>{icon}</span>
-            {label}
-          </Link>
-        ))}
-        <Link to="/" style={{ borderColor: 'var(--border)', color: 'var(--text-3)' }}>
-          ← Site
-        </Link>
       </div>
     </>
   );
