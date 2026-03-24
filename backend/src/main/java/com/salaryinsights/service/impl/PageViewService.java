@@ -3,10 +3,8 @@ package com.salaryinsights.service.impl;
 import com.salaryinsights.entity.PageViewEvent;
 import com.salaryinsights.repository.PageViewDailyRepository;
 import com.salaryinsights.repository.PageViewEventRepository;
-import jakarta.persistence.EntityManager;
+import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Value;
-import jakarta.persistence.PersistenceContext;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.*;
@@ -22,44 +22,38 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PageViewService {
 
     private final PageViewEventRepository eventRepository;
     private final PageViewDailyRepository dailyRepository;
-
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final DataSource             dataSource;
 
     @Value("${app.analytics.aggregate-batch-size:5000}")
     private int batchLimit;
 
     @Value("${app.analytics.aggregate-enabled:true}")
-    private boolean aggregateEnabled; // max events per job run
+    private boolean aggregateEnabled;
+
+    public PageViewService(PageViewEventRepository eventRepository,
+                           PageViewDailyRepository dailyRepository,
+                           DataSource dataSource) {
+        this.eventRepository = eventRepository;
+        this.dailyRepository  = dailyRepository;
+        this.dataSource       = dataSource;
+    }
 
     // ── Record a page view — fire-and-forget, never blocks request ────────────
 
-    // Entry point — @Async only. Delegates DB write to doRecord() which carries
-    // @Transactional. Keeping both annotations on the same method causes Spring
-    // to apply the @Async proxy first (dispatching to a pool thread) before the
-    // @Transactional proxy can wrap the call, so the save runs outside any
-    // transaction and is silently lost.
     @Async("trackingExecutor")
     public void record(String page, String ipAddress, String userAgent, String referrer) {
         try {
-            // hashSession (SHA-256) runs here, outside the transaction — DB
-            // connection is not held open during the CPU work.
             String sessionHash = hashSession(ipAddress, userAgent);
             doRecord(normalisePage(page), sessionHash, referrer);
         } catch (Exception e) {
             log.warn("Failed to record page view for '{}': {}", page, e.getMessage());
-            // Silently swallow — tracking must never affect the main request
         }
     }
 
-    // Separate method so @Transactional is applied by its own proxy on a
-    // clean call boundary — Spring self-invocation limitation means this
-    // must be a public method on the Spring bean (not a private helper).
     @Transactional
     public void doRecord(String page, String sessionHash, String referrer) {
         PageViewEvent event = PageViewEvent.builder()
@@ -80,50 +74,43 @@ public class PageViewService {
             log.debug("PageView aggregation disabled via app.analytics.aggregate-enabled");
             return;
         }
-        log.debug("PageView aggregation job starting");
+        log.info("PageView aggregation job starting");
         long start = System.currentTimeMillis();
 
-        // Ensure next month's partition exists — executed via EntityManager
-        // to avoid Hibernate parameter parsing of PL/pgSQL ':' colons
+        // Partition DDL runs via raw JDBC — completely outside the JPA transaction.
+        // DDL inside a JPA transaction corrupts Hibernate session state and causes
+        // cryptic rollback errors. See ensureNextMonthPartition() javadoc.
         ensureNextMonthPartition();
 
-        // Only process events from before 1 minute ago — avoids edge cases
-        // with events written mid-second while we're reading
         OffsetDateTime cutoff = OffsetDateTime.now().minusMinutes(1);
 
         List<PageViewEvent> events = eventRepository.findUnprocessed(cutoff, batchLimit);
         if (events.isEmpty()) {
-            log.debug("PageView aggregation: no unprocessed events");
+            log.info("PageView aggregation: no unprocessed events");
             return;
         }
 
-        // Group by (page, date) and count views + unique sessions
-        // Map key: "page::date"
-        Map<String, Long>   viewCounts    = new LinkedHashMap<>();
-        Map<String, Long>   sessionCounts = new LinkedHashMap<>();
+        // Group by (page, date)
+        Map<String, Long>        viewCounts  = new LinkedHashMap<>();
         Map<String, Set<String>> sessionSets = new LinkedHashMap<>();
 
         for (PageViewEvent e : events) {
-            String key  = e.getPage() + "::" + e.getCreatedAt().toLocalDate();
+            String key = e.getPage() + "::" + e.getCreatedAt().toLocalDate();
             viewCounts.merge(key, 1L, Long::sum);
             sessionSets.computeIfAbsent(key, k -> new HashSet<>()).add(e.getSessionHash());
         }
 
-        // Derive unique session counts from sets
-        sessionSets.forEach((key, sessions) ->
-                sessionCounts.put(key, (long) sessions.size()));
-
         // UPSERT each (page, date) bucket
         for (Map.Entry<String, Long> entry : viewCounts.entrySet()) {
-            String[] parts = entry.getKey().split("::");
-            String    page = parts[0];
-            LocalDate date = LocalDate.parse(parts[1]);
-            long views          = entry.getValue();
-            long uniqueSessions = sessionCounts.getOrDefault(entry.getKey(), 0L);
+            String[]  parts          = entry.getKey().split("::");
+            String    page           = parts[0];
+            LocalDate date           = LocalDate.parse(parts[1]);
+            long      views          = entry.getValue();
+            long      uniqueSessions = sessionSets.getOrDefault(entry.getKey(), Collections.emptySet()).size();
             dailyRepository.upsertCounts(page, date, views, uniqueSessions);
         }
 
-        // Bulk-mark all processed events in a single UPDATE
+        // Bulk-mark all processed events
         String idArray = events.stream()
                 .map(e -> e.getId().toString())
                 .collect(Collectors.joining(","));
@@ -133,7 +120,7 @@ public class PageViewService {
                 events.size(), System.currentTimeMillis() - start);
     }
 
-    // ── Dashboard queries — always read from page_view_daily ─────────────────
+    // ── Dashboard queries ─────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getPageStats(LocalDate from, LocalDate to) {
@@ -164,14 +151,17 @@ public class PageViewService {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /**
-     * Auto-create next month's partition if it doesn't exist.
-     * Executed via EntityManager.createNativeQuery() to bypass Hibernate's
-     * parameter parser — which incorrectly flags ':' in PL/pgSQL as bind params.
+     * Create next month's partition using a raw JDBC connection — intentionally
+     * outside any JPA/Spring transaction.
      *
-     * NOTE: No @Transactional here — this runs inside the caller's transaction
-     * (aggregateHourly). Private methods cannot be proxied by Spring, so
-     * @Transactional on a private method is silently ignored and would cause
-     * the EntityManager call to run outside any transaction, throwing an error.
+     * Why not EntityManager or @Transactional:
+     *   1. Spring cannot proxy private methods — @Transactional on a private method
+     *      is silently ignored, so entityManager.executeUpdate() throws
+     *      "no active transaction".
+     *   2. Running CREATE TABLE inside the same JPA transaction as the DML upserts
+     *      corrupts Hibernate's session state, rolling back the whole aggregation.
+     *   3. Raw JDBC with autoCommit=true lets the DDL commit independently — exactly
+     *      what Postgres partition creation requires.
      */
     private void ensureNextMonthPartition() {
         String sql = """
@@ -192,10 +182,12 @@ public class PageViewService {
                 END IF;
             END $do$;
             """;
-        try {
-            entityManager.createNativeQuery(sql).executeUpdate();
+        try (Connection conn = dataSource.getConnection();
+             Statement  stmt = conn.createStatement()) {
+            conn.setAutoCommit(true);
+            stmt.execute(sql);
         } catch (Exception e) {
-            log.warn("Partition creation skipped (may already exist): {}", e.getMessage());
+            log.warn("Partition creation skipped: {}", e.getMessage());
         }
     }
 
