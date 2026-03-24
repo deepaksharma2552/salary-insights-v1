@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import SalaryTable from '../../components/shared/SalaryTable';
 import api from '../../services/api';
@@ -29,7 +29,7 @@ function fmtCount(n) {
   return n.toLocaleString('en-IN');
 }
 
-/* ── JourneyCard — equal-height, pixel-aligned ──────────────────────────── */
+/* ── JourneyCard — desktop only (unchanged) ─────────────────────────────── */
 function JourneyCard({ emoji, title, desc, stats, actions, amber, featured, green, purple }) {
   return (
     <div style={{
@@ -43,109 +43,217 @@ function JourneyCard({ emoji, title, desc, stats, actions, amber, featured, gree
       position: 'relative',
       overflow: 'hidden',
     }}>
-      {/* Featured badge */}
       {featured && (
-        <div style={{
-          position: 'absolute', top: 12, right: 12,
-          fontSize: 9, fontWeight: 700, color: '#0284c7',
-          background: '#bae6fd', padding: '2px 8px',
-          borderRadius: 20, letterSpacing: '.05em', textTransform: 'uppercase',
-        }}>
+        <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 9, fontWeight: 700, color: '#0284c7', background: '#bae6fd', padding: '2px 8px', borderRadius: 20, letterSpacing: '.05em', textTransform: 'uppercase' }}>
           Most popular
         </div>
       )}
       {purple && (
-        <div style={{
-          position: 'absolute', top: 12, right: 12,
-          fontSize: 9, fontWeight: 700, color: '#6d28d9',
-          background: '#ede9fe', padding: '2px 8px',
-          borderRadius: 20, letterSpacing: '.05em', textTransform: 'uppercase',
-        }}>
+        <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 9, fontWeight: 700, color: '#6d28d9', background: '#ede9fe', padding: '2px 8px', borderRadius: 20, letterSpacing: '.05em', textTransform: 'uppercase' }}>
           New
         </div>
       )}
-      {/* Emoji */}
-      <div style={{ fontSize: 22, marginBottom: 10, height: 30, display: 'flex', alignItems: 'center' }}>
-        {emoji}
-      </div>
-
-      {/* Title — locked to 2 lines */}
-      <div style={{
-        fontSize: 14, fontWeight: 700,
-        color: amber ? '#78350f' : featured ? '#0284c7' : purple ? '#6d28d9' : 'var(--text-1)',
-        lineHeight: 1.35,
-        minHeight: 38,
-        marginBottom: 8,
-      }}>
+      <div style={{ fontSize: 22, marginBottom: 10, height: 30, display: 'flex', alignItems: 'center' }}>{emoji}</div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: amber ? '#78350f' : featured ? '#0284c7' : purple ? '#6d28d9' : 'var(--text-1)', lineHeight: 1.35, minHeight: 38, marginBottom: 8 }}>
         {title}
       </div>
-
-      {/* Description — locked height = 3 lines so stat strip always same Y */}
-      <div style={{
-        fontSize: 12,
-        color: amber ? '#92400e' : 'var(--text-2)',
-        lineHeight: 1.65,
-        height: 60,
-        overflow: 'hidden',
-        marginBottom: 14,
-      }}>
+      <div style={{ fontSize: 12, color: amber ? '#92400e' : 'var(--text-2)', lineHeight: 1.65, height: 60, overflow: 'hidden', marginBottom: 14 }}>
         {desc}
       </div>
-
-      {/* Stat strip — fixed height so buttons always same Y */}
-      <div style={{
-        display: 'flex',
-        border: amber ? '1px solid #fcd34d' : '1px solid var(--border)',
-        borderRadius: 8,
-        overflow: 'hidden',
-        height: 52,
-        flexShrink: 0,
-        marginBottom: 12,
-      }}>
+      <div style={{ display: 'flex', border: amber ? '1px solid #fcd34d' : '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: 52, flexShrink: 0, marginBottom: 12 }}>
         {stats.map((s, i) => (
-          <div key={i} style={{
-            flex: 1,
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            padding: '0 4px',
-            borderRight: i < stats.length - 1
-              ? (amber ? '1px solid #fcd34d' : '1px solid var(--border)')
-              : 'none',
-            background: amber ? 'rgba(255,255,255,0.5)' : 'transparent',
-          }}>
-            <div style={{
-              fontSize: 15, fontWeight: 800,
-              color: amber ? '#78350f' : featured ? '#0284c7' : purple ? '#6d28d9' : 'var(--text-1)',
-              fontFamily: "'IBM Plex Mono',monospace",
-              lineHeight: 1,
-            }}>
+          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 4px', borderRight: i < stats.length - 1 ? (amber ? '1px solid #fcd34d' : '1px solid var(--border)') : 'none', background: amber ? 'rgba(255,255,255,0.5)' : 'transparent' }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: amber ? '#78350f' : featured ? '#0284c7' : purple ? '#6d28d9' : 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>
               {s.value ?? <span style={{ opacity: 0.3 }}>—</span>}
             </div>
-            <div style={{ fontSize: 10, color: amber ? '#92400e' : 'var(--text-3)', marginTop: 3, textAlign: 'center' }}>
-              {s.label}
-            </div>
+            <div style={{ fontSize: 10, color: amber ? '#92400e' : 'var(--text-3)', marginTop: 3, textAlign: 'center' }}>{s.label}</div>
           </div>
         ))}
       </div>
-
-      {/* Spacer pushes buttons flush to bottom */}
       <div style={{ flex: 1 }} />
-
-      {/* Buttons — fixed height so always aligned */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
         {actions.map((a, i) => (
-          <Link key={i} to={a.to} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            height: 34,
-            borderRadius: 6,
-            fontSize: 12, fontWeight: 600,
-            textDecoration: 'none',
-            background: a.bg, color: a.color,
-            ...(a.border ? { border: a.border } : {}),
-          }}>
+          <Link key={i} to={a.to} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 34, borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', background: a.bg, color: a.color, ...(a.border ? { border: a.border } : {}) }}>
             {a.label}
           </Link>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── MobileJourneyCarousel — peek + dots, mobile only ───────────────────── */
+function MobileJourneyCarousel({ cards }) {
+  const [idx, setIdx]   = useState(0);
+  const trackRef        = useRef(null);
+  const touchStartX     = useRef(null);
+  const total           = cards.length;
+  const CARD_WIDTH      = 258;
+  const GAP             = 10;
+
+  function goTo(next) {
+    const clamped = Math.max(0, Math.min(total - 1, next));
+    setIdx(clamped);
+    if (trackRef.current) {
+      trackRef.current.style.transform = `translateX(calc(-${clamped} * (${CARD_WIDTH}px + ${GAP}px)))`;
+    }
+  }
+
+  const cardBg = (card) => {
+    if (card.featured) return { bg: '#eff6ff', border: '1.5px solid #bfdbfe' };
+    if (card.purple)   return { bg: '#fdfbff', border: '0.5px solid #ede9fe' };
+    if (card.amber)    return { bg: '#fffbeb', border: '0.5px solid #fde68a' };
+    return { bg: '#ffffff', border: '0.5px solid #e8ecf0' };
+  };
+
+  const titleColor = (card) => {
+    if (card.featured) return '#1e3a8a';
+    if (card.purple)   return '#3b0764';
+    if (card.amber)    return '#78350f';
+    return 'var(--text-1)';
+  };
+
+  const descColor = (card) => {
+    if (card.featured) return '#3b5998';
+    if (card.purple)   return '#7c3aed';
+    if (card.amber)    return '#92400e';
+    return 'var(--text-2)';
+  };
+
+  const statBg = (card) => {
+    if (card.featured) return { bg: '#fff', border: '0.5px solid #bfdbfe', valColor: '#1e3a8a', lblColor: '#60a5fa' };
+    if (card.purple)   return { bg: '#f5f3ff', border: '0.5px solid #ddd6fe', valColor: '#3b0764', lblColor: '#a78bfa' };
+    if (card.amber)    return { bg: 'rgba(255,255,255,0.6)', border: '0.5px solid #fcd34d', valColor: '#78350f', lblColor: '#d97706' };
+    return { bg: '#f8fafc', border: '0.5px solid #e8ecf0', valColor: 'var(--text-1)', lblColor: '#94a3b8' };
+  };
+
+  return (
+    <div style={{ paddingBottom: 4 }}>
+      {/* Section header */}
+      <div style={{ padding: '0 16px', marginBottom: 12 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
+          Find your path
+        </span>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-1)', marginTop: 3, letterSpacing: '-0.02em' }}>
+          What brings you here today?
+        </h2>
+      </div>
+
+      {/* Carousel track */}
+      <div style={{ overflow: 'hidden' }}>
+        <div
+          ref={trackRef}
+          style={{
+            display: 'flex', gap: GAP, padding: '0 16px',
+            transition: 'transform 0.32s cubic-bezier(.4,0,.2,1)',
+            willChange: 'transform',
+          }}
+          onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
+          onTouchEnd={e => {
+            const dx = touchStartX.current - e.changedTouches[0].clientX;
+            if (Math.abs(dx) > 40) goTo(idx + (dx > 0 ? 1 : -1));
+          }}
+        >
+          {cards.map((card, i) => {
+            const { bg, border } = cardBg(card);
+            const { bg: sBg, border: sBorder, valColor, lblColor } = statBg(card);
+            return (
+              <div key={i} style={{
+                flexShrink: 0, width: CARD_WIDTH,
+                background: bg, border, borderRadius: 16,
+                padding: 18, position: 'relative', overflow: 'hidden',
+                boxShadow: '0 1px 6px rgba(0,0,0,0.06)',
+              }}>
+                {/* Score corner */}
+                <div style={{ position: 'absolute', top: 10, right: 12, fontSize: 9, fontWeight: 700, color: 'rgba(0,0,0,0.1)', fontFamily: 'monospace' }}>
+                  {[12, 8, 6, 5][i] ?? 4} pts
+                </div>
+
+                {/* Badge */}
+                {card.featured && (
+                  <div style={{ display: 'inline-block', background: '#dbeafe', color: '#1d4ed8', fontSize: 9, fontWeight: 700, borderRadius: 20, padding: '2px 8px', marginBottom: 10, letterSpacing: '.05em', textTransform: 'uppercase' }}>
+                    Most popular
+                  </div>
+                )}
+                {card.purple && (
+                  <div style={{ display: 'inline-block', background: '#ede9fe', color: '#6d28d9', fontSize: 9, fontWeight: 700, borderRadius: 20, padding: '2px 8px', marginBottom: 8, letterSpacing: '.05em', textTransform: 'uppercase' }}>
+                    New
+                  </div>
+                )}
+
+                {/* Emoji */}
+                <div style={{ fontSize: 22, marginBottom: 8 }}>{card.emoji}</div>
+
+                {/* Title */}
+                <div style={{ fontSize: 15, fontWeight: 700, color: titleColor(card), lineHeight: 1.3, marginBottom: 6 }}>
+                  {card.title}
+                </div>
+
+                {/* Desc */}
+                <div style={{ fontSize: 11, color: descColor(card), lineHeight: 1.55, marginBottom: 14, opacity: card.purple ? 0.8 : 1 }}>
+                  {card.desc}
+                </div>
+
+                {/* Stat pills */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+                  {card.stats.map((s, si) => (
+                    <div key={si} style={{ background: sBg, border: sBorder, borderRadius: 8, padding: '7px 11px' }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: valColor, fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>
+                        {s.value ?? '—'}
+                      </div>
+                      <div style={{ fontSize: 9, color: lblColor, marginTop: 2 }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Action buttons */}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {card.actions.map((a, ai) => (
+                    <Link key={ai} to={a.to} style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      height: 34, borderRadius: 8, fontSize: 11, fontWeight: 700,
+                      textDecoration: 'none', background: a.bg, color: a.color,
+                      ...(a.border ? { border: a.border } : {}),
+                    }}>
+                      {a.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Dots + arrows */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 14, padding: '0 16px' }}>
+        <button
+          onClick={() => goTo(idx - 1)}
+          disabled={idx === 0}
+          style={{ width: 28, height: 28, borderRadius: '50%', border: '0.5px solid var(--border)', background: 'var(--panel)', color: 'var(--text-3)', fontSize: 15, cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'opacity 0.15s' }}
+        >‹</button>
+
+        <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+          {Array.from({ length: total }, (_, i) => (
+            <div
+              key={i}
+              onClick={() => goTo(i)}
+              style={{
+                width: i === idx ? 18 : 6, height: 6,
+                borderRadius: 3,
+                background: i === idx ? '#3b82f6' : 'var(--bg-4)',
+                cursor: 'pointer',
+                transition: 'all 0.22s ease',
+              }}
+            />
+          ))}
+        </div>
+
+        <button
+          onClick={() => goTo(idx + 1)}
+          disabled={idx === total - 1}
+          style={{ width: 28, height: 28, borderRadius: '50%', border: '0.5px solid var(--border)', background: 'var(--panel)', color: 'var(--text-3)', fontSize: 15, cursor: idx === total - 1 ? 'default' : 'pointer', opacity: idx === total - 1 ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'opacity 0.15s' }}
+        >›</button>
       </div>
     </div>
   );
@@ -341,20 +449,25 @@ export default function HomePage() {
 
 
       {/* ══════════════════════════════════════════════════════
-          ③ JOURNEY CARDS — equal height, pixel-aligned
+          ③ JOURNEY CARDS — carousel on mobile, grid on desktop
       ══════════════════════════════════════════════════════ */}
-      <section style={{ padding: '36px 24px', background: 'var(--bg-2)' }}>
+      <section style={{ padding: isMobile ? '24px 0' : '36px 24px', background: 'var(--bg-2)' }}>
         <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-        <div style={{ marginBottom: 24 }}>
-          <span className="section-tag" style={{ display: 'block', fontSize: 12, letterSpacing: '0.08em' }}>Find your path</span>
-          <h2 className="section-title" style={{ fontSize: 28, marginTop: 4 }}>What brings you here today?</h2>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 14 }}>
-          {[...journeyCards, { ...opportunitiesCard }].map((card, i) => (
-            <JourneyCard key={i} {...card} featured={card.featured ?? false} />
-          ))}
-        </div>
+          {isMobile ? (
+            <MobileJourneyCarousel cards={[...journeyCards, { ...opportunitiesCard }]} />
+          ) : (
+            <>
+              <div style={{ marginBottom: 24 }}>
+                <span className="section-tag" style={{ display: 'block', fontSize: 12, letterSpacing: '0.08em' }}>Find your path</span>
+                <h2 className="section-title" style={{ fontSize: 28, marginTop: 4 }}>What brings you here today?</h2>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+                {[...journeyCards, { ...opportunitiesCard }].map((card, i) => (
+                  <JourneyCard key={i} {...card} featured={card.featured ?? false} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </section>
 
