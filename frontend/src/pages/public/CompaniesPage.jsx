@@ -604,7 +604,7 @@ function CompanyCard({ c, onViewDetails }) {
             <div className="company-card-industry">{c.industry}</div>
           </div>
         </div>
-        <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:'var(--text-3)', background:'var(--bg-2)', padding:'2px 7px', borderRadius:6, border:'1px solid var(--border)', flexShrink:0, marginTop:2 }}>
+        <span className="entries-badge-mono" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:'var(--text-3)', background:'var(--bg-2)', padding:'2px 7px', borderRadius:6, border:'1px solid var(--border)', flexShrink:0, marginTop:2 }}>
           {c.entries} entries
         </span>
       </div>
@@ -629,7 +629,7 @@ function CompanyCard({ c, onViewDetails }) {
         </span>
         {/* Bottom row: value left, breakdown right — each on own line if narrow */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, flexWrap:'wrap' }}>
-          <span style={{ fontSize:13, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', whiteSpace:'nowrap', minWidth:0 }}>
+          <span className="tc-range-value" style={{ fontSize:13, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', whiteSpace:'nowrap', minWidth:0 }}>
             {tcRangeStr}
           </span>
           <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:11, fontWeight:500, color:'#3b82f6', whiteSpace:'nowrap', flexShrink:0 }}>
@@ -675,7 +675,7 @@ function CompanyCard({ c, onViewDetails }) {
       <div>
         <div style={{ fontSize:10, fontWeight:500, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:6 }}>Benefits</div>
         {previewBenefits.length > 0 ? (
-          <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
+          <div className="benefits-row" style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
             {previewBenefits.map((b, i) => {
               const name = typeof b === 'string' ? b : b.name;
               return (
@@ -779,6 +779,61 @@ export default function CompaniesPage() {
         @keyframes progressCrawl { 0%{width:0%} 40%{width:65%} 70%{width:82%} 100%{width:90%} }
         @keyframes companyCrawl  { 0%{transform:translateX(-100%)} 100%{transform:translateX(250%)} }
         @keyframes companyFadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+
+        /* ── Mobile-only card fixes (≤768px) ── */
+        @media (max-width: 768px) {
+          /* Full-width single column instead of clipped 2-col grid */
+          .companies-grid {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+          /* Prevent company name + entries badge from overflowing */
+          .company-card-name {
+            font-size: 14px !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+          }
+          /* Entries badge: don't let it get clipped */
+          .company-card .entries-badge-mono {
+            font-size: 10px !important;
+            white-space: nowrap !important;
+          }
+          /* TC range value: allow wrap on very small screens */
+          .company-card .tc-range-value {
+            font-size: 12px !important;
+            white-space: normal !important;
+          }
+          /* Benefits chips: wrap naturally */
+          .company-card .benefits-row {
+            flex-wrap: wrap !important;
+          }
+          /* Modal: full screen on mobile */
+          .company-modal-root {
+            width: 100vw !important;
+            max-width: 100vw !important;
+            max-height: 92vh !important;
+            top: auto !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            transform: none !important;
+            border-radius: 20px 20px 0 0 !important;
+          }
+          /* Stat bar: 2x2 grid on mobile */
+          .company-modal-statbar {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+          }
+          .company-modal-statbar > div {
+            border-left: none !important;
+            border-top: 0.5px solid var(--border) !important;
+          }
+          .company-modal-statbar > div:nth-child(odd) {
+            border-right: 0.5px solid var(--border) !important;
+          }
+          .company-modal-statbar > div:nth-child(-n+2) {
+            border-top: none !important;
+          }
+        }
       `}</style>
 
       <div className="section-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:16, marginBottom:32 }}>
