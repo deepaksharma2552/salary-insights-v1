@@ -515,11 +515,11 @@ export default function SubmitSalaryPage() {
 
             {/* Submit */}
             <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                <button type="button" className="btn-ghost" style={{ padding: '13px 28px', fontSize: 15 }} onClick={() => navigate(-1)} disabled={submitting}>
+              <div className="form-submit-row">
+                <button type="button" className="btn-ghost form-submit-btn" style={{ padding: '13px 28px', fontSize: 15 }} onClick={() => navigate(-1)} disabled={submitting}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary" disabled={submitting}
+                <button type="submit" className="btn-primary form-submit-btn" disabled={submitting}
                   style={{ padding: '13px 32px', fontSize: 15, borderRadius: 10, opacity: submitting ? 0.65 : 1, cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'opacity 0.2s ease' }}>
                   {submitting ? (
                     <>

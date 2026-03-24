@@ -356,17 +356,19 @@ export default function PostOpportunityPage() {
           </div>
 
           {/* Submit */}
-          <div style={{ marginTop: 24, display: 'flex', gap: 10, alignItems: 'center' }}>
-            <button type="submit" className="btn-primary" disabled={submitting}
-              style={{ minWidth: 160 }}>
-              {submitting ? 'Submitting…' : 'Submit for review'}
-            </button>
-            <button type="button" className="btn-ghost" onClick={() => navigate('/opportunities')}>
-              Cancel
-            </button>
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-3)' }}>
+          <div style={{ marginTop: 24 }}>
+            <div className="form-submit-row">
+              <button type="button" className="btn-ghost form-submit-btn" onClick={() => navigate('/opportunities')}>
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary form-submit-btn" disabled={submitting}
+                style={{ minWidth: 160 }}>
+                {submitting ? 'Submitting…' : 'Submit for review'}
+              </button>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 8, marginBottom: 0 }}>
               Your post goes live after admin review.
-            </span>
+            </p>
           </div>
 
         </form>

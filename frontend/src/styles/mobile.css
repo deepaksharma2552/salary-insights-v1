@@ -29,6 +29,13 @@
 /* Post opportunity form */
 .post-opp-card     { padding: 32px; }
 
+/* Submit/Cancel button row — desktop default */
+.form-submit-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 /* About page mission grid */
 .about-mission-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
 
@@ -121,6 +128,26 @@
   }
   .opportunities-table-wrap table {
     min-width: 700px;
+  }
+
+  /* ── Opportunities Board: card view replaces table on mobile ── */
+  /* (the JS already renders cards; ensure no stale table scroll wrapper interferes) */
+  .opportunities-table-wrap.is-cards {
+    overflow-x: unset;
+  }
+
+  /* ── Form submit row: stack buttons full-width on mobile ── */
+  .form-submit-row {
+    flex-direction: column-reverse !important;
+    gap: 10px !important;
+  }
+  .form-submit-row .btn-primary,
+  .form-submit-row .btn-ghost,
+  .form-submit-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
   }
 
   /* ── Dashboard cards ── */

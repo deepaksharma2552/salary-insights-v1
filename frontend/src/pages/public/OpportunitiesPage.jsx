@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 import ScrollableSelect from '../../components/shared/ScrollableSelect';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 const LOCATION_OPTIONS_OPP = [
   { value: '', label: 'All Locations' },
@@ -73,6 +74,7 @@ function TypeBadge({ type }) {
 
 
 export default function OpportunitiesPage() {
+  const isMobile = useIsMobile();
   const [rows,        setRows]        = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
@@ -207,7 +209,7 @@ export default function OpportunitiesPage() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Content */}
       {loading ? (
         <div style={{ color: 'var(--text-3)', fontSize: 13, fontFamily: "'IBM Plex Mono',monospace", padding: '32px 0' }}>Loading…</div>
       ) : filtered.length === 0 ? (
@@ -216,7 +218,115 @@ export default function OpportunitiesPage() {
             ? 'No opportunities match the current filters.'
             : 'No opportunities posted yet — be the first to post one!'}
         </div>
+      ) : isMobile ? (
+
+        /* ── MOBILE CARD VIEW ────────────────────────────────────────── */
+        <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {filtered.map(opp => (
+              <div
+                key={opp.id}
+                style={{
+                  background: 'var(--panel)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 12,
+                  padding: '14px 16px',
+                }}
+                onTouchStart={e => e.currentTarget.style.borderColor = 'var(--border-2)'}
+                onTouchEnd={e => e.currentTarget.style.borderColor = 'var(--border)'}
+              >
+                {/* Top row: company logo + name + type badge */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <CompanyLogo
+                      companyId={opp.companyId}
+                      companyName={opp.companyName}
+                      logoUrl={opp.logoUrl}
+                      website={opp.website}
+                      size={34}
+                      radius={8}
+                    />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {opp.companyName}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {opp.title}
+                      </div>
+                    </div>
+                  </div>
+                  <TypeBadge type={opp.type} />
+                </div>
+
+                {/* Middle row: badges */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                  {opp.location && (
+                    <span style={{ fontSize: 11, color: 'var(--text-3)', background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px' }}>
+                      📍 {opp.location}
+                    </span>
+                  )}
+                  {opp.workMode && (
+                    <span style={{ fontSize: 11, color: 'var(--text-3)', background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px' }}>
+                      {opp.workMode}
+                    </span>
+                  )}
+                  {opp.experienceRequired && (
+                    <span style={{ fontSize: 11, color: 'var(--text-3)', background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px' }}>
+                      {opp.experienceRequired}
+                    </span>
+                  )}
+                </div>
+
+                {/* Bottom row: pay + deadline + apply */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                  <div>
+                    {opp.stipendOrSalary ? (
+                      <>
+                        <div style={{ fontSize: 10, color: 'var(--text-3)', marginBottom: 2 }}>Pay / Stipend</div>
+                        <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
+                          {opp.stipendOrSalary}
+                        </div>
+                      </>
+                    ) : (
+                      <DeadlineChip expiresAt={opp.expiresAt} />
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {opp.stipendOrSalary && <DeadlineChip expiresAt={opp.expiresAt} />}
+                    <a
+                      href={opp.applyLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="view-btn"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      Apply →
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {(cursorStack.length > 1 || hasMore) && (
+            <div className="pagination" style={{ padding: '12px 4px' }}>
+              <span className="page-info">
+                Page {currentPage}
+                {(hasFilters || search) && (
+                  <span style={{ marginLeft: 8, color: 'var(--blue)', fontWeight: 500 }}>· filtered</span>
+                )}
+              </span>
+              <div className="page-btns">
+                <button className="page-btn" disabled={cursorStack.length <= 1 || loading} onClick={goPrev}>← Prev</button>
+                <button className="page-btn" disabled={!hasMore || loading} onClick={goNext}>Next →</button>
+              </div>
+            </div>
+          )}
+        </div>
+
       ) : (
+
+        /* ── DESKTOP TABLE VIEW ──────────────────────────────────────── */
         <div className="salary-table-wrap opportunities-table-wrap">
           <table className="salary-table">
             <thead>
