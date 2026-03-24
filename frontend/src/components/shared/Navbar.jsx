@@ -95,6 +95,7 @@ export default function Navbar() {
         /* Hide desktop-only nav elements on mobile */
         @media (max-width: 768px) {
           .nav-desktop-only { display: none !important; }
+          .nav-mobile-user  { display: flex !important; }
         }
       `}</style>
 
@@ -265,6 +266,30 @@ export default function Navbar() {
           <div className="nav-desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Link to="/login"    className="btn-ghost"   style={{ textDecoration: 'none' }}>Sign in</Link>
             <Link to="/register" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Sign up</Link>
+          </div>
+        )}
+
+        {/* ── Mobile user identity — avatar + first name, mobile only ── */}
+        {user && (
+          <div
+            className="nav-mobile-user"
+            onClick={() => setMobileOpen(o => !o)}
+            style={{ display: 'none', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+          >
+            <div style={{
+              width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+              background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 10, fontWeight: 700, color: '#3b82f6', fontFamily: 'Inter,sans-serif',
+            }}>
+              {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
+            </div>
+            <span style={{
+              fontSize: 13, fontWeight: 600, color: 'var(--text-1)',
+              maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {user.firstName ?? user.email?.split('@')[0]}
+            </span>
           </div>
         )}
 
