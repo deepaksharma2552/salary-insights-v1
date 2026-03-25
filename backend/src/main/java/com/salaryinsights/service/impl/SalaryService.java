@@ -44,8 +44,14 @@ public class SalaryService {
         List<SalaryResponse> content = page.getContent().stream()
                 .map(salaryMapper::toResponse)
                 .collect(java.util.stream.Collectors.toList());
-        return new PagedResponse<>(content, page.getNumber(), page.getSize(),
-                page.getTotalElements(), page.getTotalPages());
+        return PagedResponse.<SalaryResponse>builder()
+                .content(content)
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
     }
 
     @Transactional(readOnly = true)
