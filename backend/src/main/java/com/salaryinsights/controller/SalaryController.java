@@ -2,6 +2,7 @@ package com.salaryinsights.controller;
 
 import com.salaryinsights.dto.request.SalaryRequest;
 import com.salaryinsights.dto.response.ApiResponse;
+import com.salaryinsights.dto.response.PagedResponse;
 import com.salaryinsights.dto.response.SalaryResponse;
 import com.salaryinsights.service.impl.SalaryService;
 import jakarta.validation.Valid;
