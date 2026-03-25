@@ -36,6 +36,7 @@ public class SalaryService {
     private final AuditLogService auditLogService;
     private final JobFunctionRepository    jobFunctionRepository;
     private final FunctionLevelRepository  functionLevelRepository;
+    private final com.salaryinsights.repository.OpportunityRepository opportunityRepository;
 
     @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getMySubmissions(Pageable pageable) {
@@ -877,6 +878,131 @@ public class SalaryService {
                 companyRepository.save(c);
             });
         }
+    }
+
+
+    // ── Feature 1: Salary Benchmarker ────────────────────────────────────────
+    /**
+     * Returns percentile stats (p25/p50/p75 + avg) for TC and base salary
+     * matching the given role keyword + experience level + optional location.
+     * If the exact-match sample size is < 5, location is dropped (broadened search).
+     * If still < 5, experienceLevel is also dropped.
+     * Benchmark results are NOT cached — they are parameterised per-user input
+     * and would create unbounded cache entries. The query uses a partial index
+     * on (review_status, experience_level, location) which keeps it fast.
+     */
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public com.salaryinsights.dto.response.BenchmarkResponse getBenchmark(
+            String jobTitle, String expLevel, String location) {
+
+        // Normalise expLevel: map frontend values (ENTRY/MID/SENIOR/LEAD) to DB enum names
+        String normExpLevel = expLevel != null && !expLevel.isBlank() ? expLevel.toUpperCase() : null;
+
+        // Normalise location: display name → enum name
+        String normLocation = null;
+        if (location != null && !location.isBlank()) {
+            for (com.salaryinsights.enums.Location loc : com.salaryinsights.enums.Location.values()) {
+                if (loc.getDisplayName().equalsIgnoreCase(location) || loc.name().equalsIgnoreCase(location)) {
+                    normLocation = loc.name();
+                    break;
+                }
+            }
+            if (normLocation == null) normLocation = location.toUpperCase();
+        }
+
+        String normTitle = (jobTitle != null && !jobTitle.isBlank()) ? jobTitle.trim() : null;
+
+        // Attempt exact match
+        Object[] row = salaryEntryRepository.benchmarkRaw(normTitle, normExpLevel, normLocation);
+        long count = row != null && row[9] != null ? ((Number) row[9]).longValue() : 0L;
+        boolean broadened = false;
+        String broadeningReason = null;
+
+        // Broaden 1: drop location
+        if (count < 5 && normLocation != null) {
+            row = salaryEntryRepository.benchmarkRaw(normTitle, normExpLevel, null);
+            count = row != null && row[9] != null ? ((Number) row[9]).longValue() : 0L;
+            broadened = true;
+            broadeningReason = "Location filter removed to expand sample";
+        }
+
+        // Broaden 2: drop experience level too
+        if (count < 5 && normExpLevel != null) {
+            row = salaryEntryRepository.benchmarkRaw(normTitle, null, null);
+            count = row != null && row[9] != null ? ((Number) row[9]).longValue() : 0L;
+            broadeningReason = "Location and level filters removed to expand sample";
+        }
+
+        if (row == null || count == 0) {
+            return com.salaryinsights.dto.response.BenchmarkResponse.builder()
+                    .role(normTitle)
+                    .experienceLevel(normExpLevel)
+                    .location(normLocation)
+                    .sampleSize(0)
+                    .broadened(true)
+                    .broadeningReason("No matching salary data found")
+                    .build();
+        }
+
+        return com.salaryinsights.dto.response.BenchmarkResponse.builder()
+                .role(normTitle)
+                .experienceLevel(normExpLevel)
+                .location(normLocation)
+                .sampleSize(count)
+                .p25Tc(row[0] != null ? new java.math.BigDecimal(row[0].toString()) : null)
+                .p50Tc(row[1] != null ? new java.math.BigDecimal(row[1].toString()) : null)
+                .p75Tc(row[2] != null ? new java.math.BigDecimal(row[2].toString()) : null)
+                .avgTc(row[3] != null ? new java.math.BigDecimal(row[3].toString()) : null)
+                .p25Base(row[4] != null ? new java.math.BigDecimal(row[4].toString()) : null)
+                .p50Base(row[5] != null ? new java.math.BigDecimal(row[5].toString()) : null)
+                .avgBase(row[6] != null ? new java.math.BigDecimal(row[6].toString()) : null)
+                .avgBonus(row[7] != null ? new java.math.BigDecimal(row[7].toString()) : null)
+                .avgEquity(row[8] != null ? new java.math.BigDecimal(row[8].toString()) : null)
+                .broadened(broadened)
+                .broadeningReason(broadeningReason)
+                .build();
+    }
+
+    // ── Feature 2: Salary Trends ──────────────────────────────────────────────
+    /**
+     * Returns recent (0-6 months) vs prior (6-12 months) avg TC per company.
+     * Used to render ↑ ↓ → trend arrows on salary rows.
+     * Cached on "analytics" (1h TTL) — same eviction points as other analytics.
+     */
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'salaryTrends'")
+    public java.util.List<com.salaryinsights.dto.response.CompanyTrendDTO> getSalaryTrends() {
+        return salaryEntryRepository.salaryTrendsRaw().stream().map(row -> {
+            String companyIdStr = row[0] != null ? row[0].toString() : null;
+            java.util.UUID companyId = null;
+            try { if (companyIdStr != null) companyId = java.util.UUID.fromString(companyIdStr); }
+            catch (IllegalArgumentException ignored) {}
+            String companyName   = row[1] != null ? row[1].toString() : null;
+            java.math.BigDecimal recentAvg = row[2] != null ? new java.math.BigDecimal(row[2].toString()) : null;
+            java.math.BigDecimal priorAvg  = row[3] != null ? new java.math.BigDecimal(row[3].toString()) : null;
+            long recentCount = row[4] != null ? ((Number) row[4]).longValue() : 0L;
+            long priorCount  = row[5] != null ? ((Number) row[5]).longValue() : 0L;
+            return new com.salaryinsights.dto.response.CompanyTrendDTO(
+                    companyId, companyName, recentAvg, priorAvg, recentCount, priorCount);
+        }).collect(java.util.stream.Collectors.toList());
+    }
+
+    // ── Feature 3: Hiring Now ─────────────────────────────────────────────────
+    /**
+     * Returns companyId → open role count for all companies with ≥1 LIVE opportunity.
+     * Cached on "companyList" (5-min TTL) — evicted on any opportunity approval/change.
+     */
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = "companyList", key = "'hiringNow'")
+    public java.util.List<com.salaryinsights.dto.response.CompanyHiringDTO> getHiringNow() {
+        return opportunityRepository.companyOpenRoleCountsRaw().stream().map(row -> {
+            String idStr = row[0] != null ? row[0].toString() : null;
+            java.util.UUID companyId = null;
+            try { if (idStr != null) companyId = java.util.UUID.fromString(idStr); }
+            catch (IllegalArgumentException ignored) {}
+            long openRoles = row[1] != null ? ((Number) row[1]).longValue() : 0L;
+            return new com.salaryinsights.dto.response.CompanyHiringDTO(companyId, openRoles);
+        }).collect(java.util.stream.Collectors.toList());
     }
 
 }

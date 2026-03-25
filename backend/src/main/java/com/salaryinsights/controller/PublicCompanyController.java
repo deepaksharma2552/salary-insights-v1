@@ -80,4 +80,14 @@ public class PublicCompanyController {
             @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(companyService.getSalarySummary(id)));
     }
+
+    /**
+     * GET /public/companies/hiring-now
+     * Returns companyId → open role count for companies with ≥1 LIVE opportunity.
+     * Cached 5 min. Used to render "X open roles" badges on salary rows.
+     */
+    @GetMapping("/hiring-now")
+    public ResponseEntity<ApiResponse<List<com.salaryinsights.dto.response.CompanyHiringDTO>>> getHiringNow() {
+        return ResponseEntity.ok(ApiResponse.success(salaryService.getHiringNow()));
+    }
 }

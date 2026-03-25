@@ -332,6 +332,64 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         nativeQuery = true)
     List<Object[]> salarySummaryByLevel(@Param("companyId") UUID companyId);
 
+    // ── Feature: Salary Benchmarker ──────────────────────────────────────────
+    // p25/p50/p75 + avg for TC and base — used by /public/salaries/benchmark.
+    // All params nullable: pass null to omit that filter (broadened search).
+    @Query(value =
+        "SELECT " +
+        "  PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY total_compensation) AS p25_tc, " +
+        "  PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY total_compensation) AS p50_tc, " +
+        "  PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY total_compensation) AS p75_tc, " +
+        "  AVG(total_compensation)                                           AS avg_tc, " +
+        "  PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY base_salary)        AS p25_base, " +
+        "  PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY base_salary)        AS p50_base, " +
+        "  AVG(base_salary)                                                  AS avg_base, " +
+        "  AVG(bonus)                                                        AS avg_bonus, " +
+        "  AVG(equity)                                                       AS avg_equity, " +
+        "  COUNT(*)                                                          AS cnt " +
+        "FROM salary_entries s " +
+        "WHERE s.review_status = 'APPROVED' " +
+        "  AND (:jobTitle IS NULL OR LOWER(s.job_title) LIKE LOWER(CONCAT('%', :jobTitle, '%'))) " +
+        "  AND (:expLevel IS NULL OR s.experience_level = :expLevel) " +
+        "  AND (:location IS NULL OR s.location = :location) ",
+        nativeQuery = true)
+    Object[] benchmarkRaw(
+        @Param("jobTitle") String jobTitle,
+        @Param("expLevel") String expLevel,
+        @Param("location") String location
+    );
+
+    // ── Feature: Salary Trends ────────────────────────────────────────────────
+    // Recent (0-6 months) vs prior (6-12 months) avg TC per company.
+    // Cached on "analytics" (1h TTL). Only companies with ≥1 recent entry returned.
+    @Query(value =
+        "WITH windows AS ( " +
+        "  SELECT " +
+        "    CAST(c.id AS VARCHAR)                                               AS company_id, " +
+        "    c.name                                                              AS company_name, " +
+        "    AVG(CASE WHEN s.created_at >= NOW() - INTERVAL '6 months' " +
+        "             THEN s.total_compensation END)                             AS recent_avg_tc, " +
+        "    AVG(CASE WHEN s.created_at >= NOW() - INTERVAL '12 months' " +
+        "              AND s.created_at <  NOW() - INTERVAL '6 months' " +
+        "             THEN s.total_compensation END)                             AS prior_avg_tc, " +
+        "    COUNT(CASE WHEN s.created_at >= NOW() - INTERVAL '6 months' " +
+        "              THEN 1 END)                                               AS recent_count, " +
+        "    COUNT(CASE WHEN s.created_at >= NOW() - INTERVAL '12 months' " +
+        "               AND s.created_at <  NOW() - INTERVAL '6 months' " +
+        "              THEN 1 END)                                               AS prior_count " +
+        "  FROM salary_entries s " +
+        "  JOIN companies c ON s.company_id = c.id " +
+        "  WHERE s.review_status = 'APPROVED' " +
+        "    AND s.created_at   >= NOW() - INTERVAL '12 months' " +
+        "  GROUP BY c.id, c.name " +
+        "  HAVING COUNT(CASE WHEN s.created_at >= NOW() - INTERVAL '6 months' THEN 1 END) > 0 " +
+        ") " +
+        "SELECT company_id, company_name, recent_avg_tc, prior_avg_tc, recent_count, prior_count " +
+        "FROM windows " +
+        "ORDER BY recent_avg_tc DESC NULLS LAST",
+        nativeQuery = true)
+    List<Object[]> salaryTrendsRaw();
+
     @Query(value = "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as count " +
                    "FROM salary_entries WHERE created_at >= NOW() - INTERVAL '12 months' " +
                    "GROUP BY month ORDER BY month", nativeQuery = true)

@@ -105,4 +105,16 @@ public interface OpportunityRepository
             @Param("expired") OpportunityStatus expired,
             @Param("now")     LocalDateTime now
     );
+
+    // ── Feature: Hiring Now badges ─────────────────────────────────────────────
+    // Returns [company_id (VARCHAR), open_role_count] for all companies that have
+    // at least one LIVE opportunity linked via company_id.
+    // Used by GET /public/companies/hiring-now — cached 5 min on "companyList".
+    @Query(value =
+        "SELECT CAST(o.company_id AS VARCHAR) AS company_id, COUNT(*) AS open_roles " +
+        "FROM opportunities o " +
+        "WHERE o.status = 'LIVE' AND o.company_id IS NOT NULL " +
+        "GROUP BY o.company_id",
+        nativeQuery = true)
+    List<Object[]> companyOpenRoleCountsRaw();
 }

@@ -91,4 +91,29 @@ public class PublicSalaryController {
             @RequestParam(required = false) List<String> locations) {
         return ResponseEntity.ok(ApiResponse.success(salaryService.getAvgSalaryByInternalLevel(locations)));
     }
+
+    /**
+     * GET /public/salaries/benchmark
+     * Returns p25/p50/p75 + avg for TC and base salary for a given role/level/location.
+     * Automatically broadens the search if sample size < 5.
+     * Not cached — parameterised per user input; query is fast via partial index.
+     */
+    @GetMapping("/benchmark")
+    public ResponseEntity<ApiResponse<com.salaryinsights.dto.response.BenchmarkResponse>> benchmark(
+            @RequestParam(required = false) String jobTitle,
+            @RequestParam(required = false) String expLevel,
+            @RequestParam(required = false) String location) {
+        return ResponseEntity.ok(ApiResponse.success(
+                salaryService.getBenchmark(jobTitle, expLevel, location)));
+    }
+
+    /**
+     * GET /public/salaries/trends
+     * Returns recent (0-6 months) vs prior (6-12 months) avg TC per company.
+     * Cached 1h. Used to render trend arrows on the salary table.
+     */
+    @GetMapping("/trends")
+    public ResponseEntity<ApiResponse<List<com.salaryinsights.dto.response.CompanyTrendDTO>>> trends() {
+        return ResponseEntity.ok(ApiResponse.success(salaryService.getSalaryTrends()));
+    }
 }
