@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import api from '../../services/api';
 import { useLocations } from '../../hooks/useLocations';
+import { useAppData } from '../../context/AppDataContext';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (val) => {
@@ -11,22 +12,13 @@ const fmt = (val) => {
   return l >= 100 ? `₹${(l / 100).toFixed(1)}Cr` : `₹${l.toFixed(1)}L`;
 };
 
-const EXP_LEVELS = [
-  { value: '',       label: 'Any level'  },
-  { value: 'ENTRY',  label: 'Junior'     },
-  { value: 'MID',    label: 'Mid-level'  },
-  { value: 'SENIOR', label: 'Senior'     },
-  { value: 'LEAD',   label: 'Lead / Staff' },
-];
-
-// Returns a CSS color and label for the trend relative to median
 function offerPosition(offerVal, p25, p50, p75) {
   if (!offerVal || !p50) return null;
   const v = Number(offerVal);
-  if (v >= Number(p75))  return { color: 'var(--green)',    label: 'Above 75th percentile', pct: 100 };
-  if (v >= Number(p50))  return { color: 'var(--viz-1)',    label: 'Above median', pct: 75 };
-  if (v >= Number(p25))  return { color: 'var(--viz-2)',    label: 'Below median', pct: 40 };
-  return                          { color: 'var(--rose)',    label: 'Below 25th percentile', pct: 15 };
+  if (v >= Number(p75))  return { color: 'var(--green)',  label: 'Above 75th percentile' };
+  if (v >= Number(p50))  return { color: 'var(--viz-1)',  label: 'Above median'           };
+  if (v >= Number(p25))  return { color: 'var(--viz-2)',  label: 'Below median'           };
+  return                          { color: 'var(--rose)',  label: 'Below 25th percentile'  };
 }
 
 // ── Percentile Bar ────────────────────────────────────────────────────────────
@@ -45,57 +37,18 @@ function PercentileBar({ p25, p50, p75, avg, userVal, label }) {
           </span>
         )}
       </div>
-
-      {/* Track */}
       <div style={{ position: 'relative', height: 10, background: 'var(--bg-3)', borderRadius: 99, overflow: 'visible' }}>
-
-        {/* P25–P75 fill (interquartile range) */}
-        <div style={{
-          position: 'absolute',
-          left: `${pct(p25)}%`,
-          width: `${pct(p75) - pct(p25)}%`,
-          height: '100%',
-          background: 'var(--viz-1-dim)',
-          borderRadius: 99,
-        }} />
-
-        {/* P50 median tick */}
-        <div style={{
-          position: 'absolute',
-          left: `${pct(p50)}%`,
-          transform: 'translateX(-50%)',
-          width: 2,
-          height: 18,
-          top: -4,
-          background: 'var(--viz-1)',
-          borderRadius: 2,
-        }} />
-
-        {/* User offer marker */}
+        <div style={{ position: 'absolute', left: `${pct(p25)}%`, width: `${pct(p75) - pct(p25)}%`, height: '100%', background: 'var(--viz-1-dim)', borderRadius: 99 }} />
+        <div style={{ position: 'absolute', left: `${pct(p50)}%`, transform: 'translateX(-50%)', width: 2, height: 18, top: -4, background: 'var(--viz-1)', borderRadius: 2 }} />
         {userVal && (
-          <div style={{
-            position: 'absolute',
-            left: `${pct(userVal)}%`,
-            transform: 'translateX(-50%)',
-            width: 14,
-            height: 14,
-            top: -2,
-            background: pos?.color ?? 'var(--text-1)',
-            border: '2px solid var(--panel)',
-            borderRadius: '50%',
-            boxShadow: '0 0 0 2px ' + (pos?.color ?? 'var(--text-1)') + '44',
-            zIndex: 2,
-          }} />
+          <div style={{ position: 'absolute', left: `${pct(userVal)}%`, transform: 'translateX(-50%)', width: 14, height: 14, top: -2, background: pos?.color ?? 'var(--text-1)', border: '2px solid var(--panel)', borderRadius: '50%', boxShadow: '0 0 0 2px ' + (pos?.color ?? 'var(--text-1)') + '44', zIndex: 2 }} />
         )}
       </div>
-
-      {/* Labels below track */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
         <span>P25 {fmt(p25)}</span>
         <span style={{ color: 'var(--viz-1)', fontWeight: 600 }}>Median {fmt(p50)}</span>
         <span>P75 {fmt(p75)}</span>
       </div>
-
       {avg && (
         <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3, fontFamily: "'IBM Plex Mono',monospace" }}>
           Market avg: <span style={{ color: 'var(--text-2)' }}>{fmt(avg)}</span>
@@ -105,20 +58,68 @@ function PercentileBar({ p25, p50, p75, avg, userVal, label }) {
   );
 }
 
+// ── Equity Comparison Row ─────────────────────────────────────────────────────
+function EquityRow({ userEquity, avgEquity }) {
+  if (!avgEquity) return null;
+  const avg = Number(avgEquity);
+  const user = Number(userEquity);
+  const hasUser = userEquity && !isNaN(user) && user > 0;
+
+  let badge = null;
+  if (hasUser) {
+    const diff = ((user - avg) / avg) * 100;
+    if (diff >= 10)       badge = { label: `+${diff.toFixed(0)}% above avg`, color: 'var(--green)' };
+    else if (diff >= -10) badge = { label: 'Near market avg',                color: 'var(--viz-1)' };
+    else                  badge = { label: `${diff.toFixed(0)}% below avg`,  color: 'var(--rose)'  };
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 16 }}>
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 3 }}>Equity / RSU</div>
+        <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
+          Market avg: <span style={{ color: 'var(--text-2)' }}>{fmt(avg)}</span>
+          {hasUser && <> · Your offer: <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{fmt(user)}</span></>}
+        </div>
+      </div>
+      {badge && (
+        <span style={{ fontSize: 11, fontWeight: 600, color: badge.color, background: `${badge.color}18`, padding: '3px 10px', borderRadius: 20 }}>
+          {badge.label}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function SalaryBenchmarkTool() {
   const { locations } = useLocations();
-  const [jobTitle,  setJobTitle]  = useState('');
-  const [expLevel,  setExpLevel]  = useState('');
-  const [location,  setLocation]  = useState('');
-  const [offerTc,   setOfferTc]   = useState('');
-  const [offerBase, setOfferBase] = useState('');
+  const { functions, getLevelsForFunction, functionsReady } = useAppData();
+
+  const [jobTitle,        setJobTitle]        = useState('');
+  const [jobFunctionId,   setJobFunctionId]   = useState('');
+  const [functionLevelId, setFunctionLevelId] = useState('');
+  const [location,        setLocation]        = useState('');
+  const [offerTc,         setOfferTc]         = useState('');
+  const [offerBase,       setOfferBase]       = useState('');
+  const [offerEquity,     setOfferEquity]     = useState('');
 
   const [result,  setResult]  = useState(null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
-  const canSubmit = jobTitle.trim().length >= 2;
+  // Levels reactive to selected function — mirrors SubmitSalaryPage pattern
+  const availableLevels = useMemo(
+    () => getLevelsForFunction(jobFunctionId),
+    [jobFunctionId, getLevelsForFunction]
+  );
+
+  function handleFunctionChange(e) {
+    setJobFunctionId(e.target.value);
+    setFunctionLevelId(''); // reset level when function changes
+  }
+
+  const canSubmit = jobTitle.trim().length >= 2 || !!jobFunctionId;
 
   const handleBenchmark = useCallback(async () => {
     if (!canSubmit) return;
@@ -126,40 +127,46 @@ export default function SalaryBenchmarkTool() {
     setError(null);
     setResult(null);
     try {
-      const params = { jobTitle: jobTitle.trim() };
-      if (expLevel) params.expLevel = expLevel;
-      if (location) params.location = location;
+      const params = {};
+      if (jobTitle.trim())   params.jobTitle        = jobTitle.trim();
+      if (jobFunctionId)     params.jobFunctionId   = jobFunctionId;
+      if (functionLevelId)   params.functionLevelId = functionLevelId;
+      if (location)          params.location        = location;
       const res = await api.get('/public/salaries/benchmark', { params });
       setResult(res.data?.data ?? null);
-    } catch (e) {
+    } catch {
       setError('Failed to load benchmark data. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [jobTitle, expLevel, location, canSubmit]);
+  }, [jobTitle, jobFunctionId, functionLevelId, location, canSubmit]);
 
-  // Parse lakhs input → raw number
   const parseInput = (v) => {
     if (!v) return null;
     const n = parseFloat(v.replace(/[^0-9.]/g, ''));
     return isNaN(n) ? null : n * 100_000;
   };
 
-  const offerTcRaw   = parseInput(offerTc);
-  const offerBaseRaw = parseInput(offerBase);
+  const offerTcRaw     = parseInput(offerTc);
+  const offerBaseRaw   = parseInput(offerBase);
+  const offerEquityRaw = parseInput(offerEquity);
+
+  const selectStyle = {
+    width: '100%', padding: '9px 12px', borderRadius: 9,
+    border: '1px solid var(--border)', background: 'var(--bg-2)',
+    color: 'var(--text-1)', fontSize: 13, cursor: 'pointer',
+  };
+  const labelStyle = { fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 };
 
   return (
     <div style={{ maxWidth: 680, marginTop: 8 }}>
 
       {/* ── Input card ── */}
-      <div style={{
-        background: 'var(--panel)', border: '1px solid var(--border)',
-        borderRadius: 16, padding: '24px 28px', marginBottom: 20,
-      }}>
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>
-            Role / Job title <span style={{ color: 'var(--rose)' }}>*</span>
-          </div>
+      <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px', marginBottom: 20 }}>
+
+        {/* Job Title */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={labelStyle}>Role / Job title</div>
           <input
             className="input-field"
             type="text"
@@ -171,66 +178,55 @@ export default function SalaryBenchmarkTool() {
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+        {/* Function + Level — same hierarchy as Share Salary page */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>Experience level</div>
-            <select
-              value={expLevel}
-              onChange={e => setExpLevel(e.target.value)}
-              style={{
-                width: '100%', padding: '9px 12px', borderRadius: 9,
-                border: '1px solid var(--border)', background: 'var(--bg-2)',
-                color: 'var(--text-1)', fontSize: 13, cursor: 'pointer',
-              }}
-            >
-              {EXP_LEVELS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            <div style={labelStyle}>Function</div>
+            <select value={jobFunctionId} onChange={handleFunctionChange} style={selectStyle} disabled={!functionsReady}>
+              <option value="">{functionsReady ? 'Any function' : 'Loading…'}</option>
+              {functions.map(fn => <option key={fn.id} value={fn.id}>{fn.displayName}</option>)}
             </select>
           </div>
-
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>Location</div>
+            <div style={labelStyle}>Level</div>
             <select
-              value={location}
-              onChange={e => setLocation(e.target.value)}
-              style={{
-                width: '100%', padding: '9px 12px', borderRadius: 9,
-                border: '1px solid var(--border)', background: 'var(--bg-2)',
-                color: 'var(--text-1)', fontSize: 13, cursor: 'pointer',
-              }}
+              value={functionLevelId}
+              onChange={e => setFunctionLevelId(e.target.value)}
+              style={{ ...selectStyle, opacity: jobFunctionId ? 1 : 0.55 }}
+              disabled={!jobFunctionId}
             >
-              <option value="">All locations</option>
-              {locations.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+              <option value="">{jobFunctionId ? 'Any level' : 'Select a function first'}</option>
+              {availableLevels.map(lv => <option key={lv.id} value={lv.id}>{lv.name}</option>)}
             </select>
           </div>
         </div>
 
-        {/* Optional: your offer */}
+        {/* Location */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={labelStyle}>Location</div>
+          <select value={location} onChange={e => setLocation(e.target.value)} style={selectStyle}>
+            <option value="">All locations</option>
+            {locations.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+          </select>
+        </div>
+
+        {/* Optional offer inputs */}
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 20 }}>
-          <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 10 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12 }}>
             Optional — enter your offer to see where you stand
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>Total comp (₹ lakhs/yr)</div>
-              <input
-                className="input-field"
-                type="number"
-                placeholder="e.g. 25"
-                value={offerTc}
-                onChange={e => setOfferTc(e.target.value)}
-                style={{ width: '100%' }}
-              />
+              <div style={labelStyle}>Total comp (₹L/yr)</div>
+              <input className="input-field" type="number" placeholder="e.g. 25" value={offerTc} onChange={e => setOfferTc(e.target.value)} style={{ width: '100%' }} />
             </div>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>Base salary (₹ lakhs/yr)</div>
-              <input
-                className="input-field"
-                type="number"
-                placeholder="e.g. 18"
-                value={offerBase}
-                onChange={e => setOfferBase(e.target.value)}
-                style={{ width: '100%' }}
-              />
+              <div style={labelStyle}>Base salary (₹L/yr)</div>
+              <input className="input-field" type="number" placeholder="e.g. 18" value={offerBase} onChange={e => setOfferBase(e.target.value)} style={{ width: '100%' }} />
+            </div>
+            <div>
+              <div style={labelStyle}>Equity / RSU (₹L/yr)</div>
+              <input className="input-field" type="number" placeholder="e.g. 5" value={offerEquity} onChange={e => setOfferEquity(e.target.value)} style={{ width: '100%' }} />
             </div>
           </div>
         </div>
@@ -242,9 +238,9 @@ export default function SalaryBenchmarkTool() {
             width: '100%', padding: '11px 0', borderRadius: 10, border: 'none',
             background: canSubmit ? 'var(--viz-1)' : 'var(--bg-4)',
             color: canSubmit ? '#fff' : 'var(--text-3)',
-            fontSize: 14, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed',
-            transition: 'background 0.15s, opacity 0.15s',
-            opacity: loading ? 0.7 : 1,
+            fontSize: 14, fontWeight: 600,
+            cursor: canSubmit ? 'pointer' : 'not-allowed',
+            opacity: loading ? 0.7 : 1, transition: 'background 0.15s, opacity 0.15s',
           }}
         >
           {loading ? 'Fetching market data…' : '📊 Benchmark this role'}
@@ -260,19 +256,21 @@ export default function SalaryBenchmarkTool() {
 
       {/* ── Result card ── */}
       {result && (
-        <div style={{
-          background: 'var(--panel)', border: '1px solid var(--border)',
-          borderRadius: 16, padding: '24px 28px',
-          animation: 'fadeUp 0.25s ease',
-        }}>
+        <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px', animation: 'fadeUp 0.25s ease' }}>
+
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
             <div>
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>
-                {result.role}
-                {result.experienceLevel && (
+                {result.role ?? 'All roles'}
+                {result.jobFunction && (
                   <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-3)', marginLeft: 8, verticalAlign: 'middle' }}>
-                    · {EXP_LEVELS.find(e => e.value === result.experienceLevel)?.label ?? result.experienceLevel}
+                    · {result.jobFunction}
+                  </span>
+                )}
+                {result.level && (
+                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-3)', marginLeft: 4, verticalAlign: 'middle' }}>
+                    / {result.level}
                   </span>
                 )}
               </div>
@@ -290,11 +288,7 @@ export default function SalaryBenchmarkTool() {
 
           {/* Broadening notice */}
           {result.broadened && result.broadeningReason && (
-            <div style={{
-              background: 'var(--viz-2-dim)', border: '1px solid #ddd6fe',
-              borderRadius: 8, padding: '8px 12px', fontSize: 12,
-              color: 'var(--viz-2)', marginBottom: 20,
-            }}>
+            <div style={{ background: 'var(--viz-2-dim)', border: '1px solid #ddd6fe', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'var(--viz-2)', marginBottom: 20 }}>
               ℹ️ {result.broadeningReason} — results reflect a broader market
             </div>
           )}
@@ -305,37 +299,17 @@ export default function SalaryBenchmarkTool() {
             </div>
           ) : (
             <>
-              {/* TC percentile bar */}
               {result.p50Tc && (
-                <PercentileBar
-                  label="Total Compensation"
-                  p25={result.p25Tc}
-                  p50={result.p50Tc}
-                  p75={result.p75Tc}
-                  avg={result.avgTc}
-                  userVal={offerTcRaw}
-                />
+                <PercentileBar label="Total Compensation" p25={result.p25Tc} p50={result.p50Tc} p75={result.p75Tc} avg={result.avgTc} userVal={offerTcRaw} />
               )}
-
-              {/* Base percentile bar */}
               {result.p50Base && (
-                <PercentileBar
-                  label="Base Salary"
-                  p25={result.p25Base}
-                  p50={result.p50Base}
-                  p75={result.p75Base ?? result.p75Tc}
-                  avg={result.avgBase}
-                  userVal={offerBaseRaw}
-                />
+                <PercentileBar label="Base Salary" p25={result.p25Base} p50={result.p50Base} p75={result.p75Base ?? result.p75Tc} avg={result.avgBase} userVal={offerBaseRaw} />
               )}
-
-              {/* Avg breakdown */}
+              {result.avgEquity && (
+                <EquityRow userEquity={offerEquityRaw} avgEquity={result.avgEquity} />
+              )}
               {(result.avgBonus || result.avgEquity) && (
-                <div style={{
-                  display: 'flex', gap: 16, marginTop: 4,
-                  paddingTop: 16, borderTop: '1px solid var(--border)',
-                  flexWrap: 'wrap',
-                }}>
+                <div style={{ display: 'flex', gap: 16, marginTop: 4, paddingTop: 16, borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
                   {[
                     { label: 'Avg Bonus',  val: result.avgBonus,  color: 'var(--viz-2)' },
                     { label: 'Avg Equity', val: result.avgEquity, color: 'var(--viz-3)' },
