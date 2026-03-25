@@ -3,6 +3,7 @@ package com.salaryinsights.security.oauth2;
 import com.salaryinsights.entity.User;
 import com.salaryinsights.repository.UserRepository;
 import com.salaryinsights.security.JwtTokenProvider;
+import com.salaryinsights.util.CookieUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -18,8 +19,12 @@ import java.io.IOException;
 
 /**
  * After a successful OAuth2 login Spring redirects to this handler.
- * We issue a JWT and redirect to the frontend with the token as a query param.
- * The React app picks it up, stores it, and redirects to the home page.
+ *
+ * Previously we passed the JWT as a ?token= query param — visible in browser
+ * history, server logs, and Referer headers.  Now we:
+ *   1. Set the token in an httpOnly cookie (invisible to JS, not in the URL).
+ *   2. Redirect with only non-sensitive user fields as query params so the
+ *      React OAuth2RedirectPage can hydrate AuthContext without a second API call.
  */
 @Slf4j
 @Component
@@ -29,8 +34,9 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     @Value("${app.oauth2.redirect-uri:http://localhost:3000/oauth2/redirect}")
     private String redirectUri;
 
-    private final JwtTokenProvider  jwtTokenProvider;
-    private final UserRepository    userRepository;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository   userRepository;
+    private final CookieUtils      cookieUtils;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -45,15 +51,18 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
         String token = jwtTokenProvider.generateToken(user);
 
+        // Set JWT in httpOnly cookie — never exposed in the URL or to JS.
+        cookieUtils.addAuthCookie(response, token);
+
+        // Redirect with only non-sensitive identity fields; token is NOT in the URL.
         String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
-                .queryParam("token", token)
-                .queryParam("email", user.getEmail())
+                .queryParam("email",     user.getEmail())
                 .queryParam("firstName", user.getFirstName())
-                .queryParam("lastName", user.getLastName())
-                .queryParam("role", user.getRole().name())
+                .queryParam("lastName",  user.getLastName())
+                .queryParam("role",      user.getRole().name())
                 .build().toUriString();
 
-        log.info("OAuth2 success → redirecting {} to frontend", email);
+        log.info("OAuth2 success → redirecting {} to frontend (token in cookie)", email);
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }

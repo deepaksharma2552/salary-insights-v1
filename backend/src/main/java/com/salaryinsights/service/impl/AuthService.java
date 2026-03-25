@@ -8,6 +8,8 @@ import com.salaryinsights.enums.Role;
 import com.salaryinsights.exception.BadRequestException;
 import com.salaryinsights.repository.UserRepository;
 import com.salaryinsights.security.JwtTokenProvider;
+import com.salaryinsights.util.CookieUtils;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,16 +24,17 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository        userRepository;
+    private final PasswordEncoder       passwordEncoder;
+    private final JwtTokenProvider      jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final CookieUtils           cookieUtils;
 
     @Value("${app.jwt.expiration}")
     private Long jwtExpiration;
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public AuthResponse register(RegisterRequest request, HttpServletResponse response) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new BadRequestException("Email already registered");
         }
@@ -49,10 +52,12 @@ public class AuthService {
         log.info("New user registered: {}", user.getEmail());
 
         String token = jwtTokenProvider.generateToken(user);
+        // Set the JWT in an httpOnly cookie — JS cannot read it, reducing XSS risk.
+        cookieUtils.addAuthCookie(response, token);
         return buildAuthResponse(user, token);
     }
 
-    public AuthResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request, HttpServletResponse response) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
@@ -62,10 +67,21 @@ public class AuthService {
 
         String token = jwtTokenProvider.generateToken(user);
         log.info("User logged in: {}", user.getEmail());
+        // Set the JWT in an httpOnly cookie — JS cannot read it, reducing XSS risk.
+        cookieUtils.addAuthCookie(response, token);
         return buildAuthResponse(user, token);
     }
 
+    /** Called on explicit logout — clears the httpOnly auth cookie. */
+    public void logout(HttpServletResponse response) {
+        cookieUtils.clearAuthCookie(response);
+    }
+
     private AuthResponse buildAuthResponse(User user, String token) {
+        // accessToken is still returned in the JSON body so the frontend can
+        // hydrate AuthContext (email, name, role) without reading the cookie.
+        // The frontend should store ONLY the non-sensitive user fields (not the
+        // token itself) in React state / localStorage after this migration.
         return AuthResponse.builder()
                 .accessToken(token)
                 .tokenType("Bearer")

@@ -1,5 +1,6 @@
 package com.salaryinsights.security;
 
+import com.salaryinsights.util.CookieUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,8 +24,9 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtTokenProvider jwtTokenProvider;
+    private final JwtTokenProvider  jwtTokenProvider;
     private final UserDetailsService userDetailsService;
+    private final CookieUtils        cookieUtils;
 
     @Override
     protected void doFilterInternal(
@@ -32,35 +34,43 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        final String authHeader = request.getHeader("Authorization");
+        // 1. Prefer the httpOnly cookie — JS-invisible, CSRF-safe with SameSite=Lax.
+        // 2. Fall back to Authorization header for non-browser API clients / Postman.
+        String jwtToken = cookieUtils.getAuthToken(request)
+                .orElseGet(() -> extractFromHeader(request));
 
-        if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+        if (StringUtils.hasText(jwtToken)) {
+            try {
+                final String userEmail = jwtTokenProvider.extractUsername(jwtToken);
 
-        final String jwtToken = authHeader.substring(7);
-        try {
-            final String userEmail = jwtTokenProvider.extractUsername(jwtToken);
+                if (StringUtils.hasText(userEmail)
+                        && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            if (StringUtils.hasText(userEmail)
-                    && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
 
-                UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
-
-                if (jwtTokenProvider.validateToken(jwtToken, userDetails)) {
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails, null, userDetails.getAuthorities());
-                    authToken.setDetails(
-                            new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    if (jwtTokenProvider.validateToken(jwtToken, userDetails)) {
+                        UsernamePasswordAuthenticationToken authToken =
+                                new UsernamePasswordAuthenticationToken(
+                                        userDetails, null, userDetails.getAuthorities());
+                        authToken.setDetails(
+                                new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                    }
                 }
+            } catch (Exception e) {
+                log.error("JWT validation failed: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            log.error("JWT validation failed: {}", e.getMessage());
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /** Extract the raw token value from a Bearer Authorization header, or null. */
+    private String extractFromHeader(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+        return null;
     }
 }
