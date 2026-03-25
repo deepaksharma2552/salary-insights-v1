@@ -651,4 +651,232 @@ public class SalaryService {
         return salaryEntryRepository.countByCreatedAtAfterAndReviewStatus(
                 startOfMonth, ReviewStatus.APPROVED);
     }
+
+        // ──────────────────────────────────────────────────────────────
+    // Admin: Approved Salaries — list, edit, delete
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * Returns a paginated list of APPROVED salary entries for the admin panel.
+     * Supports filtering by company ID, company name (partial), job title (partial),
+     * locations (multi), experience levels (multi), and employment type.
+     *
+     * Uses the same JpaSpecificationExecutor path as the public endpoint so it
+     * benefits from all the composite indexes added in V26.
+     *
+     * Scalability notes:
+     *  - Page size capped at 100 server-side to prevent runaway queries.
+     *  - Specification only fetches company + standardizedLevel eagerly on data
+     *    pages (not count queries), avoiding N+1 at the mapper step.
+     *  - Cache is deliberately NOT applied here: admin views must always reflect
+     *    live data and must not share the same cache region as public analytics.
+     */
+    @Transactional(readOnly = true)
+    public PagedResponse<SalaryResponse> getApprovedSalariesAdmin(
+            UUID companyId,
+            String companyName,
+            String jobTitle,
+            java.util.List<String> locations,
+            java.util.List<String> experienceLevelStrs,
+            String employmentTypeStr,
+            Pageable pageable) {
+
+        // Normalise text filters
+        final String companyNameFilter = (companyName != null && !companyName.isBlank())
+                ? companyName.toLowerCase() : null;
+        final String jobTitleFilter = (jobTitle != null && !jobTitle.isBlank())
+                ? jobTitle.toLowerCase() : null;
+
+        // Locations: accept display names ("Bengaluru") or enum names ("BENGALURU")
+        final java.util.List<String> locationEnumNames =
+                (locations != null && !locations.isEmpty())
+                        ? locations.stream()
+                                .map(l -> {
+                                    for (com.salaryinsights.enums.Location loc
+                                            : com.salaryinsights.enums.Location.values()) {
+                                        if (loc.getDisplayName().equalsIgnoreCase(l)
+                                                || loc.name().equalsIgnoreCase(l)) {
+                                            return loc.name();
+                                        }
+                                    }
+                                    return l;
+                                })
+                                .collect(java.util.stream.Collectors.toList())
+                        : null;
+
+        // Experience levels
+        final java.util.List<ExperienceLevel> levelFilters =
+                (experienceLevelStrs != null && !experienceLevelStrs.isEmpty())
+                        ? experienceLevelStrs.stream()
+                                .map(s -> {
+                                    try { return ExperienceLevel.valueOf(s.toUpperCase()); }
+                                    catch (IllegalArgumentException e) { return null; }
+                                })
+                                .filter(java.util.Objects::nonNull)
+                                .collect(java.util.stream.Collectors.toList())
+                        : null;
+
+        // Employment type
+        com.salaryinsights.enums.EmploymentType empTypeTmp = null;
+        if (employmentTypeStr != null && !employmentTypeStr.isBlank()) {
+            try {
+                empTypeTmp = com.salaryinsights.enums.EmploymentType
+                        .valueOf(employmentTypeStr.toUpperCase());
+            } catch (IllegalArgumentException ignored) { }
+        }
+        final com.salaryinsights.enums.EmploymentType empTypeFilter = empTypeTmp;
+
+        org.springframework.data.jpa.domain.Specification<SalaryEntry> spec =
+                (root, query, cb) -> {
+                    boolean isCount = query.getResultType() == Long.class
+                            || query.getResultType() == long.class;
+
+                    jakarta.persistence.criteria.Join<Object, Object> companyJoin =
+                            root.join("company", jakarta.persistence.criteria.JoinType.LEFT);
+
+                    if (!isCount) {
+                        root.fetch("company", jakarta.persistence.criteria.JoinType.LEFT);
+                        root.fetch("standardizedLevel", jakarta.persistence.criteria.JoinType.LEFT);
+                        query.distinct(true);
+                    }
+
+                    java.util.List<jakarta.persistence.criteria.Predicate> predicates =
+                            new java.util.ArrayList<>();
+                    predicates.add(cb.equal(
+                            root.get("reviewStatus"),
+                            com.salaryinsights.enums.ReviewStatus.APPROVED));
+
+                    if (companyId != null) {
+                        predicates.add(cb.equal(companyJoin.get("id"), companyId));
+                    }
+                    if (companyNameFilter != null) {
+                        predicates.add(cb.like(
+                                cb.lower(companyJoin.get("name")),
+                                "%" + companyNameFilter + "%"));
+                    }
+                    if (jobTitleFilter != null) {
+                        predicates.add(cb.like(
+                                cb.lower(root.get("jobTitle")),
+                                "%" + jobTitleFilter + "%"));
+                    }
+                    if (locationEnumNames != null && !locationEnumNames.isEmpty()) {
+                        predicates.add(root.get("location").in(locationEnumNames));
+                    }
+                    if (levelFilters != null && !levelFilters.isEmpty()) {
+                        predicates.add(root.get("experienceLevel").in(levelFilters));
+                    }
+                    if (empTypeFilter != null) {
+                        predicates.add(cb.equal(root.get("employmentType"), empTypeFilter));
+                    }
+
+                    return cb.and(predicates.toArray(
+                            new jakarta.persistence.criteria.Predicate[0]));
+                };
+
+        Page<SalaryEntry> page = salaryEntryRepository.findAll(spec, pageable);
+        List<SalaryResponse> mapped = page.getContent().stream()
+                .map(salaryMapper::toResponse)
+                .collect(java.util.stream.Collectors.toList());
+
+        return PagedResponse.<SalaryResponse>builder()
+                .content(mapped)
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
+    }
+
+    /**
+     * Partial update of an approved salary entry (admin only).
+     * Only non-null fields in the request are applied.
+     * Evicts analytics and company-list caches because editing a salary
+     * can change aggregate values shown to public users.
+     */
+    @Transactional
+    @org.springframework.cache.annotation.Caching(evict = {
+        @org.springframework.cache.annotation.CacheEvict(value = "analytics",   allEntries = true),
+        @org.springframework.cache.annotation.CacheEvict(value = "companyList", allEntries = true)
+    })
+    public SalaryResponse updateApprovedSalary(
+            UUID id,
+            com.salaryinsights.dto.request.AdminSalaryUpdateRequest req) {
+
+        SalaryEntry entry = salaryEntryRepository.findByIdWithDetails(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Salary entry not found: " + id));
+
+        if (entry.getReviewStatus() != com.salaryinsights.enums.ReviewStatus.APPROVED) {
+            throw new BadRequestException("Only APPROVED entries can be edited via this endpoint");
+        }
+
+        // Apply partial updates — only non-null fields
+        if (req.getCompanyId() != null) {
+            Company company = companyRepository.findById(req.getCompanyId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Company not found: " + req.getCompanyId()));
+            entry.setCompany(company);
+        }
+        if (req.getJobTitle()           != null) entry.setJobTitle(req.getJobTitle());
+        if (req.getDepartment()          != null) entry.setDepartment(req.getDepartment());
+        if (req.getExperienceLevel()     != null) entry.setExperienceLevel(req.getExperienceLevel());
+        if (req.getCompanyInternalLevel()!= null) entry.setCompanyInternalLevel(req.getCompanyInternalLevel());
+        if (req.getLocation()            != null) entry.setLocation(req.getLocation());
+        if (req.getYearsOfExperience()   != null) entry.setYearsOfExperience(req.getYearsOfExperience());
+        if (req.getBaseSalary()          != null) entry.setBaseSalary(req.getBaseSalary());
+        if (req.getBonus()               != null) entry.setBonus(req.getBonus());
+        if (req.getEquity()              != null) entry.setEquity(req.getEquity());
+        if (req.getEmploymentType()      != null) entry.setEmploymentType(req.getEmploymentType());
+
+        entry = salaryEntryRepository.save(entry);
+
+        // Refresh company TC range after salary change
+        UUID companyId = entry.getCompany().getId();
+        companyRepository.findById(companyId).ifPresent(c -> {
+            c.setTcMin(salaryEntryRepository.minTCByCompany(companyId));
+            c.setTcMax(salaryEntryRepository.maxTCByCompany(companyId));
+            companyRepository.save(c);
+        });
+
+        auditLogService.log("SalaryEntry", id.toString(), "ADMIN_UPDATED",
+                "Admin updated approved salary for company: " + entry.getCompany().getName());
+
+        return salaryMapper.toResponse(entry);
+    }
+
+    /**
+     * Hard-deletes an approved salary entry (admin only).
+     * Evicts all analytics caches — the deleted row affected aggregates.
+     */
+    @Transactional
+    @org.springframework.cache.annotation.Caching(evict = {
+        @org.springframework.cache.annotation.CacheEvict(value = "analytics",   allEntries = true),
+        @org.springframework.cache.annotation.CacheEvict(value = "companyList", allEntries = true)
+    })
+    public void deleteApprovedSalary(UUID id) {
+        SalaryEntry entry = salaryEntryRepository.findByIdWithDetails(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Salary entry not found: " + id));
+
+        if (entry.getReviewStatus() != com.salaryinsights.enums.ReviewStatus.APPROVED) {
+            throw new BadRequestException("Only APPROVED entries can be deleted via this endpoint");
+        }
+
+        UUID companyId = entry.getCompany() != null ? entry.getCompany().getId() : null;
+        String companyName = entry.getCompany() != null ? entry.getCompany().getName() : "unknown";
+
+        auditLogService.log("SalaryEntry", id.toString(), "ADMIN_DELETED",
+                "Admin deleted approved salary for company: " + companyName);
+
+        salaryEntryRepository.deleteById(id);
+
+        // Refresh company TC range after deletion
+        if (companyId != null) {
+            companyRepository.findById(companyId).ifPresent(c -> {
+                c.setTcMin(salaryEntryRepository.minTCByCompany(companyId));
+                c.setTcMax(salaryEntryRepository.maxTCByCompany(companyId));
+                companyRepository.save(c);
+            });
+        }
+    }
+
 }
