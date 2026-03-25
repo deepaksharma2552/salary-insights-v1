@@ -669,13 +669,9 @@ export default function DashboardPage() {
 
         /* ── Command-centre header ── */
         .cc-header {
-          background: #0f172a;
-          border-bottom: 1px solid #1e293b;
+          background: var(--panel);
+          border-bottom: 1px solid var(--border);
           padding: 28px 32px 24px;
-        }
-        [data-theme="dark"] .cc-header {
-          background: #020617;
-          border-bottom-color: #1e293b;
         }
         .cc-header-inner {
           max-width: 1400px;
@@ -699,14 +695,14 @@ export default function DashboardPage() {
         .cc-title {
           font-size: clamp(18px, 3vw, 24px);
           font-weight: 700;
-          color: #f1f5f9;
+          color: var(--text-1);
           letter-spacing: -0.02em;
           margin-bottom: 4px;
         }
         .cc-title em { font-style: normal; color: #3b82f6; }
         .cc-sub {
           font-size: 12px;
-          color: #64748b;
+          color: var(--text-3);
           font-family: 'IBM Plex Mono', monospace;
         }
         .cc-stats {
@@ -714,14 +710,14 @@ export default function DashboardPage() {
           align-items: center;
           gap: 0;
           flex-shrink: 0;
-          background: #1e293b;
-          border: 1px solid #334155;
+          background: var(--bg-3);
+          border: 1px solid var(--border);
           border-radius: 10px;
           overflow: hidden;
         }
         .cc-stat {
           padding: 12px 20px;
-          border-right: 1px solid #334155;
+          border-right: 1px solid var(--border);
           text-align: right;
         }
         .cc-stat:last-child { border-right: none; }
@@ -730,14 +726,14 @@ export default function DashboardPage() {
           font-weight: 600;
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          color: #64748b;
+          color: var(--text-3);
           font-family: 'IBM Plex Mono', monospace;
           margin-bottom: 3px;
         }
         .cc-stat-val {
           font-size: 18px;
           font-weight: 700;
-          color: #f1f5f9;
+          color: var(--text-1);
           font-family: 'IBM Plex Mono', monospace;
           line-height: 1;
         }
@@ -761,18 +757,24 @@ export default function DashboardPage() {
         /* ── Mobile overrides ── */
         @media (max-width: 768px) {
           .cc-header { padding: 20px 16px 18px; }
+          .cc-header-inner {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 14px;
+          }
           .cc-stats {
             width: 100%;
             border-radius: 8px;
+            flex-shrink: 0;
           }
-          .cc-stat { flex: 1; padding: 10px 12px; text-align: center; }
+          .cc-stat { flex: 1; padding: 10px 8px; text-align: center; }
           .cc-stat-val { font-size: 15px; }
           .cc-stat-label { font-size: 8px; }
           .cc-body { padding: 14px 16px 48px; }
           .cc-charts-grid { grid-template-columns: 1fr; gap: 10px; }
         }
         @media (max-width: 390px) {
-          .cc-stat { padding: 8px 8px; }
+          .cc-stat { padding: 8px 4px; }
           .cc-stat-val { font-size: 13px; }
         }
       `}</style>
