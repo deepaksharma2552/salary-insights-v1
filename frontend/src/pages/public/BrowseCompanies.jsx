@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 
@@ -46,7 +47,7 @@ const CheckIcon = () => (
 );
 
 // ── COMPANY CARD ──────────────────────────────────────────────────────────
-function CompanyCard({ company, openRoles }) {
+function CompanyCard({ company, openRoles, onViewRoles }) {
   const [expanded,    setExpanded]    = useState(false);
   const [summary,     setSummary]     = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -98,18 +99,23 @@ function CompanyCard({ company, openRoles }) {
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                 {openRoles > 0 && (
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '4px',
-                    fontSize: '11px', fontWeight: '700',
-                    color: '#16a34a', background: '#dcfce7',
-                    border: '1px solid #bbf7d0', borderRadius: '20px',
-                    padding: '3px 8px', whiteSpace: 'nowrap',
-                  }}>
+                  <button
+                    onClick={() => onViewRoles(company.name)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                      fontSize: '11px', fontWeight: '700',
+                      color: '#16a34a', background: '#dcfce7',
+                      border: '1px solid #bbf7d0', borderRadius: '20px',
+                      padding: '3px 8px', whiteSpace: 'nowrap',
+                      cursor: 'pointer',
+                    }}
+                    title={`View ${openRoles} open ${openRoles === 1 ? 'role' : 'roles'} on Opportunities Board`}
+                  >
                     <svg width="6" height="6" viewBox="0 0 8 8" fill="#16a34a" style={{ flexShrink: 0 }}>
                       <circle cx="4" cy="4" r="4"/>
                     </svg>
                     {openRoles} open {openRoles === 1 ? 'role' : 'roles'}
-                  </span>
+                  </button>
                 )}
                 {company.entryCount > 0 && (
                   <span style={{
@@ -282,6 +288,7 @@ function SkeletonCard() {
 
 // ── MAIN PAGE ──────────────────────────────────────────────────────────────
 export default function BrowseCompanies() {
+  const navigate = useNavigate();
   const [companies,  setCompanies]  = useState([]);
   const [hiringMap,  setHiringMap]  = useState(new Map());
   const [industries, setIndustries] = useState([]);
@@ -350,6 +357,10 @@ export default function BrowseCompanies() {
 
   function loadMore() {
     fetchCompanies(page + 1, search, industry, true);
+  }
+
+  function handleViewRoles(companyName) {
+    navigate(`/opportunities?company=${encodeURIComponent(companyName)}`);
   }
 
   const allIndustries = ['All Industries', ...industries];
@@ -445,7 +456,7 @@ export default function BrowseCompanies() {
           </div>
         ) : (
           <>
-            {companies.map(company => <CompanyCard key={company.id} company={company} openRoles={hiringMap.get(String(company.id)) ?? 0} />)}
+            {companies.map(company => <CompanyCard key={company.id} company={company} openRoles={hiringMap.get(String(company.id)) ?? 0} onViewRoles={handleViewRoles} />)}
 
             {/* Load more */}
             {page + 1 < totalPages && (

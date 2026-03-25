@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 import ScrollableSelect from '../../components/shared/ScrollableSelect';
@@ -75,6 +75,11 @@ function TypeBadge({ type }) {
 
 export default function OpportunitiesPage() {
   const isMobile = useIsMobile();
+  const location = useLocation();
+
+  // Pre-populate search from ?company= query param (e.g. deep-link from Browse Companies)
+  const initialSearch = new URLSearchParams(location.search).get('company') ?? '';
+
   const [rows,        setRows]        = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
@@ -85,7 +90,7 @@ export default function OpportunitiesPage() {
   const [typeFilter,     setTypeFilter]     = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [modeFilter,     setModeFilter]     = useState('');
-  const [search,         setSearch]         = useState('');
+  const [search,         setSearch]         = useState(initialSearch);
 
   const currentPage   = cursorStack.length;
   const currentCursor = cursorStack[cursorStack.length - 1];
