@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 const fmt = (val) => {
   if (!val && val !== 0) return '—';
@@ -35,6 +36,7 @@ function formatDate(iso) {
 }
 
 export default function MySubmissionsPage() {
+  const isMobile = useIsMobile();
   const [entries,  setEntries]  = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);
@@ -129,89 +131,155 @@ export default function MySubmissionsPage() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Entries — mobile cards or desktop table */}
       {!loading && !error && entries.length > 0 && (
-        <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 20 }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
-              <thead>
-                <tr style={{ borderBottom: '0.5px solid var(--border)' }}>
-                  {['Company', 'Role', 'Location', 'Total Comp', 'Submitted', 'Status'].map(h => (
-                    <th key={h} style={{
-                      padding: '11px 16px', textAlign: 'left',
-                      fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
-                      letterSpacing: '0.06em', color: 'var(--text-3)',
-                      whiteSpace: 'nowrap',
-                    }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((e, i) => (
-                  <tr key={e.id} style={{ borderBottom: i < entries.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
-
-                    {/* Company */}
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <CompanyLogo
-                          companyId={e.companyId}
-                          companyName={e.companyName}
-                          logoUrl={e.logoUrl}
-                          website={e.website}
-                          size={24}
-                          radius={4}
-                        />
-                        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-1)', whiteSpace: 'nowrap' }}>
-                          {e.companyName ?? '—'}
-                        </span>
+        isMobile ? (
+          /* ── MOBILE CARD VIEW ── */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+            {entries.map(e => (
+              <div key={e.id} style={{
+                background: 'var(--panel)',
+                border: '1px solid var(--border)',
+                borderRadius: 12,
+                padding: '14px 16px',
+              }}>
+                {/* Top: company + status */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
+                    <CompanyLogo
+                      companyId={e.companyId}
+                      companyName={e.companyName}
+                      logoUrl={e.logoUrl}
+                      website={e.website}
+                      size={34}
+                      radius={8}
+                    />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {e.companyName ?? '—'}
                       </div>
-                    </td>
-
-                    {/* Role */}
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ fontSize: 13, color: 'var(--text-1)' }}>{e.jobTitle ?? '—'}</div>
-                      {(e.standardizedLevelName ?? e.companyInternalLevel) && (
-                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                          {e.standardizedLevelName ?? e.companyInternalLevel}
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Location */}
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
-                      {e.location ?? '—'}
-                    </td>
-
-                    {/* Total Comp */}
-                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace" }}>
-                        {fmt(e.totalCompensation)}
+                      <div style={{ fontSize: 11, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {e.jobTitle ?? '—'}
+                        {(e.standardizedLevelName ?? e.companyInternalLevel) && (
+                          <> · {e.standardizedLevelName ?? e.companyInternalLevel}</>
+                        )}
                       </div>
-                      <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2, fontFamily: "'IBM Plex Mono',monospace" }}>
-                        Base {fmt(e.baseSalary)}
-                      </div>
-                    </td>
+                    </div>
+                  </div>
+                  <StatusBadge status={e.reviewStatus} />
+                </div>
 
-                    {/* Submitted date */}
-                    <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono',monospace" }}>
-                      {formatDate(e.createdAt)}
-                    </td>
+                {/* Middle: comp figures */}
+                <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 9, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Total Comp</div>
+                    <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>
+                      {fmt(e.totalCompensation)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Base</div>
+                    <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 500, color: 'var(--text-2)' }}>
+                      {fmt(e.baseSalary)}
+                    </div>
+                  </div>
+                </div>
 
-                    {/* Status */}
-                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                      <StatusBadge status={e.reviewStatus} />
-                      {e.reviewStatus === 'REJECTED' && e.rejectionReason && (
-                        <div style={{ fontSize: 11, color: '#dc2626', marginTop: 4, maxWidth: 180, lineHeight: 1.4 }}>
-                          {e.rejectionReason}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                {/* Bottom: location + date */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>📍 {e.location ?? '—'}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-4)', fontFamily: "'IBM Plex Mono',monospace" }}>
+                    {formatDate(e.createdAt)}
+                  </span>
+                </div>
+
+                {/* Rejection reason */}
+                {e.reviewStatus === 'REJECTED' && e.rejectionReason && (
+                  <div style={{ marginTop: 8, fontSize: 11, color: '#dc2626', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 6, padding: '6px 10px', lineHeight: 1.4 }}>
+                    {e.rejectionReason}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
-        </div>
+        ) : (
+          /* ── DESKTOP TABLE VIEW ── */
+          <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 20 }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
+                <thead>
+                  <tr style={{ borderBottom: '0.5px solid var(--border)' }}>
+                    {['Company', 'Role', 'Location', 'Total Comp', 'Submitted', 'Status'].map(h => (
+                      <th key={h} style={{
+                        padding: '11px 16px', textAlign: 'left',
+                        fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                        letterSpacing: '0.06em', color: 'var(--text-3)',
+                        whiteSpace: 'nowrap',
+                      }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((e, i) => (
+                    <tr key={e.id} style={{ borderBottom: i < entries.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
+
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <CompanyLogo
+                            companyId={e.companyId}
+                            companyName={e.companyName}
+                            logoUrl={e.logoUrl}
+                            website={e.website}
+                            size={24}
+                            radius={4}
+                          />
+                          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-1)', whiteSpace: 'nowrap' }}>
+                            {e.companyName ?? '—'}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ fontSize: 13, color: 'var(--text-1)' }}>{e.jobTitle ?? '—'}</div>
+                        {(e.standardizedLevelName ?? e.companyInternalLevel) && (
+                          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                            {e.standardizedLevelName ?? e.companyInternalLevel}
+                          </div>
+                        )}
+                      </td>
+
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
+                        {e.location ?? '—'}
+                      </td>
+
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace" }}>
+                          {fmt(e.totalCompensation)}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2, fontFamily: "'IBM Plex Mono',monospace" }}>
+                          Base {fmt(e.baseSalary)}
+                        </div>
+                      </td>
+
+                      <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono',monospace" }}>
+                        {formatDate(e.createdAt)}
+                      </td>
+
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                        <StatusBadge status={e.reviewStatus} />
+                        {e.reviewStatus === 'REJECTED' && e.rejectionReason && (
+                          <div style={{ fontSize: 11, color: '#dc2626', marginTop: 4, maxWidth: 180, lineHeight: 1.4 }}>
+                            {e.rejectionReason}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
       )}
 
       {/* Pagination */}
