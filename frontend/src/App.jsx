@@ -56,6 +56,7 @@ import AdminOpportunities   from './pages/admin/AdminOpportunities';
 import AdminDashboard       from './pages/admin/AdminDashboard';
 import AdminCompanies       from './pages/admin/AdminCompanies';
 import AdminPendingSalaries from './pages/admin/AdminPendingSalaries';
+import AdminApprovedSalaries from './pages/admin/AdminApprovedSalaries';
 import AdminAuditLogs       from './pages/admin/AdminAuditLogs';
 import AdminGuideLevels     from './pages/admin/AdminGuideLevels';
 import AdminJobFunctions    from './pages/admin/AdminJobFunctions';
@@ -158,6 +159,11 @@ export default function App() {
             <Route path="/admin/salaries" element={
               <PrivateRoute adminOnly>
                 <AdminLayout><AdminPendingSalaries /></AdminLayout>
+              </PrivateRoute>
+            }/>
+            <Route path="/admin/salaries/approved" element={
+              <PrivateRoute adminOnly>
+                <AdminLayout><AdminApprovedSalaries /></AdminLayout>
               </PrivateRoute>
             }/>
             <Route path="/admin/audit" element={

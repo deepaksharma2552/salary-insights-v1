@@ -2,14 +2,15 @@ import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 
 const NAV = [
-  { label: 'Dashboard',        path: '/admin',                icon: '📊' },
-  { label: 'Pending Salaries', path: '/admin/salaries',       icon: '⏳' },
-  { label: 'Companies',        path: '/admin/companies',      icon: '🏢' },
-  { label: 'Job Functions',    path: '/admin/job-functions',  icon: '⚙️' },
-  { label: 'Level Guide',      path: '/admin/guide-levels',   icon: '🗂' },
-  { label: 'Opportunities',    path: '/admin/opportunities',  icon: '🎯' },
-  { label: 'Audit Logs',       path: '/admin/audit',          icon: '📋' },
-  { label: 'Analytics',        path: '/admin/analytics',      icon: '📈' },
+  { label: 'Dashboard',          path: '/admin',                   icon: '📊' },
+  { label: 'Pending Salaries',   path: '/admin/salaries',          icon: '⏳' },
+  { label: 'Approved Salaries',  path: '/admin/salaries/approved', icon: '✅' },
+  { label: 'Companies',          path: '/admin/companies',         icon: '🏢' },
+  { label: 'Job Functions',      path: '/admin/job-functions',     icon: '⚙️' },
+  { label: 'Level Guide',        path: '/admin/guide-levels',      icon: '🗂' },
+  { label: 'Opportunities',      path: '/admin/opportunities',     icon: '🎯' },
+  { label: 'Audit Logs',         path: '/admin/audit',             icon: '📋' },
+  { label: 'Analytics',          path: '/admin/analytics',         icon: '📈' },
 ];
 
 export default function AdminSidebar() {
@@ -59,7 +60,10 @@ export default function AdminSidebar() {
         <ul className="sidebar-nav">
           {NAV.map(({ label, path, icon }) => (
             <li key={path}>
-              <Link to={path} className={pathname === path ? 'active' : ''}>
+              <Link
+                to={path}
+                className={pathname === path ? 'active' : ''}
+              >
                 <span>{icon}</span>{label}
               </Link>
             </li>
