@@ -4,7 +4,8 @@ import CompanyLogo from '../../components/shared/CompanyLogo';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 50;
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
 const EXPERIENCE_LEVELS = ['INTERN','ENTRY','MID','SENIOR','LEAD','MANAGER','DIRECTOR','VP'];
 const EMPLOYMENT_TYPES  = ['FULL_TIME','PART_TIME','CONTRACT','INTERNSHIP'];
@@ -17,6 +18,189 @@ const LOCATION_OPTIONS = [
 
 const fmt = (val) => val != null ? `₹${(val / 100000).toFixed(1)}L` : '—';
 const fmtDate = (dt) => dt ? new Date(dt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+
+// ─── Company Autocomplete Input ───────────────────────────────────────────────
+
+function CompanyAutocomplete({ value, selectedCompany, onSelect, onClear }) {
+  const [query,       setQuery]       = useState(value ?? '');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSug,     setShowSug]     = useState(false);
+  const debounceRef = useRef(null);
+  const wrapRef     = useRef(null);
+
+  // Close on outside click
+  useEffect(() => {
+    function h(e) { if (wrapRef.current && !wrapRef.current.contains(e.target)) setShowSug(false); }
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  // Sync query when cleared externally
+  useEffect(() => {
+    if (!value) setQuery('');
+  }, [value]);
+
+  function handleChange(e) {
+    const v = e.target.value;
+    setQuery(v);
+    if (selectedCompany) onClear();
+    clearTimeout(debounceRef.current);
+    if (v.length < 2) { setSuggestions([]); setShowSug(false); return; }
+    debounceRef.current = setTimeout(() => {
+      api.get('/public/companies', { params: { name: v, size: 8, page: 0 } })
+        .then(r => { setSuggestions(r.data?.data?.content ?? []); setShowSug(true); })
+        .catch(console.error);
+    }, 300);
+  }
+
+  function select(c) {
+    setQuery(c.name);
+    setSuggestions([]);
+    setShowSug(false);
+    onSelect(c);
+  }
+
+  function handleClear() {
+    setQuery('');
+    setSuggestions([]);
+    setShowSug(false);
+    onClear();
+  }
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', flex: '1 1 180px', minWidth: 180 }}>
+      <div style={{ position: 'relative' }}>
+        <input
+          style={{ ...styles.filterInput, width: '100%', boxSizing: 'border-box', paddingRight: query ? 30 : 14 }}
+          placeholder='🏢  Company name…'
+          value={query}
+          onChange={handleChange}
+          onFocus={() => suggestions.length > 0 && setShowSug(true)}
+          autoComplete='off'
+        />
+        {query && (
+          <button
+            onClick={handleClear}
+            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 13, padding: 0, lineHeight: 1 }}
+          >✕</button>
+        )}
+      </div>
+      {showSug && suggestions.length > 0 && (
+        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 100, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.22)' }}>
+          {suggestions.map((c, i) => (
+            <div
+              key={c.id}
+              onClick={() => select(c)}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer', borderBottom: i < suggestions.length - 1 ? '1px solid var(--border)' : 'none' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-2)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <CompanyLogo companyId={String(c.id)} companyName={c.name} logoUrl={c.logoUrl} website={c.website} size={26} radius={6} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-1)' }}>{c.name}</div>
+                {c.industry && <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{c.industry}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Job Title Autocomplete Input ─────────────────────────────────────────────
+
+function JobTitleAutocomplete({ value, onSelect, onClear }) {
+  const [query,       setQuery]       = useState(value ?? '');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSug,     setShowSug]     = useState(false);
+  const debounceRef = useRef(null);
+  const wrapRef     = useRef(null);
+
+  useEffect(() => {
+    function h(e) { if (wrapRef.current && !wrapRef.current.contains(e.target)) setShowSug(false); }
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  useEffect(() => {
+    if (!value) setQuery('');
+  }, [value]);
+
+  function handleChange(e) {
+    const v = e.target.value;
+    setQuery(v);
+    onClear();
+    clearTimeout(debounceRef.current);
+    if (v.length < 2) { setSuggestions([]); setShowSug(false); return; }
+    debounceRef.current = setTimeout(() => {
+      api.get('/admin/salaries/approved', { params: { jobTitle: v, size: 10, page: 0 } })
+        .then(r => {
+          const content = r.data?.data?.content ?? [];
+          // deduplicate job titles
+          const seen = new Set();
+          const titles = [];
+          content.forEach(e => {
+            const t = e.jobTitle?.trim();
+            if (t && !seen.has(t.toLowerCase())) { seen.add(t.toLowerCase()); titles.push(t); }
+          });
+          setSuggestions(titles);
+          setShowSug(titles.length > 0);
+        })
+        .catch(console.error);
+    }, 350);
+  }
+
+  function select(title) {
+    setQuery(title);
+    setSuggestions([]);
+    setShowSug(false);
+    onSelect(title);
+  }
+
+  function handleClear() {
+    setQuery('');
+    setSuggestions([]);
+    setShowSug(false);
+    onClear();
+  }
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', flex: '1 1 180px', minWidth: 180 }}>
+      <div style={{ position: 'relative' }}>
+        <input
+          style={{ ...styles.filterInput, width: '100%', boxSizing: 'border-box', paddingRight: query ? 30 : 14 }}
+          placeholder='💼  Job title…'
+          value={query}
+          onChange={handleChange}
+          onFocus={() => suggestions.length > 0 && setShowSug(true)}
+          autoComplete='off'
+        />
+        {query && (
+          <button
+            onClick={handleClear}
+            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 13, padding: 0, lineHeight: 1 }}
+          >✕</button>
+        )}
+      </div>
+      {showSug && suggestions.length > 0 && (
+        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 100, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.22)' }}>
+          {suggestions.map((title, i) => (
+            <div
+              key={title}
+              onClick={() => select(title)}
+              style={{ padding: '10px 14px', cursor: 'pointer', fontSize: 13, color: 'var(--text-1)', borderBottom: i < suggestions.length - 1 ? '1px solid var(--border)' : 'none' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-2)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              {title}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Edit Drawer ──────────────────────────────────────────────────────────────
 
@@ -41,7 +225,6 @@ function EditDrawer({ entry, onClose, onSaved }) {
   async function handleSave() {
     setSaving(true);
     setError(null);
-    // Only send non-empty fields
     const payload = {};
     if (form.jobTitle)             payload.jobTitle             = form.jobTitle;
     if (form.department)           payload.department           = form.department;
@@ -89,7 +272,6 @@ function EditDrawer({ entry, onClose, onSaved }) {
   return (
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.drawer} onClick={e => e.stopPropagation()}>
-        {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:28 }}>
           <div>
             <div style={styles.drawerEyebrow}>Edit Entry</div>
@@ -99,9 +281,7 @@ function EditDrawer({ entry, onClose, onSaved }) {
           <button onClick={onClose} style={styles.closeBtn}>✕</button>
         </div>
 
-        {error && (
-          <div style={styles.errorBox}>{error}</div>
-        )}
+        {error && <div style={styles.errorBox}>{error}</div>}
 
         <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
           {field('Job Title',           'jobTitle')}
@@ -176,11 +356,25 @@ function DeleteModal({ entry, onClose, onDeleted }) {
 // ─── Filter Bar ───────────────────────────────────────────────────────────────
 
 function FilterBar({ filters, onChange, totalElements, loading }) {
-  const debounceRef = useRef(null);
+  // Track selected company object separately (for display)
+  const [selectedCompany, setSelectedCompany] = useState(null);
 
-  function handleText(key, val) {
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => onChange({ ...filters, [key]: val, page: 0 }), 400);
+  function handleCompanySelect(company) {
+    setSelectedCompany(company);
+    onChange({ ...filters, companyId: company.id, companyName: undefined, page: 0 });
+  }
+
+  function handleCompanyClear() {
+    setSelectedCompany(null);
+    onChange({ ...filters, companyId: undefined, companyName: undefined, page: 0 });
+  }
+
+  function handleJobTitleSelect(title) {
+    onChange({ ...filters, jobTitle: title, page: 0 });
+  }
+
+  function handleJobTitleClear() {
+    onChange({ ...filters, jobTitle: undefined, page: 0 });
   }
 
   function handleSelect(key, val) {
@@ -188,26 +382,30 @@ function FilterBar({ filters, onChange, totalElements, loading }) {
   }
 
   function clearAll() {
-    onChange({ page: 0, size: PAGE_SIZE, sort: 'createdAt', direction: 'DESC' });
+    setSelectedCompany(null);
+    onChange({ page: 0, size: filters.size ?? DEFAULT_PAGE_SIZE, sort: 'createdAt', direction: 'DESC' });
   }
 
-  const hasFilters = !!(filters.companyName || filters.jobTitle || filters.location || filters.experienceLevel || filters.employmentType);
+  const hasFilters = !!(filters.companyId || filters.companyName || filters.jobTitle || filters.location || filters.experienceLevel || filters.employmentType);
 
   return (
     <div style={styles.filterBar}>
       <div style={styles.filterRow}>
-        <input
-          style={styles.filterInput}
-          placeholder='🔍  Company name…'
-          defaultValue={filters.companyName ?? ''}
-          onChange={e => handleText('companyName', e.target.value || undefined)}
+        {/* Company autocomplete */}
+        <CompanyAutocomplete
+          value={selectedCompany?.name ?? ''}
+          selectedCompany={selectedCompany}
+          onSelect={handleCompanySelect}
+          onClear={handleCompanyClear}
         />
-        <input
-          style={styles.filterInput}
-          placeholder='🔍  Job title…'
-          defaultValue={filters.jobTitle ?? ''}
-          onChange={e => handleText('jobTitle', e.target.value || undefined)}
+
+        {/* Job title autocomplete */}
+        <JobTitleAutocomplete
+          value={filters.jobTitle ?? ''}
+          onSelect={handleJobTitleSelect}
+          onClear={handleJobTitleClear}
         />
+
         <select
           style={styles.filterSelect}
           value={filters.location ?? ''}
@@ -253,17 +451,16 @@ export default function AdminApprovedSalaries() {
   const [error,    setError]    = useState(null);
 
   const [filters, setFilters] = useState({
-    page: 0, size: PAGE_SIZE, sort: 'createdAt', direction: 'DESC',
+    page: 0, size: DEFAULT_PAGE_SIZE, sort: 'createdAt', direction: 'DESC',
   });
 
-  const [editing,  setEditing]  = useState(null); // entry being edited
-  const [deleting, setDeleting] = useState(null); // entry being deleted
+  const [editing,  setEditing]  = useState(null);
+  const [deleting, setDeleting] = useState(null);
 
   const load = useCallback((showSpinner = true) => {
     if (showSpinner) setLoading(true);
     setError(null);
 
-    // Build query params — skip undefined/null values
     const params = {};
     Object.entries(filters).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') params[k] = v;
@@ -294,7 +491,8 @@ export default function AdminApprovedSalaries() {
     setTotal(t => t - 1);
   }
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const pageSize    = filters.size ?? DEFAULT_PAGE_SIZE;
+  const totalPages  = Math.ceil(total / pageSize);
   const currentPage = filters.page ?? 0;
 
   return (
@@ -303,8 +501,6 @@ export default function AdminApprovedSalaries() {
         @keyframes spin { to { transform: rotate(360deg); } }
         .apr-row:hover { background: var(--bg-2) !important; }
         .apr-row td { transition: background 0.15s; }
-        .apr-action-btn { opacity: 0; transition: opacity 0.15s; }
-        .apr-row:hover .apr-action-btn { opacity: 1; }
       `}</style>
 
       {/* Page header */}
@@ -369,7 +565,7 @@ export default function AdminApprovedSalaries() {
                   <th>Total Comp</th>
                   <th>YOE</th>
                   <th>Added</th>
-                  <th style={{ textAlign:'center', width:90 }}>Actions</th>
+                  <th style={{ textAlign:'center', width:120 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -377,7 +573,15 @@ export default function AdminApprovedSalaries() {
                   <tr key={e.id} className='apr-row'>
                     <td>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <CompanyLogo name={e.companyName} logoUrl={e.logoUrl} size={26} />
+                        {/* FIX: pass correct props to CompanyLogo */}
+                        <CompanyLogo
+                          companyId={e.companyId ? String(e.companyId) : undefined}
+                          companyName={e.companyName}
+                          logoUrl={e.logoUrl}
+                          website={e.website}
+                          size={26}
+                          radius={6}
+                        />
                         <span className='company-name' style={{ fontSize:13 }}>{e.companyName}</span>
                       </div>
                     </td>
@@ -401,22 +605,33 @@ export default function AdminApprovedSalaries() {
                       {fmtDate(e.createdAt)}
                     </td>
                     <td>
+                      {/* FIX: buttons always visible, styled like Pending Salaries */}
                       <div style={{ display:'flex', gap:6, justifyContent:'center' }}>
                         <button
-                          className='apr-action-btn'
                           onClick={() => setEditing(e)}
                           title='Edit'
-                          style={{ padding:'4px 10px', fontSize:12, fontWeight:600, background:'rgba(99,102,241,0.12)', color:'#818cf8', border:'1px solid rgba(99,102,241,0.2)', borderRadius:6, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}
+                          style={{
+                            padding: '5px 14px', fontSize: 12, fontWeight: 600,
+                            background: 'rgba(99,102,241,0.12)', color: '#818cf8',
+                            border: '1px solid rgba(99,102,241,0.2)', borderRadius: 7,
+                            cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
+                            transition: 'opacity 0.2s ease',
+                          }}
                         >
                           ✎ Edit
                         </button>
                         <button
-                          className='apr-action-btn'
                           onClick={() => setDeleting(e)}
                           title='Delete'
-                          style={{ padding:'4px 10px', fontSize:12, fontWeight:600, background:'var(--rose-dim)', color:'var(--rose)', border:'1px solid rgba(224,92,122,0.2)', borderRadius:6, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" }}
+                          style={{
+                            padding: '5px 14px', fontSize: 12, fontWeight: 600,
+                            background: 'var(--rose-dim)', color: 'var(--rose)',
+                            border: '1px solid rgba(224,92,122,0.2)', borderRadius: 7,
+                            cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
+                            transition: 'opacity 0.2s ease',
+                          }}
                         >
-                          ✕
+                          ✕ Delete
                         </button>
                       </div>
                     </td>
@@ -426,21 +641,37 @@ export default function AdminApprovedSalaries() {
             </table>
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className='pagination' style={{ marginTop:20 }}>
-              <span className='page-info'>
-                Showing {currentPage * PAGE_SIZE + 1}–{Math.min((currentPage + 1) * PAGE_SIZE, total)} of {total.toLocaleString()}
-              </span>
-              <div className='page-btns'>
-                <button className='page-btn' disabled={currentPage === 0} onClick={() => setFilters(f => ({ ...f, page: f.page - 1 }))}>←</button>
-                <span style={{ padding:'4px 12px', fontFamily:"'JetBrains Mono',monospace", fontSize:12, color:'var(--text-3)' }}>
-                  {currentPage + 1} / {totalPages}
-                </span>
-                <button className='page-btn' disabled={currentPage + 1 >= totalPages} onClick={() => setFilters(f => ({ ...f, page: f.page + 1 }))}>→</button>
+          {/* Pagination + page size selector */}
+          <div className='pagination' style={{ marginTop:20, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
+            <span className='page-info'>
+              Showing {currentPage * pageSize + 1}–{Math.min((currentPage + 1) * pageSize, total)} of {total.toLocaleString()}
+            </span>
+
+            <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+              {/* Rows per page */}
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'JetBrains Mono',monospace", whiteSpace:'nowrap' }}>Rows per page</span>
+                <select
+                  value={pageSize}
+                  onChange={e => setFilters(f => ({ ...f, size: Number(e.target.value), page: 0 }))}
+                  style={{ padding:'4px 10px', fontSize:12, background:'var(--bg-2)', border:'1px solid var(--border)', borderRadius:7, color:'var(--text-1)', fontFamily:"'JetBrains Mono',monospace", cursor:'pointer', outline:'none' }}
+                >
+                  {PAGE_SIZE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
+
+              {/* Page nav */}
+              {totalPages > 1 && (
+                <div className='page-btns'>
+                  <button className='page-btn' disabled={currentPage === 0} onClick={() => setFilters(f => ({ ...f, page: f.page - 1 }))}>←</button>
+                  <span style={{ padding:'4px 12px', fontFamily:"'JetBrains Mono',monospace", fontSize:12, color:'var(--text-3)' }}>
+                    {currentPage + 1} / {totalPages}
+                  </span>
+                  <button className='page-btn' disabled={currentPage + 1 >= totalPages} onClick={() => setFilters(f => ({ ...f, page: f.page + 1 }))}>→</button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </>
       )}
 
@@ -489,8 +720,6 @@ const styles = {
     borderRadius: 8,
     color: 'var(--text-1)',
     fontFamily: "'DM Sans',sans-serif",
-    minWidth: 180,
-    flex: '1 1 180px',
     outline: 'none',
   },
   filterSelect: {
