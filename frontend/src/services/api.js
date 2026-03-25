@@ -44,30 +44,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-
-  }
-  return config;
-});
-
-// Handle 401 — clear session and redirect to login
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      // Guard: don't redirect if we're already on /login — prevents infinite redirect loop
-      // when a bad login attempt itself returns 401.
-      if (!window.location.pathname.startsWith('/login')) {
-        window.location.href = '/login';
-      }
-    }
-    // Log 403s prominently so they're visible in devtools
-    if (error.response?.status === 403) {
-      console.error('[API] 403 Forbidden —', error.config?.url, '— check that the logged-in user has ADMIN role in the database.');
-    }
-    return Promise.reject(error);
-  }
-);
-
-export default api;
