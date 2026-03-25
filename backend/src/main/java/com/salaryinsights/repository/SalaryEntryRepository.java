@@ -353,7 +353,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  AND (:expLevel IS NULL OR s.experience_level = :expLevel) " +
         "  AND (:location IS NULL OR s.location = :location) ",
         nativeQuery = true)
-    Object[] benchmarkRaw(
+    List<Object[]> benchmarkRaw(
         @Param("jobTitle") String jobTitle,
         @Param("expLevel") String expLevel,
         @Param("location") String location

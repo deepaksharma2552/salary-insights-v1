@@ -913,14 +913,16 @@ public class SalaryService {
         String normTitle = (jobTitle != null && !jobTitle.isBlank()) ? jobTitle.trim() : null;
 
         // Attempt exact match
-        Object[] row = salaryEntryRepository.benchmarkRaw(normTitle, normExpLevel, normLocation);
+        java.util.List<Object[]> rows = salaryEntryRepository.benchmarkRaw(normTitle, normExpLevel, normLocation);
+        Object[] row = (rows != null && !rows.isEmpty()) ? rows.get(0) : null;
         long count = row != null && row[9] != null ? ((Number) row[9]).longValue() : 0L;
         boolean broadened = false;
         String broadeningReason = null;
 
         // Broaden 1: drop location
         if (count < 5 && normLocation != null) {
-            row = salaryEntryRepository.benchmarkRaw(normTitle, normExpLevel, null);
+            rows = salaryEntryRepository.benchmarkRaw(normTitle, normExpLevel, null);
+            row = (rows != null && !rows.isEmpty()) ? rows.get(0) : null;
             count = row != null && row[9] != null ? ((Number) row[9]).longValue() : 0L;
             broadened = true;
             broadeningReason = "Location filter removed to expand sample";
@@ -928,7 +930,8 @@ public class SalaryService {
 
         // Broaden 2: drop experience level too
         if (count < 5 && normExpLevel != null) {
-            row = salaryEntryRepository.benchmarkRaw(normTitle, null, null);
+            rows = salaryEntryRepository.benchmarkRaw(normTitle, null, null);
+            row = (rows != null && !rows.isEmpty()) ? rows.get(0) : null;
             count = row != null && row[9] != null ? ((Number) row[9]).longValue() : 0L;
             broadeningReason = "Location and level filters removed to expand sample";
         }
