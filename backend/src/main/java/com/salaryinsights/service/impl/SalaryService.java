@@ -893,12 +893,29 @@ public class SalaryService {
      */
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public com.salaryinsights.dto.response.BenchmarkResponse getBenchmark(
-            String jobTitle, String expLevel, String location) {
+            String jobTitle, String jobFunctionId, String functionLevelId, String location) {
 
-        // Normalise expLevel: map frontend values (ENTRY/MID/SENIOR/LEAD) to DB enum names
-        String normExpLevel = expLevel != null && !expLevel.isBlank() ? expLevel.toUpperCase() : null;
+        // Resolve display names for echo in response
+        String jobFunctionDisplay = null;
+        if (jobFunctionId != null && !jobFunctionId.isBlank()) {
+            try {
+                jobFunctionRepository.findById(java.util.UUID.fromString(jobFunctionId))
+                    .ifPresent(fn -> {});
+                // fetch display name
+                var fn = jobFunctionRepository.findById(java.util.UUID.fromString(jobFunctionId));
+                jobFunctionDisplay = fn.map(f -> f.getDisplayName()).orElse(null);
+            } catch (IllegalArgumentException ignored) {}
+        }
 
-        // Normalise location: display name → enum name
+        String functionLevelDisplay = null;
+        if (functionLevelId != null && !functionLevelId.isBlank()) {
+            try {
+                var lv = functionLevelRepository.findById(java.util.UUID.fromString(functionLevelId));
+                functionLevelDisplay = lv.map(l -> l.getName()).orElse(null);
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+        // Normalise location: display name or enum name
         String normLocation = null;
         if (location != null && !location.isBlank()) {
             for (com.salaryinsights.enums.Location loc : com.salaryinsights.enums.Location.values()) {
@@ -910,36 +927,47 @@ public class SalaryService {
             if (normLocation == null) normLocation = location.toUpperCase();
         }
 
-        String normTitle = (jobTitle != null && !jobTitle.isBlank()) ? jobTitle.trim() : null;
+        String normTitle        = (jobTitle != null && !jobTitle.isBlank()) ? jobTitle.trim() : null;
+        String normFunctionId   = (jobFunctionId != null && !jobFunctionId.isBlank()) ? jobFunctionId.trim() : null;
+        String normLevelId      = (functionLevelId != null && !functionLevelId.isBlank()) ? functionLevelId.trim() : null;
 
-        // Attempt exact match
-        java.util.List<Object[]> rows = salaryEntryRepository.benchmarkRaw(normTitle, normExpLevel, normLocation);
+        // Attempt exact match (function + level + location)
+        java.util.List<Object[]> rows = salaryEntryRepository.benchmarkRaw(normTitle, normFunctionId, normLevelId, normLocation);
         Object[] row = (rows != null && !rows.isEmpty()) ? rows.get(0) : null;
-        long count = row != null && row[9] != null ? ((Number) row[9]).longValue() : 0L;
+        long count = row != null && row[10] != null ? ((Number) row[10]).longValue() : 0L;
         boolean broadened = false;
         String broadeningReason = null;
 
-        // Broaden 1: drop location
-        if (count < 5 && normLocation != null) {
-            rows = salaryEntryRepository.benchmarkRaw(normTitle, normExpLevel, null);
+        // Broaden 1: drop specific level, keep function + location
+        if (count < 5 && normLevelId != null) {
+            rows = salaryEntryRepository.benchmarkRaw(normTitle, normFunctionId, null, normLocation);
             row = (rows != null && !rows.isEmpty()) ? rows.get(0) : null;
-            count = row != null && row[9] != null ? ((Number) row[9]).longValue() : 0L;
+            count = row != null && row[10] != null ? ((Number) row[10]).longValue() : 0L;
             broadened = true;
-            broadeningReason = "Location filter removed to expand sample";
+            broadeningReason = "Level filter removed to expand sample";
         }
 
-        // Broaden 2: drop experience level too
-        if (count < 5 && normExpLevel != null) {
-            rows = salaryEntryRepository.benchmarkRaw(normTitle, null, null);
+        // Broaden 2: drop location too, keep function only
+        if (count < 5 && normLocation != null) {
+            rows = salaryEntryRepository.benchmarkRaw(normTitle, normFunctionId, null, null);
             row = (rows != null && !rows.isEmpty()) ? rows.get(0) : null;
-            count = row != null && row[9] != null ? ((Number) row[9]).longValue() : 0L;
-            broadeningReason = "Location and level filters removed to expand sample";
+            count = row != null && row[10] != null ? ((Number) row[10]).longValue() : 0L;
+            broadeningReason = "Level and location filters removed to expand sample";
+        }
+
+        // Broaden 3: drop function too — match on job title only
+        if (count < 5 && normFunctionId != null) {
+            rows = salaryEntryRepository.benchmarkRaw(normTitle, null, null, null);
+            row = (rows != null && !rows.isEmpty()) ? rows.get(0) : null;
+            count = row != null && row[10] != null ? ((Number) row[10]).longValue() : 0L;
+            broadeningReason = "All filters removed — matching on job title only";
         }
 
         if (row == null || count == 0) {
             return com.salaryinsights.dto.response.BenchmarkResponse.builder()
                     .role(normTitle)
-                    .experienceLevel(normExpLevel)
+                    .jobFunction(jobFunctionDisplay)
+                    .level(functionLevelDisplay)
                     .location(normLocation)
                     .sampleSize(0)
                     .broadened(true)
@@ -949,7 +977,8 @@ public class SalaryService {
 
         return com.salaryinsights.dto.response.BenchmarkResponse.builder()
                 .role(normTitle)
-                .experienceLevel(normExpLevel)
+                .jobFunction(jobFunctionDisplay)
+                .level(functionLevelDisplay)
                 .location(normLocation)
                 .sampleSize(count)
                 .p25Tc(row[0] != null ? new java.math.BigDecimal(row[0].toString()) : null)
@@ -958,9 +987,10 @@ public class SalaryService {
                 .avgTc(row[3] != null ? new java.math.BigDecimal(row[3].toString()) : null)
                 .p25Base(row[4] != null ? new java.math.BigDecimal(row[4].toString()) : null)
                 .p50Base(row[5] != null ? new java.math.BigDecimal(row[5].toString()) : null)
-                .avgBase(row[6] != null ? new java.math.BigDecimal(row[6].toString()) : null)
-                .avgBonus(row[7] != null ? new java.math.BigDecimal(row[7].toString()) : null)
-                .avgEquity(row[8] != null ? new java.math.BigDecimal(row[8].toString()) : null)
+                .p75Base(row[6] != null ? new java.math.BigDecimal(row[6].toString()) : null)
+                .avgBase(row[7] != null ? new java.math.BigDecimal(row[7].toString()) : null)
+                .avgBonus(row[8] != null ? new java.math.BigDecimal(row[8].toString()) : null)
+                .avgEquity(row[9] != null ? new java.math.BigDecimal(row[9].toString()) : null)
                 .broadened(broadened)
                 .broadeningReason(broadeningReason)
                 .build();

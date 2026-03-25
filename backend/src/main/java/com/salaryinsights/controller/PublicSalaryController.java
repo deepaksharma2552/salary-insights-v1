@@ -101,10 +101,11 @@ public class PublicSalaryController {
     @GetMapping("/benchmark")
     public ResponseEntity<ApiResponse<com.salaryinsights.dto.response.BenchmarkResponse>> benchmark(
             @RequestParam(required = false) String jobTitle,
-            @RequestParam(required = false) String expLevel,
+            @RequestParam(required = false) String jobFunctionId,
+            @RequestParam(required = false) String functionLevelId,
             @RequestParam(required = false) String location) {
         return ResponseEntity.ok(ApiResponse.success(
-                salaryService.getBenchmark(jobTitle, expLevel, location)));
+                salaryService.getBenchmark(jobTitle, jobFunctionId, functionLevelId, location)));
     }
 
     /**

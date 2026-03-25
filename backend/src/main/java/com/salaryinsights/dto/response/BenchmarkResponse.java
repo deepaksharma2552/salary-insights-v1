@@ -16,7 +16,8 @@ public class BenchmarkResponse {
 
     // Input echo — so the client knows what was matched
     private String  role;
-    private String  experienceLevel;
+    private String  jobFunction;         // display name of the matched function
+    private String  level;               // display name of the matched level
     private String  location;
     private long    sampleSize;          // Number of approved entries matched
 
@@ -29,6 +30,7 @@ public class BenchmarkResponse {
     // Base salary percentiles
     private BigDecimal p25Base;
     private BigDecimal p50Base;
+    private BigDecimal p75Base;
     private BigDecimal avgBase;
 
     // Convenience fields for the "you vs market" calculation

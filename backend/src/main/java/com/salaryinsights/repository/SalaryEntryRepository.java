@@ -343,6 +343,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  AVG(total_compensation)                                           AS avg_tc, " +
         "  PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY base_salary)        AS p25_base, " +
         "  PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY base_salary)        AS p50_base, " +
+        "  PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY base_salary)        AS p75_base, " +
         "  AVG(base_salary)                                                  AS avg_base, " +
         "  AVG(bonus)                                                        AS avg_bonus, " +
         "  AVG(equity)                                                       AS avg_equity, " +
@@ -350,13 +351,15 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "FROM salary_entries s " +
         "WHERE s.review_status = 'APPROVED' " +
         "  AND (:jobTitle IS NULL OR LOWER(s.job_title) LIKE LOWER(CONCAT('%', :jobTitle, '%'))) " +
-        "  AND (:expLevel IS NULL OR s.experience_level = :expLevel) " +
+        "  AND (:jobFunctionId IS NULL OR s.job_function_id = CAST(:jobFunctionId AS uuid)) " +
+        "  AND (:functionLevelId IS NULL OR s.function_level_id = CAST(:functionLevelId AS uuid)) " +
         "  AND (:location IS NULL OR s.location = :location) ",
         nativeQuery = true)
     List<Object[]> benchmarkRaw(
-        @Param("jobTitle") String jobTitle,
-        @Param("expLevel") String expLevel,
-        @Param("location") String location
+        @Param("jobTitle")        String jobTitle,
+        @Param("jobFunctionId")   String jobFunctionId,
+        @Param("functionLevelId") String functionLevelId,
+        @Param("location")        String location
     );
 
     // ── Feature: Salary Trends ────────────────────────────────────────────────
