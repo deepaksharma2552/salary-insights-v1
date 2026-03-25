@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -89,7 +90,7 @@ public interface OpportunityRepository
         WHERE o.status = :status
         GROUP BY o.type
         """)
-    java.util.List<Object[]> countByType(@Param("status") OpportunityStatus status);
+    List<Object[]> countByType(@Param("status") OpportunityStatus status);
 
     // ── Expiry job — bulk UPDATE, enum-safe ───────────────────────────────────
 
