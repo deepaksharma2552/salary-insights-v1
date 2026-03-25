@@ -45,3 +45,6 @@ management:
 app:
   oauth2:
     redirect-uri: ${APP_OAUTH2_REDIRECT_URI}
+  cors:
+    allowed-origins:
+      - ${APP_CORS_ORIGIN}
