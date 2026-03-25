@@ -541,41 +541,46 @@ export default function DashboardPage() {
   const { locations: ALL_LOCATIONS_RAW } = useLocations();
   const ALL_LOCATIONS = ALL_LOCATIONS_RAW.map(l => l.label);
 
+  /* ── Data state ── */
   const [byLocationLevel, setByLocationLevel] = useState([]);
   const [byCompanyLevel,  setByCompanyLevel]  = useState([]);
   const [byYoe,           setByYoe]           = useState([]);
-  const [initialLoading,  setInitialLoading]  = useState(true);
-  const [refetching,      setRefetching]      = useState(false);
+  const [totalEntries,    setTotalEntries]     = useState(null);
+  const [thisMonth,       setThisMonth]        = useState(null);
+  const [initialLoading,  setInitialLoading]   = useState(true);
+  const [refetching,      setRefetching]       = useState(false);
 
-  const [selLocations, setSelLocations] = useState([]);
-  const [selCompanies, setSelCompanies] = useState([]);
+  /* ── Filter state ── */
+  const [selLocations,           setSelLocations]           = useState([]);
+  const [selCompanies,           setSelCompanies]           = useState([]);
   const [selLocationsForCompany, setSelLocationsForCompany] = useState([]);
-  const [selLevels, setSelLevels] = useState([]);
+  const [selLevels,              setSelLevels]              = useState([]);
 
-  // Fetch company-level data — re-runs whenever location filter changes
+  /* ── Company filter fetch ── */
   const fetchCompanyLevel = React.useCallback(() => {
-    const params = selLocationsForCompany.length > 0
-      ? { locations: selLocationsForCompany }
-      : {};
+    const params = selLocationsForCompany.length > 0 ? { locations: selLocationsForCompany } : {};
     return api.get('/public/salaries/analytics/by-company-level', { params });
   }, [selLocationsForCompany]);
 
-  // Initial load — fetch all three charts in parallel
+  /* ── Initial load — all data + header stats in parallel ── */
   useEffect(() => {
     Promise.all([
       api.get('/public/salaries/analytics/by-location-level'),
       api.get('/public/salaries/analytics/by-company-level'),
       api.get('/public/salaries/analytics/by-yoe'),
-    ]).then(([locLvl, cl, yoe]) => {
+      api.get('/public/salaries', { params: { page: 0, size: 1 } }),
+      api.get('/public/salaries/stats/this-month'),
+    ]).then(([locLvl, cl, yoe, salaries, month]) => {
       setByLocationLevel(locLvl.data?.data ?? []);
       setByCompanyLevel(cl.data?.data      ?? []);
       setByYoe(yoe.data?.data             ?? []);
+      setTotalEntries(salaries.data?.data?.totalElements ?? null);
+      setThisMonth(month.data?.data ?? null);
     }).catch(console.error)
       .finally(() => setInitialLoading(false));
   }, []);
 
-  // Re-fetch company-level data whenever location filter changes.
-  // Uses refetching (not initialLoading) so the chart stays visible — no blink.
+  /* ── Re-fetch company chart on location filter change ── */
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return; }
@@ -586,7 +591,7 @@ export default function DashboardPage() {
       .finally(() => setRefetching(false));
   }, [fetchCompanyLevel]);
 
-  /* ── Group location-level rows by location ── */
+  /* ── Derived data ── */
   const locationGrouped = useMemo(() =>
     byLocationLevel.reduce((acc, row) => {
       if (!acc[row.location]) acc[row.location] = [];
@@ -595,7 +600,6 @@ export default function DashboardPage() {
     }, {}),
   [byLocationLevel]);
 
-  /* ── Group company-level rows by company ── */
   const companyGrouped = useMemo(() =>
     byCompanyLevel.reduce((acc, row) => {
       if (!acc[row.companyName]) acc[row.companyName] = [];
@@ -604,24 +608,21 @@ export default function DashboardPage() {
     }, {}),
   [byCompanyLevel]);
 
-  const allLocations    = useMemo(() => Object.keys(locationGrouped), [locationGrouped]);
-  const allCompanyNames = useMemo(() => Object.keys(companyGrouped),  [companyGrouped]);
+  const allLocations    = ALL_LOCATIONS;
+  const allCompanyNames = useMemo(() => Object.keys(companyGrouped), [companyGrouped]);
   const allLevelNames   = useMemo(() => {
     const seen = new Set();
     byCompanyLevel.forEach(row => { if (row.internalLevel) seen.add(row.internalLevel); });
-    // Sort by known seniority order, unknowns go to end alphabetically
     const ORDER = ['SDE 1','SDE 2','SDE 3','Staff Engineer','Principal Engineer','Architect',
                    'Engineering Manager','Sr. Engineering Manager','Director','Sr. Director','VP'];
     return [...seen].sort((a, b) => {
       const ai = ORDER.indexOf(a); const bi = ORDER.indexOf(b);
       if (ai !== -1 && bi !== -1) return ai - bi;
-      if (ai !== -1) return -1;
-      if (bi !== -1) return 1;
+      if (ai !== -1) return -1; if (bi !== -1) return 1;
       return a.localeCompare(b);
     });
   }, [byCompanyLevel]);
 
-  /* ── Visible items — filter if selected, else show all / top 6 ── */
   const visibleLocations = selLocations.length > 0
     ? selLocations.filter(l => locationGrouped[l])
     : allLocations;
@@ -630,7 +631,6 @@ export default function DashboardPage() {
     ? selCompanies.filter(c => companyGrouped[c])
     : allCompanyNames.slice(0, 6);
 
-  /* ── Max total comp — denominator for bar widths ── */
   const maxLocTotal = useMemo(() => {
     const rows = visibleLocations.flatMap(l => locationGrouped[l] ?? []);
     return rows.length ? Math.max(...rows.map(r => r.avgTotalCompensation ?? 0), 1) : 1;
@@ -641,332 +641,384 @@ export default function DashboardPage() {
     return rows.length ? Math.max(...rows.map(r => r.avgTotalCompensation ?? 0), 1) : 1;
   }, [visibleCompanies, companyGrouped]);
 
+  /* ── Helpers ── */
+  const fmtCount = n => {
+    if (n == null) return '—';
+    if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k+';
+    return n.toLocaleString('en-IN');
+  };
+
+  /* ── Median TC from location data ── */
+  const medianTC = useMemo(() => {
+    const vals = byLocationLevel.map(r => r.avgTotalCompensation).filter(Boolean);
+    if (!vals.length) return null;
+    const sorted = [...vals].sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)];
+  }, [byLocationLevel]);
+
+  const numCompanies = useMemo(() => new Set(byCompanyLevel.map(r => r.companyName)).size, [byCompanyLevel]);
+
+  /* ── Spinner animation ── */
+  const spinStyle = { width: 28, height: 28, borderRadius: '50%', border: '2.5px solid var(--border)', borderTopColor: '#3b82f6', animation: 'spin 0.7s linear infinite' };
+
   return (
-    <section className="section">
+    <div style={{ background: 'var(--bg-2)', minHeight: '100vh' }}>
       <style>{`
-        @keyframes progressCrawl {
-          0%   { width: 0%;  }
-          40%  { width: 65%; }
-          70%  { width: 82%; }
-          100% { width: 90%; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes progressCrawl { 0%{width:0%} 40%{width:65%} 70%{width:82%} 100%{width:90%} }
+
+        /* ── Command-centre header ── */
+        .cc-header {
+          background: #0f172a;
+          border-bottom: 1px solid #1e293b;
+          padding: 28px 32px 24px;
+        }
+        [data-theme="dark"] .cc-header {
+          background: #020617;
+          border-bottom-color: #1e293b;
+        }
+        .cc-header-inner {
+          max-width: 1400px;
+          margin: 0 auto;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 24px;
+          flex-wrap: wrap;
+        }
+        .cc-tag {
+          font-family: 'IBM Plex Mono', monospace;
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: #3b82f6;
+          margin-bottom: 6px;
+          display: block;
+        }
+        .cc-title {
+          font-size: clamp(18px, 3vw, 24px);
+          font-weight: 700;
+          color: #f1f5f9;
+          letter-spacing: -0.02em;
+          margin-bottom: 4px;
+        }
+        .cc-title em { font-style: normal; color: #3b82f6; }
+        .cc-sub {
+          font-size: 12px;
+          color: #64748b;
+          font-family: 'IBM Plex Mono', monospace;
+        }
+        .cc-stats {
+          display: flex;
+          align-items: center;
+          gap: 0;
+          flex-shrink: 0;
+          background: #1e293b;
+          border: 1px solid #334155;
+          border-radius: 10px;
+          overflow: hidden;
+        }
+        .cc-stat {
+          padding: 12px 20px;
+          border-right: 1px solid #334155;
+          text-align: right;
+        }
+        .cc-stat:last-child { border-right: none; }
+        .cc-stat-label {
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: #64748b;
+          font-family: 'IBM Plex Mono', monospace;
+          margin-bottom: 3px;
+        }
+        .cc-stat-val {
+          font-size: 18px;
+          font-weight: 700;
+          color: #f1f5f9;
+          font-family: 'IBM Plex Mono', monospace;
+          line-height: 1;
+        }
+        .cc-stat-val.blue { color: #3b82f6; }
+
+        /* ── Page body ── */
+        .cc-body {
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 20px 32px 60px;
+        }
+
+        /* ── Chart grid: 2-col on desktop ── */
+        .cc-charts-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+
+        /* ── Mobile overrides ── */
+        @media (max-width: 768px) {
+          .cc-header { padding: 20px 16px 18px; }
+          .cc-stats {
+            width: 100%;
+            border-radius: 8px;
+          }
+          .cc-stat { flex: 1; padding: 10px 12px; text-align: center; }
+          .cc-stat-val { font-size: 15px; }
+          .cc-stat-label { font-size: 8px; }
+          .cc-body { padding: 14px 16px 48px; }
+          .cc-charts-grid { grid-template-columns: 1fr; gap: 10px; }
+        }
+        @media (max-width: 390px) {
+          .cc-stat { padding: 8px 8px; }
+          .cc-stat-val { font-size: 13px; }
         }
       `}</style>
 
-      {/* ── HEADER ── */}
-      <div className="section-header">
-        <span className="section-tag">Analytics</span>
-        <h2 className="section-title">360° Compensation <em>Intelligence</em></h2>
-        <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 6 }}>
-          Aggregated salary data across all approved submissions
-        </p>
+      {/* ══════════════════════════════════════
+          COMMAND-CENTRE HEADER
+      ══════════════════════════════════════ */}
+      <div className="cc-header">
+        <div className="cc-header-inner">
+          <div>
+            <span className="cc-tag">Analytics</span>
+            <div className="cc-title">360° Compensation <em>Intelligence</em></div>
+            <div className="cc-sub">Aggregated across all approved submissions · updated hourly</div>
+          </div>
+          <div className="cc-stats">
+            <div className="cc-stat">
+              <div className="cc-stat-label">Entries</div>
+              <div className="cc-stat-val">{initialLoading ? '—' : fmtCount(totalEntries)}</div>
+            </div>
+            <div className="cc-stat">
+              <div className="cc-stat-label">This month</div>
+              <div className="cc-stat-val">{initialLoading ? '—' : (thisMonth ?? '—')}</div>
+            </div>
+            <div className="cc-stat">
+              <div className="cc-stat-label">Companies</div>
+              <div className="cc-stat-val">{initialLoading ? '—' : (numCompanies || '—')}</div>
+            </div>
+            <div className="cc-stat">
+              <div className="cc-stat-label">Median TC</div>
+              <div className="cc-stat-val blue">{initialLoading ? '—' : fmt(medianTC)}</div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {initialLoading ? (
-        <div style={{
-          textAlign: 'center', padding: '60px 0',
-          color: 'var(--text-3)',
-          fontFamily: "'IBM Plex Mono',monospace", fontSize: 13,
-        }}>
-          Loading analytics…
-        </div>
-      ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(360px, 1fr))',
-          gap: 12,
-        }}>
+      {/* ══════════════════════════════════════
+          PAGE BODY
+      ══════════════════════════════════════ */}
+      <div className="cc-body">
 
-          {/* ══════════════════════════════════════════════════════════════
-              CHART 1 — Median Salary by Location × Internal Level
-          ══════════════════════════════════════════════════════════════ */}
-          <div className="chart-card">
-
-            {/* Card header */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4, gap: 8 }}>
-              <div>
-                <div className="chart-title">Median Salary by Location &amp; Level</div>
-                <div className="chart-subtitle">
-                  {selLocations.length > 0
-                    ? `${selLocations.length} location${selLocations.length > 1 ? 's' : ''} selected · hover each bar for breakdown`
-                    : 'All locations · hover each bar for Base · Bonus · Equity'}
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
-                <MultiFilter
-                  label="Filter"
-                  items={allLocations}
-                  selected={selLocations}
-                  onChange={setSelLocations}
-                  max={5}
-                />
-                {selLocations.length > 0 && (
-                  <button
-                    onClick={() => setSelLocations([])}
-                    style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'IBM Plex Mono',monospace" }}
-                  >
-                    ✕ clear
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <Chips items={selLocations} onRemove={loc => setSelLocations(selLocations.filter(l => l !== loc))} />
-
-            <BarLegend />
-
-            {byLocationLevel.length === 0 ? <EmptyState /> :
-             visibleLocations.length === 0 ? (
-              <EmptyState
-                filtered
-                filterLabel={selLocations.join(', ')}
-              />
-             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {visibleLocations.map((loc, li) => {
-                  const rows  = locationGrouped[loc] ?? [];
-                  const color = BAR_COLORS[li % BAR_COLORS.length];
-                  return (
-                    <div key={loc}>
-                      <GroupHeader dot={color} meta={`${rows.length} level${rows.length !== 1 ? 's' : ''}`}>
-                        {loc}
-                      </GroupHeader>
-                      <div className="level-bars">
-                        {rows.map(row => (
-                          <BarRow
-                            key={row.internalLevel}
-                            label={row.internalLevel}
-                            sublabel={loc}
-                            base={row.avgBaseSalary}
-                            bonus={row.avgBonus}
-                            equity={row.avgEquity}
-                            total={row.avgTotalCompensation}
-                            count={row.count}
-                            maxTotal={maxLocTotal}
-                            labelWidth={130}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+        {initialLoading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 14 }}>
+            <div style={spinStyle} />
+            <span style={{ fontSize: 12, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>Loading analytics…</span>
           </div>
+        ) : (
+          <>
+            {/* ── 2-col chart grid ── */}
+            <div className="cc-charts-grid">
 
-          {/* ══════════════════════════════════════════════════════════════
-              CHART 2 — Median Salary by Company × Internal Level
-          ══════════════════════════════════════════════════════════════ */}
-          <div className="chart-card">
-
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4, gap: 8 }}>
-              <div>
-                <div className="chart-title">Median Salary by Company &amp; Level</div>
-                <div className="chart-subtitle">
-                  {selLocationsForCompany.length > 0 || selLevels.length > 0
-                    ? `${selLocationsForCompany.length > 0 ? selLocationsForCompany.length + ' location' + (selLocationsForCompany.length > 1 ? 's' : '') + ' · ' : ''}${selCompanies.length > 0 ? selCompanies.length + ' companies' : 'all companies'}${selLevels.length > 0 ? ' · ' + selLevels.length + ' level' + (selLevels.length > 1 ? 's' : '') : ''} · hover for breakdown`
-                    : 'Hover each bar for Base · Bonus · Equity breakdown'}
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <MultiFilter
-                    label="Location"
-                    items={ALL_LOCATIONS}
-                    selected={selLocationsForCompany}
-                    onChange={setSelLocationsForCompany}
-                    max={5}
-                  />
-                  <MultiFilter
-                    label="Company"
-                    items={allCompanyNames}
-                    selected={selCompanies}
-                    onChange={setSelCompanies}
-                    max={5}
-                  />
-                  <MultiFilter
-                    label="Level"
-                    items={allLevelNames}
-                    selected={selLevels}
-                    onChange={setSelLevels}
-                    max={5}
-                  />
-                </div>
-                {(selLocationsForCompany.length > 0 || selCompanies.length > 0 || selLevels.length > 0) && (
-                  <button
-                    onClick={() => { setSelLocationsForCompany([]); setSelCompanies([]); setSelLevels([]); }}
-                    style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'IBM Plex Mono',monospace" }}
-                  >
-                    ✕ clear all
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Active filter chips — locations, companies, levels */}
-            <Chips
-              items={selLocationsForCompany}
-              onRemove={loc => setSelLocationsForCompany(selLocationsForCompany.filter(l => l !== loc))}
-            />
-            <Chips
-              items={selCompanies}
-              onRemove={c => setSelCompanies(selCompanies.filter(x => x !== c))}
-            />
-            <Chips
-              items={selLevels}
-              onRemove={l => setSelLevels(selLevels.filter(x => x !== l))}
-            />
-
-            {/* Progress bar — crawls while backend re-fetches, invisible otherwise */}
-            <div style={{ height: 3, marginBottom: 8, borderRadius: 99, overflow: 'hidden', background: refetching ? 'rgba(59,130,246,0.12)' : 'transparent', transition: 'background 0.2s' }}>
-              {refetching && (
-                <div style={{
-                  height: '100%',
-                  background: 'linear-gradient(90deg, #60a5fa, #3b82f6)',
-                  borderRadius: 99,
-                  animation: 'progressCrawl 2s cubic-bezier(0.05, 0.6, 0.4, 1) forwards',
-                }} />
-              )}
-            </div>
-
-            <BarLegend />
-
-            {byCompanyLevel.length === 0 ? <EmptyState /> :
-             visibleCompanies.length === 0 ? (
-              <EmptyState
-                filtered
-                filterLabel={selLocationsForCompany.join(', ')}
-              />
-             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {visibleCompanies.map((company, ci) => {
-                  const allRows  = companyGrouped[company] ?? [];
-                  const rows     = selLevels.length > 0
-                    ? allRows.filter(r => selLevels.includes(r.internalLevel))
-                    : allRows;
-                  if (rows.length === 0) return null; // hide company entirely if no matching levels
-                  const firstRow = rows[0];
-                  const color    = BAR_COLORS[ci % BAR_COLORS.length];
-                  return (
-                    <div key={company}>
-                      {/* Company header: logo + name + confidence */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <CompanyLogo
-                          companyId={firstRow?.companyId}
-                          companyName={company}
-                          logoUrl={firstRow?.logoUrl}
-                          website={firstRow?.website}
-                          size={20}
-                          radius={4}
-                        />
-                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>{company}</span>
-                        <ConfidenceBadge tier={firstRow?.confidenceTier} label={firstRow?.confidenceLabel} />
-                      </div>
-                      <div className="level-bars">
-                        {rows.map(row => (
-                          <BarRow
-                            key={row.internalLevel}
-                            label={row.internalLevel}
-                            sublabel={company}
-                            base={row.avgBaseSalary}
-                            bonus={row.avgBonus}
-                            equity={row.avgEquity}
-                            total={row.avgTotalCompensation}
-                            count={row.count}
-                            maxTotal={maxCoTotal}
-                            labelWidth={130}
-                          />
-                        ))}
-                      </div>
+              {/* ── CHART 1: Location × Level ── */}
+              <div className="chart-card" style={{ margin: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4, gap: 8 }}>
+                  <div>
+                    <div className="chart-title">Salary by Location &amp; Level</div>
+                    <div className="chart-subtitle">
+                      {selLocations.length > 0
+                        ? `${selLocations.length} location${selLocations.length > 1 ? 's' : ''} selected · hover for breakdown`
+                        : 'All locations · hover each bar for Base · Bonus · Equity'}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
+                    <MultiFilter label="Location" items={allLocations} selected={selLocations} onChange={setSelLocations} max={5} />
+                    {selLocations.length > 0 && (
+                      <button onClick={() => setSelLocations([])} style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'IBM Plex Mono',monospace" }}>✕ clear</button>
+                    )}
+                  </div>
+                </div>
 
-          {/* ══════════════════════════════════════════════════════════════
-              CHART 3 — Total Compensation vs Years of Experience
-          ══════════════════════════════════════════════════════════════ */}
-          <div className="chart-card" style={{ gridColumn: isMobile ? undefined : '1 / -1' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div>
-                <div className="chart-title">Total Comp vs Years of Experience</div>
-                <div className="chart-subtitle">Average total compensation at each YOE · hover a point for details</div>
-              </div>
-            </div>
+                <Chips items={selLocations} onRemove={loc => setSelLocations(selLocations.filter(l => l !== loc))} />
+                <BarLegend />
 
-            {byYoe.length === 0 ? <EmptyState /> : (() => {
-              const fmtV   = v => { if (!v) return '—'; const l = v/100000; return l>=100?`₹${(l/100).toFixed(1)}Cr`:`₹${l.toFixed(1)}L`; };
-              const points = byYoe.filter(d => d.avgTotalCompensation != null);
-              const maxTotal = Math.max(...points.map(d => d.avgTotalCompensation), 1);
-              const minTotal = Math.min(...points.map(d => d.avgTotalCompensation));
-              const svgW = 800, H = 200, PAD_L = 56, PAD_R = 16, PAD_T = 12, PAD_B = 32;
-              const innerW = svgW - PAD_L - PAD_R;
-              const innerH = H - PAD_T - PAD_B;
-              const toX = i => PAD_L + (i / Math.max(points.length - 1, 1)) * innerW;
-              const toY = v => PAD_T + innerH - ((v - minTotal) / Math.max(maxTotal - minTotal, 1)) * innerH;
-              const linePath = points.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(i).toFixed(1)} ${toY(d.avgTotalCompensation).toFixed(1)}`).join(' ');
-              const areaPath = points.length > 0 ? `${linePath} L ${toX(points.length-1).toFixed(1)} ${H-PAD_B} L ${toX(0).toFixed(1)} ${H-PAD_B} Z` : '';
-
-              return (
-                <div style={{ position: 'relative', overflowX: 'auto' }}>
-                  <svg viewBox={`0 0 ${svgW} ${H}`} width="100%" style={{ display: 'block', overflow: 'visible' }}>
-                    <defs>
-                      <linearGradient id="yoeGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%"   stopColor="#3b82f6" stopOpacity="0.18" />
-                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.01" />
-                      </linearGradient>
-                    </defs>
-                    {[0, 0.25, 0.5, 0.75, 1].map(pct => {
-                      const y   = PAD_T + innerH * (1 - pct);
-                      const val = minTotal + pct * (maxTotal - minTotal);
+                {byLocationLevel.length === 0 ? <EmptyState /> :
+                 visibleLocations.length === 0 ? <EmptyState filtered filterLabel={selLocations.join(', ')} /> : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    {visibleLocations.map((loc, li) => {
+                      const rows  = locationGrouped[loc] ?? [];
+                      const color = BAR_COLORS[li % BAR_COLORS.length];
                       return (
-                        <g key={pct}>
-                          <line x1={PAD_L} y1={y} x2={svgW - PAD_R} y2={y} stroke="var(--border,#e5e7eb)" strokeWidth="0.5" strokeDasharray="3 3" />
-                          <text x={PAD_L - 6} y={y + 4} textAnchor="end" style={{ fontSize: 9, fill: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
-                            {fmtV(val)}
-                          </text>
-                        </g>
+                        <div key={loc}>
+                          <GroupHeader dot={color} meta={`${rows.length} level${rows.length !== 1 ? 's' : ''}`}>{loc}</GroupHeader>
+                          <div className="level-bars">
+                            {rows.map(row => (
+                              <BarRow key={row.internalLevel} label={row.internalLevel} sublabel={loc}
+                                base={row.avgBaseSalary} bonus={row.avgBonus} equity={row.avgEquity}
+                                total={row.avgTotalCompensation} count={row.count}
+                                maxTotal={maxLocTotal} labelWidth={isMobile ? 90 : 130} />
+                            ))}
+                          </div>
+                        </div>
                       );
                     })}
-                    <path d={areaPath} fill="url(#yoeGrad)" />
-                    <path d={linePath} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-                    {points.map((d, i) => {
-                      const cx = toX(i), cy = toY(d.avgTotalCompensation);
-                      const tipX = cx > svgW - 160 ? cx - 145 : cx + 10;
+                  </div>
+                )}
+              </div>
+
+              {/* ── CHART 2: Company × Level ── */}
+              <div className="chart-card" style={{ margin: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4, gap: 8 }}>
+                  <div>
+                    <div className="chart-title">Salary by Company &amp; Level</div>
+                    <div className="chart-subtitle">
+                      {selLocationsForCompany.length > 0 || selLevels.length > 0
+                        ? `${selLocationsForCompany.length > 0 ? selLocationsForCompany.length + ' loc · ' : ''}${selCompanies.length > 0 ? selCompanies.length + ' companies' : 'all companies'}${selLevels.length > 0 ? ' · ' + selLevels.length + ' level' + (selLevels.length > 1 ? 's' : '') : ''}`
+                        : 'Hover each bar for Base · Bonus · Equity breakdown'}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <MultiFilter label="Location" items={ALL_LOCATIONS}      selected={selLocationsForCompany} onChange={setSelLocationsForCompany} max={5} />
+                      <MultiFilter label="Company"  items={allCompanyNames}    selected={selCompanies}           onChange={setSelCompanies}           max={5} />
+                      <MultiFilter label="Level"    items={allLevelNames}      selected={selLevels}              onChange={setSelLevels}              max={5} />
+                    </div>
+                    {(selLocationsForCompany.length > 0 || selCompanies.length > 0 || selLevels.length > 0) && (
+                      <button onClick={() => { setSelLocationsForCompany([]); setSelCompanies([]); setSelLevels([]); }}
+                        style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'IBM Plex Mono',monospace" }}>
+                        ✕ clear all
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <Chips items={selLocationsForCompany} onRemove={loc => setSelLocationsForCompany(selLocationsForCompany.filter(l => l !== loc))} />
+                <Chips items={selCompanies}           onRemove={c   => setSelCompanies(selCompanies.filter(x => x !== c))} />
+                <Chips items={selLevels}              onRemove={l   => setSelLevels(selLevels.filter(x => x !== l))} />
+
+                {/* Progress bar for refetch */}
+                <div style={{ height: 3, marginBottom: 8, borderRadius: 99, overflow: 'hidden', background: refetching ? 'rgba(59,130,246,0.12)' : 'transparent', transition: 'background 0.2s' }}>
+                  {refetching && (
+                    <div style={{ height: '100%', background: 'linear-gradient(90deg,#60a5fa,#3b82f6)', borderRadius: 99, animation: 'progressCrawl 2s cubic-bezier(0.05,0.6,0.4,1) forwards' }} />
+                  )}
+                </div>
+
+                <BarLegend />
+
+                {byCompanyLevel.length === 0 ? <EmptyState /> :
+                 visibleCompanies.length === 0 ? <EmptyState filtered filterLabel={selLocationsForCompany.join(', ')} /> : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    {visibleCompanies.map((company, ci) => {
+                      const allRows = companyGrouped[company] ?? [];
+                      const rows    = selLevels.length > 0 ? allRows.filter(r => selLevels.includes(r.internalLevel)) : allRows;
+                      if (rows.length === 0) return null;
+                      const firstRow = rows[0];
+                      const color    = BAR_COLORS[ci % BAR_COLORS.length];
                       return (
-                        <g key={d.yoe} className="yoe-point" style={{ cursor: 'default' }}>
-                          <circle cx={cx} cy={cy} r={5} fill="#3b82f6" stroke="var(--panel,#fff)" strokeWidth="1.5" />
-                          <circle cx={cx} cy={cy} r={12} fill="transparent" />
-                          <g className="yoe-tip" style={{ pointerEvents: 'none' }}>
-                            <rect x={tipX} y={cy - 56} width={136} height={54} rx="6" fill="var(--panel,#fff)" stroke="var(--border,#e5e7eb)" strokeWidth="0.5" />
-                            <text x={tipX + 8} y={cy - 39} style={{ fontSize: 11, fontWeight: 600, fill: 'var(--text-1)', fontFamily: 'sans-serif' }}>{d.yoe} year{d.yoe !== 1 ? 's' : ''} exp</text>
-                            <text x={tipX + 8} y={cy - 24} style={{ fontSize: 10, fill: 'var(--text-2)', fontFamily: "'IBM Plex Mono',monospace" }}>TC: {fmtV(d.avgTotalCompensation)}</text>
-                            <text x={tipX + 8} y={cy - 11} style={{ fontSize: 9,  fill: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>{d.count} {d.count === 1 ? 'entry' : 'entries'}</text>
+                        <div key={company}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <CompanyLogo companyId={firstRow?.companyId} companyName={company} logoUrl={firstRow?.logoUrl} website={firstRow?.website} size={20} radius={4} />
+                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>{company}</span>
+                            <ConfidenceBadge tier={firstRow?.confidenceTier} label={firstRow?.confidenceLabel} />
+                          </div>
+                          <div className="level-bars">
+                            {rows.map(row => (
+                              <BarRow key={row.internalLevel} label={row.internalLevel} sublabel={company}
+                                base={row.avgBaseSalary} bonus={row.avgBonus} equity={row.avgEquity}
+                                total={row.avgTotalCompensation} count={row.count}
+                                maxTotal={maxCoTotal} labelWidth={isMobile ? 90 : 130} />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── CHART 3: YOE — full width ── */}
+            <div className="chart-card" style={{ margin: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div>
+                  <div className="chart-title">Total Comp vs Years of Experience</div>
+                  <div className="chart-subtitle">Average total compensation at each YOE · hover a point for details</div>
+                </div>
+              </div>
+
+              {byYoe.length === 0 ? <EmptyState /> : (() => {
+                const fmtV   = v => { if (!v) return '—'; const l = v/100000; return l>=100?`₹${(l/100).toFixed(1)}Cr`:`₹${l.toFixed(1)}L`; };
+                const points = byYoe.filter(d => d.avgTotalCompensation != null);
+                const maxTotal = Math.max(...points.map(d => d.avgTotalCompensation), 1);
+                const minTotal = Math.min(...points.map(d => d.avgTotalCompensation));
+                const svgW = 800, H = 200, PAD_L = 56, PAD_R = 16, PAD_T = 12, PAD_B = 32;
+                const innerW = svgW - PAD_L - PAD_R;
+                const innerH = H - PAD_T - PAD_B;
+                const toX = i => PAD_L + (i / Math.max(points.length - 1, 1)) * innerW;
+                const toY = v => PAD_T + innerH - ((v - minTotal) / Math.max(maxTotal - minTotal, 1)) * innerH;
+                const linePath = points.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(i).toFixed(1)} ${toY(d.avgTotalCompensation).toFixed(1)}`).join(' ');
+                const areaPath = points.length > 0 ? `${linePath} L ${toX(points.length-1).toFixed(1)} ${H-PAD_B} L ${toX(0).toFixed(1)} ${H-PAD_B} Z` : '';
+
+                return (
+                  <div style={{ position: 'relative', overflowX: 'auto' }}>
+                    <svg viewBox={`0 0 ${svgW} ${H}`} width="100%" style={{ display: 'block', overflow: 'visible' }}>
+                      <defs>
+                        <linearGradient id="yoeGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%"   stopColor="#3b82f6" stopOpacity="0.18" />
+                          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.01" />
+                        </linearGradient>
+                      </defs>
+                      {[0, 0.25, 0.5, 0.75, 1].map(pct => {
+                        const y = PAD_T + innerH * (1 - pct);
+                        const val = minTotal + pct * (maxTotal - minTotal);
+                        return (
+                          <g key={pct}>
+                            <line x1={PAD_L} y1={y} x2={svgW - PAD_R} y2={y} stroke="var(--border,#e5e7eb)" strokeWidth="0.5" strokeDasharray="3 3" />
+                            <text x={PAD_L - 6} y={y + 4} textAnchor="end" style={{ fontSize: 9, fill: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>{fmtV(val)}</text>
                           </g>
-                        </g>
-                      );
-                    })}
-                    {points.map((d, i) => {
-                      if (i % 2 !== 0 && i !== points.length - 1) return null;
-                      return (
-                        <text key={d.yoe} x={toX(i)} y={H - PAD_B + 14} textAnchor="middle" style={{ fontSize: 9, fill: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
-                          {d.yoe}yr
-                        </text>
-                      );
-                    })}
-                  </svg>
-                  <style>{`
-                    .yoe-point .yoe-tip { opacity: 0; transition: opacity 0.1s; }
-                    .yoe-point:hover .yoe-tip { opacity: 1; }
-                  `}</style>
-                </div>
-              );
-            })()}
-          </div>
-
-        </div>
-      )}
-    </section>
+                        );
+                      })}
+                      <path d={areaPath} fill="url(#yoeGrad)" />
+                      <path d={linePath} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                      {points.map((d, i) => {
+                        const cx = toX(i), cy = toY(d.avgTotalCompensation);
+                        const tipX = cx > svgW - 160 ? cx - 145 : cx + 10;
+                        return (
+                          <g key={d.yoe} className="yoe-point" style={{ cursor: 'default' }}>
+                            <circle cx={cx} cy={cy} r={5} fill="#3b82f6" stroke="var(--panel,#fff)" strokeWidth="1.5" />
+                            <circle cx={cx} cy={cy} r={12} fill="transparent" />
+                            <g className="yoe-tip" style={{ pointerEvents: 'none' }}>
+                              <rect x={tipX} y={cy - 56} width={136} height={54} rx="6" fill="var(--panel,#fff)" stroke="var(--border,#e5e7eb)" strokeWidth="0.5" />
+                              <text x={tipX + 8} y={cy - 39} style={{ fontSize: 11, fontWeight: 600, fill: 'var(--text-1)', fontFamily: 'sans-serif' }}>{d.yoe} year{d.yoe !== 1 ? 's' : ''} exp</text>
+                              <text x={tipX + 8} y={cy - 24} style={{ fontSize: 10, fill: 'var(--text-2)', fontFamily: "'IBM Plex Mono',monospace" }}>TC: {fmtV(d.avgTotalCompensation)}</text>
+                              <text x={tipX + 8} y={cy - 11} style={{ fontSize: 9,  fill: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>{d.count} {d.count === 1 ? 'entry' : 'entries'}</text>
+                            </g>
+                          </g>
+                        );
+                      })}
+                      {points.map((d, i) => {
+                        if (i % 2 !== 0 && i !== points.length - 1) return null;
+                        return (
+                          <text key={d.yoe} x={toX(i)} y={H - PAD_B + 14} textAnchor="middle" style={{ fontSize: 9, fill: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
+                            {d.yoe}yr
+                          </text>
+                        );
+                      })}
+                    </svg>
+                    <style>{`
+                      .yoe-point .yoe-tip { opacity: 0; transition: opacity 0.1s; }
+                      .yoe-point:hover .yoe-tip { opacity: 1; }
+                    `}</style>
+                  </div>
+                );
+              })()}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
