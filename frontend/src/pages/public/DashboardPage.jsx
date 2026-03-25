@@ -28,18 +28,21 @@ const fmt = (val) => {
 };
 
 /* ─── Shared global legend — always shown once per card ─────────────────── */
-function BarLegend() {
+function BarLegend({ isMobile = false }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 14, marginBottom: 10, flexWrap: 'wrap' }}>
       {[['base','Base'],['bonus','Bonus'],['equity','Equity']].map(([key, label]) => (
-        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <div style={{
-            width: 24, height: 8, borderRadius: 4,
+            width: isMobile ? 18 : 24, height: isMobile ? 6 : 8, borderRadius: 4,
             background: PALETTE[key].grad,
           }} />
-          <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 500 }}>{label}</span>
+          <span style={{ fontSize: isMobile ? 9 : 10, color: 'var(--text-3)', fontWeight: 500 }}>{label}</span>
         </div>
       ))}
+      {isMobile && (
+        <span style={{ fontSize: 9, color: 'var(--text-3)', marginLeft: 'auto', fontStyle: 'italic', opacity: 0.7 }}>tap row for details</span>
+      )}
     </div>
   );
 }
@@ -147,7 +150,7 @@ function TooltipContent({ label, sublabel, base, bonus, equity, total, count }) 
 }
 
 /* ─── Full bar row: label + stacked bar + value + hover tooltip ─────────── */
-function BarRow({ label, sublabel, base, bonus, equity, total, count, maxTotal, labelWidth = 110 }) {
+function BarRow({ label, sublabel, base, bonus, equity, total, count, maxTotal, labelWidth = 110, isMobile = false }) {
   const [tip, setTip]     = useState(false);
   const [tipX, setTipX]   = useState('50%');
   const rowRef            = useRef(null);
@@ -158,59 +161,106 @@ function BarRow({ label, sublabel, base, bonus, equity, total, count, maxTotal, 
     if (card) {
       const cardRect = card.getBoundingClientRect();
       const rawX     = e.clientX - cardRect.left;
-      // clamp so tooltip (200px wide) stays inside card
       const clamped  = Math.max(100, Math.min(rawX, cardRect.width - 100));
       setTipX(clamped + 'px');
     }
   }
 
   return (
-    <div
-      ref={rowRef}
-      className="level-bar-row"
-      style={{ cursor: 'default' }}
-      onMouseEnter={onEnter}
-      onMouseLeave={() => setTip(false)}
-    >
-      {/* Label */}
-      <span className="level-bar-label" style={{ minWidth: labelWidth }}>{label}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      {/* ── Main row ── */}
+      <div
+        ref={rowRef}
+        className="level-bar-row"
+        style={{ cursor: isMobile ? 'pointer' : 'default' }}
+        onMouseEnter={!isMobile ? onEnter : undefined}
+        onMouseLeave={!isMobile ? () => setTip(false) : undefined}
+        onClick={isMobile ? () => setTip(v => !v) : undefined}
+      >
+        {/* Label — fixed width, clipped if needed */}
+        <span
+          className="level-bar-label"
+          style={{
+            width: labelWidth,
+            minWidth: labelWidth,
+            maxWidth: labelWidth,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            fontSize: isMobile ? 10 : 11,
+          }}
+          title={label}
+        >{label}</span>
 
-      {/* Stacked bar */}
-      <StackedBar base={base} bonus={bonus} equity={equity} total={total} maxTotal={maxTotal} />
+        {/* Stacked bar */}
+        <StackedBar base={base} bonus={bonus} equity={equity} total={total} maxTotal={maxTotal} />
 
-      {/* Total value */}
-      <span className="level-bar-val">{fmt(total || base)}</span>
+        {/* Total value */}
+        <span className="level-bar-val" style={{ fontSize: isMobile ? 10 : 11, minWidth: isMobile ? 44 : 52 }}>
+          {fmt(total || base)}
+        </span>
 
-      {/* Tooltip */}
-      {tip && (
-        <div style={{
-          position: 'absolute',
-          bottom: 'calc(100% + 10px)',
-          left: tipX,
-          transform: 'translateX(-50%)',
-          width: 210,
-          background: 'var(--panel)',
-          border: '1px solid var(--border)',
-          borderRadius: 12,
-          padding: '12px 14px',
-          zIndex: 300,
-          pointerEvents: 'none',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
-        }}>
-          <TooltipContent
-            label={label}
-            sublabel={sublabel}
-            base={base} bonus={bonus} equity={equity} total={total} count={count}
-          />
-          {/* Arrow */}
+        {/* Desktop tooltip */}
+        {!isMobile && tip && (
           <div style={{
-            position: 'absolute', top: '100%', left: '50%',
+            position: 'absolute',
+            bottom: 'calc(100% + 10px)',
+            left: tipX,
             transform: 'translateX(-50%)',
-            width: 0, height: 0,
-            borderLeft: '6px solid transparent',
-            borderRight: '6px solid transparent',
-            borderTop: '6px solid var(--border)',
-          }} />
+            width: 210,
+            background: 'var(--panel)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: '12px 14px',
+            zIndex: 300,
+            pointerEvents: 'none',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
+          }}>
+            <TooltipContent
+              label={label}
+              sublabel={sublabel}
+              base={base} bonus={bonus} equity={equity} total={total} count={count}
+            />
+            <div style={{
+              position: 'absolute', top: '100%', left: '50%',
+              transform: 'translateX(-50%)',
+              width: 0, height: 0,
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderTop: '6px solid var(--border)',
+            }} />
+          </div>
+        )}
+      </div>
+
+      {/* Mobile inline breakdown — shown when row is tapped */}
+      {isMobile && tip && (
+        <div style={{
+          background: 'var(--bg-2)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          padding: '8px 10px',
+          marginTop: 4,
+          marginBottom: 2,
+          display: 'flex',
+          gap: 8,
+          flexWrap: 'wrap',
+          alignItems: 'center',
+        }}>
+          {[['base','Base',base],['bonus','Bonus',bonus],['equity','Equity',equity]].map(([key, lbl, val]) => (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 18, height: 6, borderRadius: 3, background: PALETTE[key].grad, flexShrink: 0 }} />
+              <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{lbl}</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace", marginLeft: 2 }}>
+                {fmt(val)}
+              </span>
+            </div>
+          ))}
+          {count != null && (
+            <span style={{ fontSize: 9, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace", marginLeft: 'auto' }}>
+              {count} {count === 1 ? 'entry' : 'entries'}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -271,7 +321,7 @@ function ConfidenceBadge({ tier, label }) {
 }
 
 /* ─── Multiselect filter ─────────────────────────────────────────────────── */
-function MultiFilter({ label, items, selected, onChange, max = 5 }) {
+function MultiFilter({ label, items, selected, onChange, max = 5, isMobile = false }) {
   const [open, setOpen]     = useState(false);
   const [search, setSearch] = useState('');
   const wrapRef             = useRef(null);
@@ -309,13 +359,14 @@ function MultiFilter({ label, items, selected, onChange, max = 5 }) {
     <div ref={wrapRef} style={{ position: 'relative' }}>
       {/* Trigger button */}
       <button onClick={() => setOpen(o => !o)} style={{
-        display: 'flex', alignItems: 'center', gap: 6,
-        padding: '5px 10px', borderRadius: 8,
+        display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 6,
+        padding: isMobile ? '4px 8px' : '5px 10px', borderRadius: 8,
         background: open ? 'var(--bg-3)' : 'var(--bg-2)',
         border: `1px solid ${selected.length > 0 ? '#3b82f680' : 'var(--border)'}`,
-        cursor: 'pointer', fontSize: 11, color: 'var(--text-2)',
+        cursor: 'pointer', fontSize: isMobile ? 10 : 11, color: 'var(--text-2)',
         fontFamily: "'IBM Plex Mono',monospace",
         transition: 'all 0.15s',
+        whiteSpace: 'nowrap',
       }}>
         <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
           <line x1="4" y1="6" x2="20" y2="6"/>
@@ -480,18 +531,18 @@ function Chips({ items, onRemove }) {
 }
 
 /* ─── Section header for grouped charts (location / company) ─────────────── */
-function GroupHeader({ dot, children, meta }) {
+function GroupHeader({ dot, children, meta, isMobile = false }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
       {dot && (
         <div style={{
-          width: 8, height: 8, borderRadius: '50%',
+          width: isMobile ? 6 : 8, height: isMobile ? 6 : 8, borderRadius: '50%',
           background: dot, flexShrink: 0,
           boxShadow: `0 0 0 3px ${dot}28`,
         }} />
       )}
-      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>{children}</span>
-      {meta && <span style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>{meta}</span>}
+      <span style={{ fontSize: isMobile ? 11 : 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>{children}</span>
+      {meta && <span style={{ fontSize: isMobile ? 9 : 10, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>{meta}</span>}
     </div>
   );
 }
@@ -827,17 +878,17 @@ export default function DashboardPage() {
 
               {/* ── CHART 1: Location × Level ── */}
               <div className="chart-card" style={{ margin: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4, gap: 8 }}>
-                  <div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4, gap: 8, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
                     <div className="chart-title">Salary by Location &amp; Level</div>
                     <div className="chart-subtitle">
                       {selLocations.length > 0
-                        ? `${selLocations.length} location${selLocations.length > 1 ? 's' : ''} selected · hover for breakdown`
-                        : 'All locations · hover each bar for Base · Bonus · Equity'}
+                        ? `${selLocations.length} location${selLocations.length > 1 ? 's' : ''} selected · ${isMobile ? 'tap' : 'hover'} for breakdown`
+                        : `All locations · ${isMobile ? 'tap a bar' : 'hover each bar'} for Base · Bonus · Equity`}
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
-                    <MultiFilter label="Location" items={allLocations} selected={selLocations} onChange={setSelLocations} max={5} />
+                    <MultiFilter label="Location" items={allLocations} selected={selLocations} onChange={setSelLocations} max={5} isMobile={isMobile} />
                     {selLocations.length > 0 && (
                       <button onClick={() => setSelLocations([])} style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'IBM Plex Mono',monospace" }}>✕ clear</button>
                     )}
@@ -845,7 +896,7 @@ export default function DashboardPage() {
                 </div>
 
                 <Chips items={selLocations} onRemove={loc => setSelLocations(selLocations.filter(l => l !== loc))} />
-                <BarLegend />
+                <BarLegend isMobile={isMobile} />
 
                 {byLocationLevel.length === 0 ? <EmptyState /> :
                  visibleLocations.length === 0 ? <EmptyState filtered filterLabel={selLocations.join(', ')} /> : (
@@ -855,13 +906,13 @@ export default function DashboardPage() {
                       const color = BAR_COLORS[li % BAR_COLORS.length];
                       return (
                         <div key={loc}>
-                          <GroupHeader dot={color} meta={`${rows.length} level${rows.length !== 1 ? 's' : ''}`}>{loc}</GroupHeader>
+                          <GroupHeader dot={color} meta={`${rows.length} level${rows.length !== 1 ? 's' : ''}`} isMobile={isMobile}>{loc}</GroupHeader>
                           <div className="level-bars">
                             {rows.map(row => (
                               <BarRow key={row.internalLevel} label={row.internalLevel} sublabel={loc}
                                 base={row.avgBaseSalary} bonus={row.avgBonus} equity={row.avgEquity}
                                 total={row.avgTotalCompensation} count={row.count}
-                                maxTotal={maxLocTotal} labelWidth={isMobile ? 90 : 130} />
+                                maxTotal={maxLocTotal} labelWidth={isMobile ? 72 : 130} isMobile={isMobile} />
                             ))}
                           </div>
                         </div>
@@ -873,24 +924,24 @@ export default function DashboardPage() {
 
               {/* ── CHART 2: Company × Level ── */}
               <div className="chart-card" style={{ margin: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4, gap: 8 }}>
-                  <div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4, gap: 8, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
                     <div className="chart-title">Salary by Company &amp; Level</div>
                     <div className="chart-subtitle">
                       {selLocationsForCompany.length > 0 || selLevels.length > 0
                         ? `${selLocationsForCompany.length > 0 ? selLocationsForCompany.length + ' loc · ' : ''}${selCompanies.length > 0 ? selCompanies.length + ' companies' : 'all companies'}${selLevels.length > 0 ? ' · ' + selLevels.length + ' level' + (selLevels.length > 1 ? 's' : '') : ''}`
-                        : 'Hover each bar for Base · Bonus · Equity breakdown'}
+                        : `${isMobile ? 'Tap a bar' : 'Hover each bar'} for Base · Bonus · Equity breakdown`}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <MultiFilter label="Location" items={ALL_LOCATIONS}      selected={selLocationsForCompany} onChange={setSelLocationsForCompany} max={5} />
-                      <MultiFilter label="Company"  items={allCompanyNames}    selected={selCompanies}           onChange={setSelCompanies}           max={5} />
-                      <MultiFilter label="Level"    items={allLevelNames}      selected={selLevels}              onChange={setSelLevels}              max={5} />
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, width: isMobile ? '100%' : undefined, flexShrink: 0 }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end', width: '100%' }}>
+                      <MultiFilter label="Location" items={ALL_LOCATIONS}      selected={selLocationsForCompany} onChange={setSelLocationsForCompany} max={5} isMobile={isMobile} />
+                      <MultiFilter label="Company"  items={allCompanyNames}    selected={selCompanies}           onChange={setSelCompanies}           max={5} isMobile={isMobile} />
+                      <MultiFilter label="Level"    items={allLevelNames}      selected={selLevels}              onChange={setSelLevels}              max={5} isMobile={isMobile} />
                     </div>
                     {(selLocationsForCompany.length > 0 || selCompanies.length > 0 || selLevels.length > 0) && (
                       <button onClick={() => { setSelLocationsForCompany([]); setSelCompanies([]); setSelLevels([]); }}
-                        style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'IBM Plex Mono',monospace" }}>
+                        style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'IBM Plex Mono',monospace", alignSelf: isMobile ? 'flex-start' : 'flex-end' }}>
                         ✕ clear all
                       </button>
                     )}
@@ -908,7 +959,7 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                <BarLegend />
+                <BarLegend isMobile={isMobile} />
 
                 {byCompanyLevel.length === 0 ? <EmptyState /> :
                  visibleCompanies.length === 0 ? <EmptyState filtered filterLabel={selLocationsForCompany.join(', ')} /> : (
@@ -931,7 +982,7 @@ export default function DashboardPage() {
                               <BarRow key={row.internalLevel} label={row.internalLevel} sublabel={company}
                                 base={row.avgBaseSalary} bonus={row.avgBonus} equity={row.avgEquity}
                                 total={row.avgTotalCompensation} count={row.count}
-                                maxTotal={maxCoTotal} labelWidth={isMobile ? 90 : 130} />
+                                maxTotal={maxCoTotal} labelWidth={isMobile ? 72 : 130} isMobile={isMobile} />
                             ))}
                           </div>
                         </div>
