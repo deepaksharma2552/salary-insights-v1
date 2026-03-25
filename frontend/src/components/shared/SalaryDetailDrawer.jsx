@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LEVEL_BADGE_CLASS, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../data/salaryData';
 import api from '../../services/api';
+import { mapSalary } from '../../utils/salaryMapper';
 
 /**
  * SalaryDetailDrawer
@@ -26,49 +27,11 @@ export default function SalaryDetailDrawer({ open, salary: rowSalary, salaryId, 
       .then(res => {
         const s = res.data?.data;
         if (!s) return;
-        const colors = ['#3ecfb0','#d4a853','#e05c7a','#a08ff0','#c07df0','#e89050'];
-        const colorIdx = s.companyName ? s.companyName.charCodeAt(0) % colors.length : 0;
-        const color = colors[colorIdx];
-        const levelMap = {
-          INTERN:'junior', ENTRY:'junior', MID:'mid',
-          SENIOR:'senior', LEAD:'lead', MANAGER:'lead',
-          DIRECTOR:'lead', VP:'lead', C_LEVEL:'lead',
-        };
-        const fmt = (val) => {
-          if (!val && val !== 0) return '—';
-          const l = Number(val) / 100000;
-          return l >= 100 ? `₹${(l/100).toFixed(1)}Cr` : `₹${l.toFixed(1)}L`;
-        };
-        const formatDate = (iso) => {
-          if (!iso) return '—';
-          const d = new Date(iso);
-          if (isNaN(d.getTime())) return '—';
-          return d.toLocaleString('en-IN', {
-            day: '2-digit', month: 'short', year: 'numeric',
-            hour: '2-digit', minute: '2-digit',
-          });
-        };
+        // Use shared mapper, then layer in the extra fields the drawer needs
+        const base = mapSalary(s);
         setSalary({
-          id:             s.id,
-          company:        s.companyName ?? '—',
-          compAbbr:       s.companyName ? s.companyName.slice(0,2).toUpperCase() : '?',
-          compColor:      color,
-          compBg:         `${color}26`,
-          role:           s.jobTitle ?? '—',
-          internalLevel:  s.companyInternalLevel ?? '—',
-          standardized:   s.standardizedLevelName ?? '—',
-          level:          levelMap[s.experienceLevel] ?? 'mid',
-          location:       s.location ?? '—',
-          exp:            s.yearsOfExperience != null ? `${s.yearsOfExperience} yr` : '—',
-          yoe:            s.yearsOfExperience != null ? `${s.yearsOfExperience} year${s.yearsOfExperience !== 1 ? 's' : ''}` : '—',
-          empType:        s.employmentType ?? '—',
-          base:           fmt(s.baseSalary),
-          bonus:          fmt(s.bonus),
-          equity:         fmt(s.equity),
-          tc:             fmt(s.totalCompensation),
-          status:         (s.reviewStatus ?? 'APPROVED').toLowerCase(),
-          recordedAt:     formatDate(s.createdAt),
-          notes:          '',
+          ...base,
+          standardized: s.standardizedLevelName ?? '—',
         });
       })
       .catch(console.error)

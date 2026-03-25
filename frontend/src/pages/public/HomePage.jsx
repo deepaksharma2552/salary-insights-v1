@@ -5,23 +5,7 @@ import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 import { AuthContext } from '../../context/AuthContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
-
-/* ── helpers (unchanged) ────────────────────────────────────────────────── */
-function mapSalary(s) {
-  const colors = ['#3ecfb0','#d4a853','#e05c7a','#a08ff0','#c07df0','#e89050'];
-  const colorIdx = s.companyName ? s.companyName.charCodeAt(0) % colors.length : 0;
-  const color = colors[colorIdx];
-  const levelMap = { INTERN:'junior',ENTRY:'junior',MID:'mid',SENIOR:'senior',LEAD:'lead',MANAGER:'lead',DIRECTOR:'lead',VP:'lead',C_LEVEL:'lead' };
-  const fmt = (val) => { if (!val && val!==0) return '—'; const l=Number(val)/100000; return l>=100?`₹${(l/100).toFixed(1)}Cr`:`₹${l.toFixed(1)}L`; };
-  const formatDate = (iso) => { if (!iso) return ''; return new Date(iso).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); };
-  return { id:s.id, company:s.companyName??'—', companyId:s.companyId??null, logoUrl:s.logoUrl??null, website:s.website??null, compAbbr:s.companyName?s.companyName.slice(0,2).toUpperCase():'?', compColor:color, compBg:`${color}26`, compInd:'', role:s.jobTitle??'—', internalLevel:s.companyInternalLevel??'', level:levelMap[s.experienceLevel]??'mid', location:s.location??'—', exp:s.yearsOfExperience != null ? `${s.yearsOfExperience} yr` : '—', yoe:s.yearsOfExperience != null ? `${s.yearsOfExperience} year${s.yearsOfExperience !== 1 ? 's' : ''}` : '—', empType:s.employmentType??'Full-time', base:fmt(s.baseSalary), bonus:fmt(s.bonus), equity:fmt(s.equity), tc:fmt(s.totalCompensation), status:(s.reviewStatus??'APPROVED').toLowerCase(), recordedAt:formatDate(s.createdAt), notes:'' };
-}
-
-function fmtSalary(val) {
-  if (!val && val !== 0) return '—';
-  const l = Number(val) / 100000;
-  return l >= 100 ? `₹${(l/100).toFixed(1)}Cr` : `₹${l.toFixed(1)}L`;
-}
+import { mapSalary } from '../../utils/salaryMapper';
 
 function fmtCount(n) {
   if (n == null) return '—';
@@ -267,40 +251,63 @@ export default function HomePage() {
   const [recentSalaries, setRecentSalaries] = useState([]);
   const [totalEntries,   setTotalEntries]   = useState(null);
   const [totalCompanies, setTotalCompanies] = useState(null);
-  const [oppCounts,       setOppCounts]       = useState({});  // { REFERRAL:n, INTERNSHIP:n, ... }
-  const [thisMonth,       setThisMonth]       = useState(null);
+  const [oppCounts,      setOppCounts]      = useState({});
+  const [thisMonth,      setThisMonth]      = useState(null);
+  const [lastMonth,      setLastMonth]      = useState(null);
+  // Track which stat cards are still loading
+  const [statsLoaded, setStatsLoaded] = useState({ entries: false, companies: false, opps: false, month: false });
 
   useEffect(() => {
     // Recent salaries + totalEntries
     api.get('/public/salaries', { params: { page: 0, size: 10 } })
       .then(res => {
         const paged = res.data?.data;
-        setRecentSalaries((paged?.content ?? []).map(mapSalary));
+        setRecentSalaries((paged?.content ?? []).map(s => mapSalary(s)));
         setTotalEntries(paged?.totalElements ?? null);
-      }).catch(console.error);
+      })
+      .catch(console.error)
+      .finally(() => setStatsLoaded(p => ({ ...p, entries: true })));
 
     // Companies count
     api.get('/public/companies', { params: { page: 0, size: 1 } })
       .then(res => setTotalCompanies(res.data?.data?.totalElements ?? null))
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setStatsLoaded(p => ({ ...p, companies: true })));
 
-    // Opportunity counts by type — single endpoint, one GROUP BY query
+    // Opportunity counts by type
     api.get('/public/opportunities/counts')
       .then(res => setOppCounts(res.data?.data ?? {}))
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setStatsLoaded(p => ({ ...p, opps: true })));
 
-    // Submissions this month
-    api.get('/public/salaries/stats/this-month')
-      .then(res => setThisMonth(res.data?.data ?? null))
-      .catch(console.error);
+    // This month + last month submissions
+    Promise.all([
+      api.get('/public/salaries/stats/this-month').catch(() => null),
+      api.get('/public/salaries/stats/last-month').catch(() => null),
+    ]).then(([thisRes, lastRes]) => {
+      setThisMonth(thisRes?.data?.data ?? null);
+      setLastMonth(lastRes?.data?.data ?? null);
+    }).finally(() => setStatsLoaded(p => ({ ...p, month: true })));
   }, []);
 
   /* ── Derived opportunity counts ── */
-  const internshipCount  = oppCounts.INTERNSHIP ?? null;
-  const jobCount         = (oppCounts.REFERRAL ?? 0) + (oppCounts.FULL_TIME ?? 0)
-                         + (oppCounts.CONTRACT ?? 0) + (oppCounts.DRIVE ?? 0)
-                         || null;  // null if all zeros (nothing live yet)
+  const internshipCount    = oppCounts.INTERNSHIP ?? null;
+  const jobCount           = (oppCounts.REFERRAL ?? 0) + (oppCounts.FULL_TIME ?? 0)
+                           + (oppCounts.CONTRACT ?? 0) + (oppCounts.DRIVE ?? 0)
+                           || null;
   const totalOpportunities = Object.values(oppCounts).reduce((a, b) => a + b, 0) || null;
+
+  /* ── "This month" trend label ── */
+  function monthTrend(current, previous) {
+    if (current == null) return null;
+    if (previous == null || previous === 0) return { label: 'new this month', emoji: '✨', positive: true };
+    const pct = Math.round(((current - previous) / previous) * 100);
+    if (pct > 20)  return { label: `+${pct}% vs last month`, emoji: '🔥', positive: true };
+    if (pct > 0)   return { label: `+${pct}% vs last month`, emoji: '📈', positive: true };
+    if (pct === 0) return { label: 'same as last month',     emoji: '➡️', positive: null };
+    return           { label: `${pct}% vs last month`,      emoji: '📉', positive: false };
+  }
+  const trend = monthTrend(thisMonth, lastMonth);
 
   /* ── Journey card definitions ── */
   const journeyCards = [
@@ -400,14 +407,26 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right: Palette 3 stat cards */}
+          {/* Right: stat cards — skeleton while loading, trend badge on "this month" */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, width: '100%' }}>
+            <style>{`
+              @keyframes shimmer {
+                0%   { background-position: -400px 0; }
+                100% { background-position:  400px 0; }
+              }
+              .stat-skeleton {
+                background: linear-gradient(90deg, var(--bg-3) 25%, var(--bg-4) 50%, var(--bg-3) 75%);
+                background-size: 800px 100%;
+                animation: shimmer 1.4s ease-in-out infinite;
+                border-radius: 6px;
+              }
+            `}</style>
             {[
-              { label: '💰 Salary entries', val: totalEntries != null ? fmtCount(totalEntries) : '—', sub: 'verified & live', live: true, delay: 0 },
-              { label: '🏢 Companies',      val: totalCompanies != null ? fmtCount(totalCompanies) : '—',    sub: 'tracked',        live: false, delay: 70 },
-              { label: '🤝 Opportunities',   val: totalOpportunities != null ? fmtCount(totalOpportunities) : '—', sub: 'live now', live: true, delay: 140 },
-              { label: '📅 This month',     val: thisMonth != null ? String(thisMonth) : '—',                sub: 'new submissions', live: true,  delay: 210 },
-            ].map(({ label, val, sub, live, delay }) => (
+              { label: '💰 Salary entries', val: totalEntries != null ? fmtCount(totalEntries) : null, sub: 'verified & live', live: true,  delay: 0,   loaded: statsLoaded.entries,   trendPositive: null },
+              { label: '🏢 Companies',      val: totalCompanies != null ? fmtCount(totalCompanies) : null, sub: 'tracked',     live: false, delay: 70,  loaded: statsLoaded.companies, trendPositive: null },
+              { label: '🤝 Opportunities',  val: totalOpportunities != null ? fmtCount(totalOpportunities) : null, sub: 'live now', live: true, delay: 140, loaded: statsLoaded.opps, trendPositive: null },
+              { label: '📅 This month',     val: thisMonth != null ? String(thisMonth) : null, sub: trend ? `${trend.emoji} ${trend.label}` : 'new submissions', live: true, delay: 210, loaded: statsLoaded.month, trendPositive: trend?.positive ?? null },
+            ].map(({ label, val, sub, live, delay, loaded, trendPositive }) => (
               <div key={label} style={{
                 background: 'var(--panel)',
                 border: '1px solid var(--border)',
@@ -418,27 +437,39 @@ export default function HomePage() {
                 boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                 animation: `fadeUpStat .35s ${delay}ms ease both`,
               }}>
-                {/* Sky blue top accent bar */}
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2.5, background: '#0ea5e9', borderRadius: '10px 10px 0 0' }} />
-
                 <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.07em', color: 'var(--text-3)', marginBottom: 6 }}>
                   {label}
                 </div>
-                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '-.03em', lineHeight: 1, color: 'var(--text-1)', marginBottom: 5 }}>
-                  {val}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  {live ? (
-                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 8, height: 8, flexShrink: 0 }}>
-                      <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22c55e', animation: 'rippleStat 1.8s ease-out infinite' }} />
-                      <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22c55e', animation: 'rippleStat 1.8s .6s ease-out infinite' }} />
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', position: 'relative', zIndex: 1 }} />
+                {!loaded ? (
+                  <>
+                    <div className="stat-skeleton" style={{ height: 28, width: '60%', marginBottom: 8 }} />
+                    <div className="stat-skeleton" style={{ height: 10, width: '80%' }} />
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '-.03em', lineHeight: 1, color: 'var(--text-1)', marginBottom: 5 }}>
+                      {val ?? '—'}
                     </div>
-                  ) : (
-                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
-                  )}
-                  <span style={{ fontSize: 8.5, fontWeight: 500, color: 'var(--text-3)' }}>{sub}</span>
-                </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {live ? (
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 8, height: 8, flexShrink: 0 }}>
+                          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22c55e', animation: 'rippleStat 1.8s ease-out infinite' }} />
+                          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22c55e', animation: 'rippleStat 1.8s .6s ease-out infinite' }} />
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', position: 'relative', zIndex: 1 }} />
+                        </div>
+                      ) : (
+                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
+                      )}
+                      <span style={{
+                        fontSize: 8.5, fontWeight: 500,
+                        color: trendPositive === true ? '#16a34a' : trendPositive === false ? '#dc2626' : 'var(--text-3)',
+                      }}>
+                        {sub}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>

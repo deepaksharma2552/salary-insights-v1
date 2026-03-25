@@ -213,10 +213,30 @@ export default function OpportunitiesPage() {
       {loading ? (
         <div style={{ color: 'var(--text-3)', fontSize: 13, fontFamily: "'IBM Plex Mono',monospace", padding: '32px 0' }}>Loading…</div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)' }}>
-          {hasFilters || search
-            ? 'No opportunities match the current filters.'
-            : 'No opportunities posted yet — be the first to post one!'}
+        <div style={{ textAlign: 'center', padding: '64px 24px' }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>
+            {hasFilters || search ? '🔍' : '📭'}
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', marginBottom: 8 }}>
+            {hasFilters || search ? 'No matches found' : 'No opportunities yet'}
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 24, maxWidth: 360, margin: '0 auto 24px' }}>
+            {hasFilters || search
+              ? 'Try adjusting your filters or search term — there may be opportunities in other locations or categories.'
+              : 'Be the first to post a referral, internship, or opening for the community.'}
+          </div>
+          {hasFilters || search ? (
+            <button
+              onClick={() => { setTypeFilter(''); setModeFilter(''); setLocationFilter(''); setSearch(''); resetPage(); }}
+              style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, color: 'var(--blue)', background: 'var(--blue-dim)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 8, cursor: 'pointer' }}
+            >
+              Clear all filters
+            </button>
+          ) : (
+            <Link to="/opportunities/post" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              + Post an opportunity
+            </Link>
+          )}
         </div>
       ) : isMobile ? (
 

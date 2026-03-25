@@ -1,19 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SalaryDetailDrawer from './SalaryDetailDrawer';
 import { LEVEL_BADGE_CLASS, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../data/salaryData';
 import CompanyLogo from '../shared/CompanyLogo';
 import { useIsMobile } from '../../hooks/useIsMobile';
 
-export default function SalaryTable({ rows }) {
+export default function SalaryTable({ rows, openEntryId = null, onEntryClose }) {
   const [drawerOpen,  setDrawerOpen]  = useState(false);
   const [selectedId,  setSelectedId]  = useState(null);
   const [selectedRow, setSelectedRow] = useState(null);
   const isMobile = useIsMobile();
 
+  // Open drawer when openEntryId is provided (deep-link / URL-driven)
+  useEffect(() => {
+    if (!openEntryId || rows.length === 0) return;
+    const match = rows.find(r => r.id === openEntryId);
+    if (match) {
+      setSelectedId(match.id);
+      setSelectedRow(match);
+      setDrawerOpen(true);
+    } else {
+      // Entry not in current page — open drawer with just the id; drawer will fetch it
+      setSelectedId(openEntryId);
+      setSelectedRow(null);
+      setDrawerOpen(true);
+    }
+  }, [openEntryId, rows]);
+
   function openDrawer(row) {
     setSelectedId(row.id);
     setSelectedRow(row);
     setDrawerOpen(true);
+  }
+
+  function closeDrawer() {
+    setDrawerOpen(false);
+    setSelectedRow(null);
+    setSelectedId(null);
+    onEntryClose?.();
   }
 
   function formatDateShort(recordedAt) {
@@ -120,7 +143,7 @@ export default function SalaryTable({ rows }) {
           open={drawerOpen}
           salary={selectedRow}
           salaryId={selectedId}
-          onClose={() => { setDrawerOpen(false); setSelectedRow(null); setSelectedId(null); }}
+          onClose={closeDrawer}
         />
       </>
     );
@@ -219,7 +242,7 @@ export default function SalaryTable({ rows }) {
         open={drawerOpen}
         salary={selectedRow}
         salaryId={selectedId}
-        onClose={() => { setDrawerOpen(false); setSelectedRow(null); setSelectedId(null); }}
+        onClose={closeDrawer}
       />
     </>
   );

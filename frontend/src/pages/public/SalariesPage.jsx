@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import SalaryTable from '../../components/shared/SalaryTable';
 import api from '../../services/api';
 import TopProgressBar from '../../components/shared/TopProgressBar';
 import LevelGuideView from './LevelGuideView';
 import ScrollableSelect from '../../components/shared/ScrollableSelect';
 import { useLocations } from '../../hooks/useLocations';
+import { mapSalary } from '../../utils/salaryMapper';
 
 const LEVEL_OPTIONS = [
   { value: '', label: 'All Levels' },
@@ -29,48 +31,6 @@ const SEARCH_MIN_CHARS  = 3;   // minimum chars before auto-search triggers
 const SEARCH_DEBOUNCE   = 600; // ms idle after last keystroke before auto-search
 
 // ── Viz palette — consistent with DashboardPage ──
-const VIZ_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#6366f1','#a78bfa','#818cf8'];
-
-function mapSalary(s) {
-  const abbr     = s.companyName ? s.companyName.slice(0, 2).toUpperCase() : '?';
-  const colorIdx = s.companyName ? s.companyName.charCodeAt(0) % VIZ_COLORS.length : 0;
-  const color    = VIZ_COLORS[colorIdx];
-  const levelMap = {
-    INTERN: 'junior', ENTRY: 'junior', MID: 'mid',
-    SENIOR: 'senior', LEAD: 'lead', MANAGER: 'lead',
-    DIRECTOR: 'lead', VP: 'lead', C_LEVEL: 'lead',
-  };
-  const fmt = (val) => {
-    if (!val && val !== 0) return '—';
-    const l = Number(val) / 100000;
-    return l >= 100 ? `₹${(l/100).toFixed(1)}Cr` : `₹${l.toFixed(1)}L`;
-  };
-  const formatDate = (iso) => {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
-    return d.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  };
-  return {
-    id: s.id, company: s.companyName ?? '—', compAbbr: abbr,
-    compColor: color, compBg: `${color}26`, compInd: '',
-    companyId: s.companyId ?? null,
-    logoUrl:   s.logoUrl   ?? null,
-    website:   s.website   ?? null,
-    role: s.jobTitle ?? '—',
-    internalLevel: s.standardizedLevelName ?? s.companyInternalLevel ?? '—',
-    level: levelMap[s.experienceLevel] ?? 'mid',
-    location: s.location ?? '—',
-    exp: s.yearsOfExperience != null ? `${s.yearsOfExperience} yr` : '—',
-    yoe: s.yearsOfExperience != null ? `${s.yearsOfExperience} year${s.yearsOfExperience !== 1 ? 's' : ''}` : '—',
-    empType: s.employmentType ?? 'Full-time',
-    base: fmt(s.baseSalary), bonus: fmt(s.bonus), equity: fmt(s.equity),
-    tc: fmt(s.totalCompensation),
-    status: (s.reviewStatus ?? 'APPROVED').toLowerCase(),
-    recordedAt: formatDate(s.createdAt), notes: '',
-  };
-}
-
 const LEVEL_MAP = { junior: 'ENTRY', mid: 'MID', senior: 'SENIOR', lead: 'LEAD' };
 
 function getPageRange(current, total) {
@@ -83,34 +43,49 @@ function getPageRange(current, total) {
 export default function SalariesPage() {
   const { locations } = useLocations();
   const locationOptions = [{ value: '', label: 'All Locations' }, ...locations];
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [view, setView] = useState('salaries'); // 'salaries' | 'levels'
+  // ── Read initial state from URL ──
+  const [view, setView] = useState('salaries');
 
   const [rows,          setRows]          = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState(null);
 
-  // ── Search: two-state approach ──
-  // inputValue  = what the user sees in the box (updates on every keystroke)
-  // search      = committed value that actually triggers the API call
-  const [inputValue, setInputValue] = useState('');
-  const [search,     setSearch]     = useState('');
+  // Search: two-state — inputValue is what the user sees, search is what fires the API
+  const [inputValue, setInputValue] = useState(() => searchParams.get('q') ?? '');
+  const [search,     setSearch]     = useState(() => searchParams.get('q') ?? '');
   const debounceRef  = useRef(null);
 
-  // Other filters
-  const [level,    setLevel]    = useState('');
-  const [location, setLocation] = useState('');
-  const [empType,  setEmpType]  = useState('');
+  // Filters — seeded from URL
+  const [level,    setLevel]    = useState(() => searchParams.get('level')    ?? '');
+  const [location, setLocation] = useState(() => searchParams.get('location') ?? '');
+  const [empType,  setEmpType]  = useState(() => searchParams.get('empType')  ?? '');
 
-  // Pagination
-  const [page,          setPage]          = useState(0);
+  // Pagination — seeded from URL
+  const [page,          setPage]          = useState(() => Number(searchParams.get('page') ?? 0));
   const [pageSize,      setPageSize]      = useState(DEFAULT_SIZE);
   const [totalPages,    setTotalPages]    = useState(1);
   const [totalElements, setTotalElements] = useState(0);
 
+  // Deep-link entry id — opening a specific drawer from URL
+  const [openEntryId, setOpenEntryId] = useState(() => searchParams.get('entry') ?? null);
+
   const isFiltering   = search || level || location || empType;
-  const isDirty       = inputValue !== search; // typed but not yet committed
+  const isDirty       = inputValue !== search;
   const showHint      = inputValue.length > 0 && inputValue.length < SEARCH_MIN_CHARS;
+
+  // ── Sync filters → URL (replace so back-button works naturally) ──
+  useEffect(() => {
+    const params = {};
+    if (search)   params.q        = search;
+    if (level)    params.level    = level;
+    if (location) params.location = location;
+    if (empType)  params.empType  = empType;
+    if (page > 0) params.page     = String(page);
+    if (openEntryId) params.entry = openEntryId;
+    setSearchParams(params, { replace: true });
+  }, [search, level, location, empType, page, openEntryId]); // eslint-disable-line
 
   // ── Commit the current inputValue as the search query ──
   function commitSearch(value) {
@@ -119,34 +94,17 @@ export default function SalariesPage() {
     setPage(0);
   }
 
-  // ── Handle keystroke ──
   function handleSearchChange(e) {
     const val = e.target.value;
     setInputValue(val);
     clearTimeout(debounceRef.current);
-
-    if (val.length === 0) {
-      // Cleared — reset immediately
-      commitSearch('');
-      return;
-    }
-    if (val.length < SEARCH_MIN_CHARS) {
-      // Too short — do nothing yet
-      return;
-    }
-    // 3+ chars — start debounce timer
+    if (val.length === 0) { commitSearch(''); return; }
+    if (val.length < SEARCH_MIN_CHARS) return;
     debounceRef.current = setTimeout(() => commitSearch(val), SEARCH_DEBOUNCE);
   }
 
-  // ── Enter key — commit immediately ──
   function handleSearchKeyDown(e) {
-    if (e.key === 'Enter' && inputValue.length >= SEARCH_MIN_CHARS) {
-      commitSearch(inputValue);
-    }
-  }
-
-  function handleFilterChange(setter) {
-    return (e) => { setter(e.target.value); setPage(0); };
+    if (e.key === 'Enter' && inputValue.length >= SEARCH_MIN_CHARS) commitSearch(inputValue);
   }
 
   function handlePageSizeChange(e) {
@@ -156,15 +114,11 @@ export default function SalariesPage() {
 
   function clearFilters() {
     clearTimeout(debounceRef.current);
-    setInputValue('');
-    setSearch('');
-    setLevel('');
-    setLocation('');
-    setEmpType('');
+    setInputValue(''); setSearch('');
+    setLevel(''); setLocation(''); setEmpType('');
     setPage(0);
   }
 
-  // Cleanup debounce on unmount
   useEffect(() => () => clearTimeout(debounceRef.current), []);
 
   const fetchSalaries = useCallback(() => {
@@ -182,7 +136,7 @@ export default function SalariesPage() {
     api.get('/public/salaries', { params })
       .then(res => {
         const paged = res.data?.data;
-        setRows((paged?.content ?? []).map(mapSalary));
+        setRows((paged?.content ?? []).map(s => mapSalary(s, { useStandardizedLevel: true })));
         setTotalPages(paged?.totalPages ?? 1);
         setTotalElements(paged?.totalElements ?? 0);
       })
@@ -350,7 +304,11 @@ export default function SalariesPage() {
       {!loading && !error && rows.length > 0 && (
         <>
           <div className="table-scroll-wrap">
-            <SalaryTable rows={rows} />
+            <SalaryTable
+              rows={rows}
+              openEntryId={openEntryId}
+              onEntryClose={() => setOpenEntryId(null)}
+            />
           </div>
 
           {/* ── PAGINATION ── */}
