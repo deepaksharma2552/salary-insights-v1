@@ -46,7 +46,7 @@ const CheckIcon = () => (
 );
 
 // ── COMPANY CARD ──────────────────────────────────────────────────────────
-function CompanyCard({ company }) {
+function CompanyCard({ company, openRoles }) {
   const [expanded,    setExpanded]    = useState(false);
   const [summary,     setSummary]     = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -96,15 +96,31 @@ function CompanyCard({ company }) {
               <span style={{ fontWeight: '700', fontSize: '15px', color: '#0f172a', lineHeight: 1.3 }}>
                 {company.name}
               </span>
-              {company.entryCount > 0 && (
-                <span style={{
-                  fontSize: '11px', fontWeight: '600', color: '#64748b',
-                  background: '#f1f5f9', borderRadius: '20px', padding: '3px 8px',
-                  whiteSpace: 'nowrap', flexShrink: 0,
-                }}>
-                  {company.entryCount} {company.entryCount === 1 ? 'entry' : 'entries'}
-                </span>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                {openRoles > 0 && (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                    fontSize: '11px', fontWeight: '700',
+                    color: '#16a34a', background: '#dcfce7',
+                    border: '1px solid #bbf7d0', borderRadius: '20px',
+                    padding: '3px 8px', whiteSpace: 'nowrap',
+                  }}>
+                    <svg width="6" height="6" viewBox="0 0 8 8" fill="#16a34a" style={{ flexShrink: 0 }}>
+                      <circle cx="4" cy="4" r="4"/>
+                    </svg>
+                    {openRoles} open {openRoles === 1 ? 'role' : 'roles'}
+                  </span>
+                )}
+                {company.entryCount > 0 && (
+                  <span style={{
+                    fontSize: '11px', fontWeight: '600', color: '#64748b',
+                    background: '#f1f5f9', borderRadius: '20px', padding: '3px 8px',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {company.entryCount} {company.entryCount === 1 ? 'entry' : 'entries'}
+                  </span>
+                )}
+              </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
               <span style={{
@@ -267,6 +283,7 @@ function SkeletonCard() {
 // ── MAIN PAGE ──────────────────────────────────────────────────────────────
 export default function BrowseCompanies() {
   const [companies,  setCompanies]  = useState([]);
+  const [hiringMap,  setHiringMap]  = useState(new Map());
   const [industries, setIndustries] = useState([]);
   const [search,     setSearch]     = useState('');
   const [industry,   setIndustry]   = useState('');
@@ -278,10 +295,19 @@ export default function BrowseCompanies() {
   const [error,      setError]      = useState(null);
   const debounceRef = useRef(null);
 
-  // Fetch industry list once
+  // Fetch industry list and hiring data once
   useEffect(() => {
     api.get('/public/companies/industries')
       .then(r => setIndustries(r.data?.data ?? []))
+      .catch(() => {});
+    api.get('/public/companies/hiring-now')
+      .then(r => {
+        const hMap = new Map();
+        for (const item of r.data?.data ?? []) {
+          if (item.companyId) hMap.set(String(item.companyId), Number(item.openRoles));
+        }
+        setHiringMap(hMap);
+      })
       .catch(() => {});
   }, []);
 
@@ -419,7 +445,7 @@ export default function BrowseCompanies() {
           </div>
         ) : (
           <>
-            {companies.map(company => <CompanyCard key={company.id} company={company} />)}
+            {companies.map(company => <CompanyCard key={company.id} company={company} openRoles={hiringMap.get(String(company.id)) ?? 0} />)}
 
             {/* Load more */}
             {page + 1 < totalPages && (

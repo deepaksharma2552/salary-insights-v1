@@ -6,6 +6,7 @@ import CompanyLogo from '../shared/CompanyLogo';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useSalaryEnrichment } from '../../hooks/useSalaryEnrichment';
 
+
 // ── Trend arrow ───────────────────────────────────────────────────────────────
 function TrendBadge({ trend }) {
   if (!trend) return null;
@@ -33,30 +34,6 @@ function TrendBadge({ trend }) {
   );
 }
 
-// ── Hiring badge ──────────────────────────────────────────────────────────────
-function HiringBadge({ count, companyName, onClick }) {
-  if (!count || count < 1) return null;
-  return (
-    <button
-      title={`${count} open role${count !== 1 ? 's' : ''} at ${companyName} — click to view`}
-      onClick={e => { e.stopPropagation(); onClick(); }}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 3,
-        fontSize: 10, fontWeight: 600,
-        color: 'var(--green)', background: 'var(--green-dim)',
-        border: '1px solid var(--green)30',
-        borderRadius: 4, padding: '2px 6px',
-        cursor: 'pointer', fontFamily: "'IBM Plex Mono',monospace",
-        whiteSpace: 'nowrap',
-      }}
-    >
-      <svg width="7" height="7" viewBox="0 0 8 8" fill="currentColor" style={{ flexShrink: 0 }}>
-        <circle cx="4" cy="4" r="4"/>
-      </svg>
-      {count} open
-    </button>
-  );
-}
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function SalaryTable({ rows, openEntryId = null, onEntryClose }) {
@@ -66,7 +43,7 @@ export default function SalaryTable({ rows, openEntryId = null, onEntryClose }) 
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
-  const { hiringMap, trendMap } = useSalaryEnrichment();
+  const { trendMap } = useSalaryEnrichment();
 
   useEffect(() => {
     if (!openEntryId || rows.length === 0) return;
@@ -105,7 +82,6 @@ export default function SalaryTable({ rows, openEntryId = null, onEntryClose }) 
             const stLabel   = STATUS_LABEL[s.status] ?? s.status;
             const capLevel  = s.level ? s.level.charAt(0).toUpperCase() + s.level.slice(1) : '—';
             const compIdStr = s.companyId ? String(s.companyId) : null;
-            const openRoles = compIdStr ? hiringMap.get(compIdStr) : undefined;
             const trend     = compIdStr ? trendMap.get(compIdStr)  : undefined;
 
             return (
@@ -144,7 +120,6 @@ export default function SalaryTable({ rows, openEntryId = null, onEntryClose }) 
                   )}
                   {s.exp && s.exp !== '—' && <span className="badge badge-exp">{s.exp}</span>}
                   <span style={{ fontSize: 11, color: 'var(--text-3)', background: 'var(--bg-3)', borderRadius: 4, padding: '2px 6px' }}>📍 {s.location}</span>
-                  {openRoles > 0 && <HiringBadge count={openRoles} companyName={s.company} onClick={() => goToOpportunities(s.company)} />}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 10 }}>
@@ -190,7 +165,6 @@ export default function SalaryTable({ rows, openEntryId = null, onEntryClose }) 
               const stLabel   = STATUS_LABEL[s.status] ?? s.status;
               const capLevel  = s.level ? s.level.charAt(0).toUpperCase() + s.level.slice(1) : '—';
               const compIdStr = s.companyId ? String(s.companyId) : null;
-              const openRoles = compIdStr ? hiringMap.get(compIdStr) : undefined;
               const trend     = compIdStr ? trendMap.get(compIdStr)  : undefined;
 
               return (
@@ -200,11 +174,6 @@ export default function SalaryTable({ rows, openEntryId = null, onEntryClose }) 
                       <CompanyLogo companyId={s.companyId} companyName={s.company} logoUrl={s.logoUrl} website={s.website} size={32} radius={8} />
                       <div>
                         <div className="company-name">{s.company}</div>
-                        {openRoles > 0 && (
-                          <div style={{ marginTop: 3 }}>
-                            <HiringBadge count={openRoles} companyName={s.company} onClick={() => goToOpportunities(s.company)} />
-                          </div>
-                        )}
                       </div>
                     </div>
                   </td>
