@@ -7,6 +7,7 @@ import LevelGuideView from './LevelGuideView';
 import ScrollableSelect from '../../components/shared/ScrollableSelect';
 import { useLocations } from '../../hooks/useLocations';
 import { mapSalary } from '../../utils/salaryMapper';
+import SalaryBenchmarkTool from '../../components/shared/SalaryBenchmarkTool';
 
 const LEVEL_OPTIONS = [
   { value: '', label: 'All Levels' },
@@ -164,8 +165,9 @@ export default function SalariesPage() {
       {/* ── View toggle ── */}
       <div style={{ display: 'flex', gap: 0, marginBottom: 28, background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
         {[
-          { id: 'salaries', label: '📄 Salary Database' },
-          { id: 'levels',   label: '🗂 Level Guide' },
+          { id: 'salaries',   label: '📄 Salary Database' },
+          { id: 'levels',     label: '🗂 Level Guide' },
+          { id: 'benchmark', label: '📊 Benchmark My Offer' },
         ].map(t => (
           <button key={t.id} onClick={() => { TopProgressBar.start(); setView(t.id); setTimeout(() => TopProgressBar.done(), 150); }} style={{
             padding: '7px 18px', borderRadius: 7, border: 'none', cursor: 'pointer',
@@ -182,6 +184,9 @@ export default function SalariesPage() {
 
       {/* ── Level Guide view ── */}
       {view === 'levels' && <LevelGuideView />}
+
+      {/* ── Benchmark tool view ── */}
+      {view === 'benchmark' && <SalaryBenchmarkTool />}
 
       {/* ── Salary Database view ── */}
       {view === 'salaries' && (<>
