@@ -38,6 +38,17 @@ public class SalaryService {
     private final FunctionLevelRepository  functionLevelRepository;
 
     @Transactional(readOnly = true)
+    public PagedResponse<SalaryResponse> getMySubmissions(Pageable pageable) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Page<SalaryEntry> page = salaryEntryRepository.findBySubmittedByEmail(email, pageable);
+        List<SalaryResponse> content = page.getContent().stream()
+                .map(salaryMapper::toResponse)
+                .collect(java.util.stream.Collectors.toList());
+        return new PagedResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages());
+    }
+
+    @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getApprovedSalaries(
             UUID companyId, String companyName, String jobTitle,
             java.util.List<String> locations, java.util.List<String> experienceLevelStrs,
@@ -355,6 +366,20 @@ public class SalaryService {
     }
 
     // Analytics
+    @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'byYoe'")
+    public List<com.salaryinsights.dto.response.YoeSalaryDTO> getAvgSalaryByYoe() {
+        return salaryEntryRepository.avgSalaryByYoeRaw().stream().map(row -> {
+            Integer yoe      = row[0] != null ? ((Number) row[0]).intValue()    : null;
+            Double  base     = row[1] != null ? ((Number) row[1]).doubleValue() : null;
+            Double  bonus    = row[2] != null ? ((Number) row[2]).doubleValue() : null;
+            Double  equity   = row[3] != null ? ((Number) row[3]).doubleValue() : null;
+            Double  total    = row[4] != null ? ((Number) row[4]).doubleValue() : null;
+            Long    count    = row[5] != null ? ((Number) row[5]).longValue()   : 0L;
+            return new com.salaryinsights.dto.response.YoeSalaryDTO(yoe, base, bonus, equity, total, count);
+        }).collect(java.util.stream.Collectors.toList());
+    }
+
     @Transactional(readOnly = true)
     @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'byLocation'")
     public List<SalaryAggregationDTO> getAvgSalaryByLocation() {

@@ -22,6 +22,11 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
     // Simple approved lookup — filtering done via Specification in SalaryService
     Page<SalaryEntry> findByReviewStatus(ReviewStatus status, Pageable pageable);
 
+    @Query("SELECT s FROM SalaryEntry s JOIN FETCH s.company LEFT JOIN FETCH s.submittedBy " +
+           "WHERE s.submittedBy.email = :email " +
+           "ORDER BY s.createdAt DESC")
+    Page<SalaryEntry> findBySubmittedByEmail(@Param("email") String email, Pageable pageable);
+
     @Query("SELECT s FROM SalaryEntry s " +
            "LEFT JOIN FETCH s.company " +
            "LEFT JOIN FETCH s.standardizedLevel " +
@@ -77,6 +82,24 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "ORDER BY avgBaseSalary DESC",
         nativeQuery = true)
     List<Object[]> avgSalaryByInternalLevelRaw();
+
+    // Avg total compensation grouped by years_of_experience — for the YOE scatter chart.
+    // Returns each YOE bucket (0–20+) with avg base, bonus, equity, total comp and count.
+    @Query(value =
+        "SELECT years_of_experience                AS yoe, " +
+        "       AVG(base_salary)                   AS avgBaseSalary, " +
+        "       AVG(bonus)                         AS avgBonus, " +
+        "       AVG(equity)                        AS avgEquity, " +
+        "       AVG(total_compensation)             AS avgTotalComp, " +
+        "       COUNT(*)                           AS cnt " +
+        "FROM salary_entries " +
+        "WHERE review_status = 'APPROVED' " +
+        "  AND years_of_experience IS NOT NULL " +
+        "  AND years_of_experience BETWEEN 0 AND 25 " +
+        "GROUP BY years_of_experience " +
+        "ORDER BY years_of_experience ASC",
+        nativeQuery = true)
+    List<Object[]> avgSalaryByYoeRaw();
 
     // Same as above but filtered by a set of location enum values — empty list = all locations
     @Query(value =
@@ -194,8 +217,8 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
     List<Object[]> avgSalaryByCompanyAndLevelRaw();
 
     // Avg base/bonus/equity per location × internal level.
-    // loc_recency CTE collects ALL locations with approved entries, ordered by most recent activity.
-    // loc_lvl aggregates salary data for all of them — no artificial cap.
+    // loc_recency CTE ranks the 5 most recently updated locations.
+    // loc_lvl aggregates salary data only for those 5 locations.
     @Query(value =
         "WITH loc_recency AS ( " +
         "  SELECT location, MAX(created_at) AS most_recent_entry " +
@@ -203,6 +226,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  WHERE review_status = 'APPROVED' AND location IS NOT NULL " +
         "  GROUP BY location " +
         "  ORDER BY most_recent_entry DESC " +
+        "  LIMIT 5 " +
         "), " +
         "loc_lvl AS ( " +
         "  SELECT " +
