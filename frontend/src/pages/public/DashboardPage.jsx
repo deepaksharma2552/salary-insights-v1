@@ -539,13 +539,13 @@ function EmptyState({ filtered = false, filterLabel = '' }) {
 export default function DashboardPage() {
   const isMobile = useIsMobile();
   const { locations: ALL_LOCATIONS_RAW } = useLocations();
-  // Flat display-name list used by both chart filters
   const ALL_LOCATIONS = ALL_LOCATIONS_RAW.map(l => l.label);
 
   const [byLocationLevel, setByLocationLevel] = useState([]);
   const [byCompanyLevel,  setByCompanyLevel]  = useState([]);
-  const [initialLoading,  setInitialLoading]  = useState(true);  // first paint only
-  const [refetching,      setRefetching]      = useState(false); // filter re-fetch — no blink
+  const [byYoe,           setByYoe]           = useState([]);
+  const [initialLoading,  setInitialLoading]  = useState(true);
+  const [refetching,      setRefetching]      = useState(false);
 
   const [selLocations, setSelLocations] = useState([]);
   const [selCompanies, setSelCompanies] = useState([]);
@@ -560,14 +560,16 @@ export default function DashboardPage() {
     return api.get('/public/salaries/analytics/by-company-level', { params });
   }, [selLocationsForCompany]);
 
-  // Initial load — fetch both charts in parallel, show full-page spinner once
+  // Initial load — fetch all three charts in parallel
   useEffect(() => {
     Promise.all([
       api.get('/public/salaries/analytics/by-location-level'),
       api.get('/public/salaries/analytics/by-company-level'),
-    ]).then(([locLvl, cl]) => {
+      api.get('/public/salaries/analytics/by-yoe'),
+    ]).then(([locLvl, cl, yoe]) => {
       setByLocationLevel(locLvl.data?.data ?? []);
       setByCompanyLevel(cl.data?.data      ?? []);
+      setByYoe(yoe.data?.data             ?? []);
     }).catch(console.error)
       .finally(() => setInitialLoading(false));
   }, []);
@@ -602,9 +604,7 @@ export default function DashboardPage() {
     }, {}),
   [byCompanyLevel]);
 
-  // Chart 1 filter: always show ALL locations from the enum (not just ones with data).
-  // This means users can see the full list and the empty-state message guides them to contribute.
-  const allLocations    = ALL_LOCATIONS;
+  const allLocations    = useMemo(() => Object.keys(locationGrouped), [locationGrouped]);
   const allCompanyNames = useMemo(() => Object.keys(companyGrouped),  [companyGrouped]);
   const allLevelNames   = useMemo(() => {
     const seen = new Set();
@@ -882,6 +882,87 @@ export default function DashboardPage() {
                 })}
               </div>
             )}
+          </div>
+
+          {/* ══════════════════════════════════════════════════════════════
+              CHART 3 — Total Compensation vs Years of Experience
+          ══════════════════════════════════════════════════════════════ */}
+          <div className="chart-card" style={{ gridColumn: isMobile ? undefined : '1 / -1' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <div className="chart-title">Total Comp vs Years of Experience</div>
+                <div className="chart-subtitle">Average total compensation at each YOE · hover a point for details</div>
+              </div>
+            </div>
+
+            {byYoe.length === 0 ? <EmptyState /> : (() => {
+              const fmtV   = v => { if (!v) return '—'; const l = v/100000; return l>=100?`₹${(l/100).toFixed(1)}Cr`:`₹${l.toFixed(1)}L`; };
+              const points = byYoe.filter(d => d.avgTotalCompensation != null);
+              const maxTotal = Math.max(...points.map(d => d.avgTotalCompensation), 1);
+              const minTotal = Math.min(...points.map(d => d.avgTotalCompensation));
+              const svgW = 800, H = 200, PAD_L = 56, PAD_R = 16, PAD_T = 12, PAD_B = 32;
+              const innerW = svgW - PAD_L - PAD_R;
+              const innerH = H - PAD_T - PAD_B;
+              const toX = i => PAD_L + (i / Math.max(points.length - 1, 1)) * innerW;
+              const toY = v => PAD_T + innerH - ((v - minTotal) / Math.max(maxTotal - minTotal, 1)) * innerH;
+              const linePath = points.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(i).toFixed(1)} ${toY(d.avgTotalCompensation).toFixed(1)}`).join(' ');
+              const areaPath = points.length > 0 ? `${linePath} L ${toX(points.length-1).toFixed(1)} ${H-PAD_B} L ${toX(0).toFixed(1)} ${H-PAD_B} Z` : '';
+
+              return (
+                <div style={{ position: 'relative', overflowX: 'auto' }}>
+                  <svg viewBox={`0 0 ${svgW} ${H}`} width="100%" style={{ display: 'block', overflow: 'visible' }}>
+                    <defs>
+                      <linearGradient id="yoeGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%"   stopColor="#3b82f6" stopOpacity="0.18" />
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.01" />
+                      </linearGradient>
+                    </defs>
+                    {[0, 0.25, 0.5, 0.75, 1].map(pct => {
+                      const y   = PAD_T + innerH * (1 - pct);
+                      const val = minTotal + pct * (maxTotal - minTotal);
+                      return (
+                        <g key={pct}>
+                          <line x1={PAD_L} y1={y} x2={svgW - PAD_R} y2={y} stroke="var(--border,#e5e7eb)" strokeWidth="0.5" strokeDasharray="3 3" />
+                          <text x={PAD_L - 6} y={y + 4} textAnchor="end" style={{ fontSize: 9, fill: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
+                            {fmtV(val)}
+                          </text>
+                        </g>
+                      );
+                    })}
+                    <path d={areaPath} fill="url(#yoeGrad)" />
+                    <path d={linePath} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                    {points.map((d, i) => {
+                      const cx = toX(i), cy = toY(d.avgTotalCompensation);
+                      const tipX = cx > svgW - 160 ? cx - 145 : cx + 10;
+                      return (
+                        <g key={d.yoe} className="yoe-point" style={{ cursor: 'default' }}>
+                          <circle cx={cx} cy={cy} r={5} fill="#3b82f6" stroke="var(--panel,#fff)" strokeWidth="1.5" />
+                          <circle cx={cx} cy={cy} r={12} fill="transparent" />
+                          <g className="yoe-tip" style={{ pointerEvents: 'none' }}>
+                            <rect x={tipX} y={cy - 56} width={136} height={54} rx="6" fill="var(--panel,#fff)" stroke="var(--border,#e5e7eb)" strokeWidth="0.5" />
+                            <text x={tipX + 8} y={cy - 39} style={{ fontSize: 11, fontWeight: 600, fill: 'var(--text-1)', fontFamily: 'sans-serif' }}>{d.yoe} year{d.yoe !== 1 ? 's' : ''} exp</text>
+                            <text x={tipX + 8} y={cy - 24} style={{ fontSize: 10, fill: 'var(--text-2)', fontFamily: "'IBM Plex Mono',monospace" }}>TC: {fmtV(d.avgTotalCompensation)}</text>
+                            <text x={tipX + 8} y={cy - 11} style={{ fontSize: 9,  fill: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>{d.count} {d.count === 1 ? 'entry' : 'entries'}</text>
+                          </g>
+                        </g>
+                      );
+                    })}
+                    {points.map((d, i) => {
+                      if (i % 2 !== 0 && i !== points.length - 1) return null;
+                      return (
+                        <text key={d.yoe} x={toX(i)} y={H - PAD_B + 14} textAnchor="middle" style={{ fontSize: 9, fill: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
+                          {d.yoe}yr
+                        </text>
+                      );
+                    })}
+                  </svg>
+                  <style>{`
+                    .yoe-point .yoe-tip { opacity: 0; transition: opacity 0.1s; }
+                    .yoe-point:hover .yoe-tip { opacity: 1; }
+                  `}</style>
+                </div>
+              );
+            })()}
           </div>
 
         </div>

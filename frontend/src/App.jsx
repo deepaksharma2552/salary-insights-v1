@@ -6,19 +6,20 @@ import Navbar from './components/shared/Navbar';
 import { RouterProgressBar } from './components/shared/TopProgressBar';
 
 // Public pages
-import HomePage         from './pages/public/HomePage';
-import SalariesPage     from './pages/public/SalariesPage';
-import CompaniesPage    from './pages/public/CompaniesPage';
-import DashboardPage    from './pages/public/DashboardPage';
-import LoginPage        from './pages/public/LoginPage';
-import RegisterPage     from './pages/public/RegisterPage';
-import OAuth2RedirectPage from './pages/public/OAuth2RedirectPage';
-import SubmitSalaryPage from './pages/public/SubmitSalaryPage';
-import OpportunitiesPage       from './pages/public/OpportunitiesPage';
-import PostOpportunityPage     from './pages/public/PostOpportunityPage';
-import AdminOpportunities      from './pages/admin/AdminOpportunities';
+import HomePage             from './pages/public/HomePage';
+import SalariesPage         from './pages/public/SalariesPage';
+import CompaniesPage        from './pages/public/CompaniesPage';
+import DashboardPage        from './pages/public/DashboardPage';
+import LoginPage            from './pages/public/LoginPage';
+import RegisterPage         from './pages/public/RegisterPage';
+import OAuth2RedirectPage   from './pages/public/OAuth2RedirectPage';
+import SubmitSalaryPage     from './pages/public/SubmitSalaryPage';
+import OpportunitiesPage    from './pages/public/OpportunitiesPage';
+import PostOpportunityPage  from './pages/public/PostOpportunityPage';
+import MySubmissionsPage    from './pages/public/MySubmissionsPage';
 
 // Admin pages
+import AdminOpportunities   from './pages/admin/AdminOpportunities';
 import AdminDashboard       from './pages/admin/AdminDashboard';
 import AdminCompanies       from './pages/admin/AdminCompanies';
 import AdminPendingSalaries from './pages/admin/AdminPendingSalaries';
@@ -28,16 +29,16 @@ import AdminJobFunctions    from './pages/admin/AdminJobFunctions';
 import AdminAnalytics       from './pages/admin/AdminAnalytics';
 import { AppDataProvider }  from './context/AppDataContext';
 import AdminSidebar         from './components/admin/AdminSidebar';
-import Footer              from './components/shared/Footer';
-import LevelGuideView      from './pages/public/LevelGuideView';
+import Footer               from './components/shared/Footer';
+import LevelGuideView       from './pages/public/LevelGuideView';
 
 // Static pages
-import AboutPage           from './pages/public/AboutPage';
-import FAQPage             from './pages/public/FAQPage';
-import ContactPage         from './pages/public/ContactPage';
-import PrivacyPage         from './pages/public/PrivacyPage';
-import TermsPage           from './pages/public/TermsPage';
-import NotFoundPage        from './pages/public/NotFoundPage';
+import AboutPage    from './pages/public/AboutPage';
+import FAQPage      from './pages/public/FAQPage';
+import ContactPage  from './pages/public/ContactPage';
+import PrivacyPage  from './pages/public/PrivacyPage';
+import TermsPage    from './pages/public/TermsPage';
+import NotFoundPage from './pages/public/NotFoundPage';
 
 function PrivateRoute({ children, adminOnly = false }) {
   const { user } = useContext(AuthContext);
@@ -46,7 +47,6 @@ function PrivateRoute({ children, adminOnly = false }) {
   return children;
 }
 
-/** Renders Footer on all public routes, hidden on /admin/* (admin has its own offset Footer) */
 function PublicFooter() {
   const { pathname } = useLocation();
   if (pathname.startsWith('/admin')) return null;
@@ -65,7 +65,6 @@ function AdminLayout({ children }) {
   );
 }
 
-/** Renders inside BrowserRouter so useLocation() re-fires on every navigation */
 function AppShell() {
   usePageTracking();
   return null;
@@ -89,20 +88,27 @@ export default function App() {
             <Route path="/login"     element={<LoginPage />} />
             <Route path="/register"  element={<RegisterPage />} />
             <Route path="/oauth2/redirect" element={<OAuth2RedirectPage />} />
-            <Route path="/submit"    element={
+
+            {/* Authenticated */}
+            <Route path="/submit" element={
               <PrivateRoute><SubmitSalaryPage /></PrivateRoute>
             }/>
-            <Route path="/opportunities"      element={<OpportunitiesPage />} />
-            <Route path="/opportunities/post"  element={
+            <Route path="/my-submissions" element={
+              <PrivateRoute><MySubmissionsPage /></PrivateRoute>
+            }/>
+            <Route path="/opportunities/post" element={
               <PrivateRoute><PostOpportunityPage /></PrivateRoute>
             }/>
-            {/* Legacy referral routes — redirect to new Opportunities system */}
-            <Route path="/referrals"           element={<Navigate to="/opportunities" replace />} />
-            <Route path="/refer"               element={<Navigate to="/opportunities/post" replace />} />
-            <Route path="/my-referral-links"   element={<Navigate to="/opportunities/post" replace />} />
-            {/* Legacy launchpad routes — redirect to Opportunities */}
-            <Route path="/launchpad"        element={<Navigate to="/opportunities" replace />} />
-            <Route path="/launchpad/submit" element={<Navigate to="/opportunities/post" replace />} />
+
+            {/* Public opportunities */}
+            <Route path="/opportunities" element={<OpportunitiesPage />} />
+
+            {/* Legacy redirects */}
+            <Route path="/referrals"         element={<Navigate to="/opportunities" replace />} />
+            <Route path="/refer"             element={<Navigate to="/opportunities/post" replace />} />
+            <Route path="/my-referral-links" element={<Navigate to="/opportunities/post" replace />} />
+            <Route path="/launchpad"         element={<Navigate to="/opportunities" replace />} />
+            <Route path="/launchpad/submit"  element={<Navigate to="/opportunities/post" replace />} />
 
             {/* Admin */}
             <Route path="/admin" element={
@@ -130,9 +136,6 @@ export default function App() {
                 <AdminLayout><AdminOpportunities /></AdminLayout>
               </PrivateRoute>
             }/>
-            {/* Legacy redirect */}
-            <Route path="/admin/referrals"     element={<Navigate to="/admin/opportunities" replace />} />
-
             <Route path="/admin/guide-levels" element={
               <PrivateRoute adminOnly>
                 <AdminLayout><AdminGuideLevels /></AdminLayout>
@@ -148,24 +151,7 @@ export default function App() {
                 <AdminLayout><AdminAnalytics /></AdminLayout>
               </PrivateRoute>
             }/>
-            {/* Legacy redirect */}
-            <Route path="/admin/referrals"     element={<Navigate to="/admin/opportunities" replace />} />
-
-            <Route path="/admin/guide-levels" element={
-              <PrivateRoute adminOnly>
-                <AdminLayout><AdminGuideLevels /></AdminLayout>
-              </PrivateRoute>
-            }/>
-            <Route path="/admin/job-functions" element={
-              <PrivateRoute adminOnly>
-                <AdminLayout><AdminJobFunctions /></AdminLayout>
-              </PrivateRoute>
-            }/>
-            <Route path="/admin/analytics" element={
-              <PrivateRoute adminOnly>
-                <AdminLayout><AdminAnalytics /></AdminLayout>
-              </PrivateRoute>
-            }/>
+            <Route path="/admin/referrals" element={<Navigate to="/admin/opportunities" replace />} />
 
             {/* Static pages */}
             <Route path="/about"       element={<AboutPage />} />
