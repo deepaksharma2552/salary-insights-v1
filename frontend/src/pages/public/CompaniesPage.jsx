@@ -564,7 +564,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
 }
 
 // ── Company Card ──────────────────────────────────────────────────────────────
-function CompanyCard({ c, onViewDetails }) {
+function CompanyCard({ c, onViewDetails, openRoles }) {
   const [expanded,   setExpanded]   = useState(false);
   const [levels,     setLevels]     = useState(null);
   const [loadingLvl, setLoadingLvl] = useState(false);
@@ -604,9 +604,17 @@ function CompanyCard({ c, onViewDetails }) {
             <div className="company-card-industry">{c.industry}</div>
           </div>
         </div>
-        <span className="entries-badge-mono" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:'var(--text-3)', background:'var(--bg-2)', padding:'2px 7px', borderRadius:6, border:'1px solid var(--border)', flexShrink:0, marginTop:2 }}>
-          {c.entries} entries
-        </span>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0, marginTop:2 }}>
+          <span className="entries-badge-mono" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:"var(--text-3)", background:"var(--bg-2)", padding:"2px 7px", borderRadius:6, border:"1px solid var(--border)", whiteSpace:"nowrap" }}>
+            {c.entries} entries
+          </span>
+          {openRoles > 0 && (
+            <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10, fontWeight:700, color:"#16a34a", background:"#dcfce7", border:"1px solid #bbf7d0", borderRadius:6, padding:"2px 7px", whiteSpace:"nowrap" }}>
+              <svg width="6" height="6" viewBox="0 0 8 8" fill="#16a34a"><circle cx="4" cy="4" r="4"/></svg>
+              {openRoles} open {openRoles === 1 ? "role" : "roles"}
+            </span>
+          )}
+        </div>
       </div>
 
       <div style={{ height:'0.5px', background:'var(--border)' }} />
@@ -724,11 +732,21 @@ export default function CompaniesPage() {
   const [totalPages,    setTotalPages]    = useState(1);
   const [totalElements, setTotalElements] = useState(0);
   const [selected,      setSelected]      = useState(null); // { company, initialTab }
+  const [hiringMap,     setHiringMap]     = useState(new Map());
 
   useEffect(() => {
-    api.get('/public/companies/industries')
+    api.get("/public/companies/industries")
       .then(r => setIndustries(r.data?.data ?? []))
       .catch(console.error);
+    api.get("/public/companies/hiring-now")
+      .then(r => {
+        const hMap = new Map();
+        for (const item of r.data?.data ?? []) {
+          if (item.companyId) hMap.set(String(item.companyId), Number(item.openRoles));
+        }
+        setHiringMap(hMap);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => () => clearTimeout(debounceRef.current), []);
@@ -889,7 +907,7 @@ export default function CompaniesPage() {
         <>
           <div className="companies-grid">
             {items.map(c => (
-              <CompanyCard key={c.id} c={c} onViewDetails={(initialTab) => setSelected({ company: c, initialTab })} />
+              <CompanyCard key={c.id} c={c} onViewDetails={(initialTab) => setSelected({ company: c, initialTab })} openRoles={hiringMap.get(String(c.id)) ?? 0} />
             ))}
           </div>
           {totalPages > 1 && (
