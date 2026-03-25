@@ -6,14 +6,13 @@ import { AuthContext } from '../../context/AuthContext';
  * Landing page for Google OAuth2 callback.
  *
  * The Spring backend redirects here after a successful OAuth2 login:
- *   /oauth2/redirect?token=...&email=...&firstName=...&lastName=...&role=...
+ *   /oauth2/redirect?email=...&firstName=...&lastName=...&role=...
  *
- * This component reads those params, stores the token + user in
- * localStorage (same shape as the normal login flow), hydrates
- * AuthContext, then navigates to the home page.
+ * The JWT is now in an httpOnly cookie set by the backend — it never
+ * appears in the URL. This component reads only the non-sensitive user
+ * profile params, hydrates AuthContext, then navigates home.
  *
- * On error (missing token or ?error=... param) it redirects to
- * /login?oauthError=true so the LoginPage can show a message.
+ * On error (?error=... param) it redirects to /login?oauthError=true.
  */
 export default function OAuth2RedirectPage() {
   const navigate       = useNavigate();
@@ -26,23 +25,20 @@ export default function OAuth2RedirectPage() {
     handled.current = true;
 
     const error     = searchParams.get('error');
-    const token     = searchParams.get('token');
     const email     = searchParams.get('email');
     const firstName = searchParams.get('firstName');
     const lastName  = searchParams.get('lastName');
     const role      = searchParams.get('role');
 
-    if (error || !token) {
+    // If the backend signalled an error, or the required profile fields are missing
+    if (error || !email) {
       navigate('/login?oauthError=true', { replace: true });
       return;
     }
 
-    // Persist exactly the same shape the normal login uses
+    // Hydrate AuthContext with the profile (token lives in the httpOnly cookie,
+    // not in JS-land — loginWithToken only stores the non-sensitive user object).
     const userData = { email, firstName, lastName, role };
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-
-    // Tell AuthContext about the new session without a round-trip
     loginWithToken(userData);
 
     navigate('/', { replace: true });

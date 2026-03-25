@@ -1,9 +1,42 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { usePageTracking } from './hooks/usePageTracking';
-import { useContext } from 'react';
+import { useContext, Component } from 'react';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import Navbar from './components/shared/Navbar';
 import { RouterProgressBar } from './components/shared/TopProgressBar';
+
+// Catches render errors in any child subtree so one broken page can't blank the whole app.
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    console.error('[ErrorBoundary] Caught render error:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '2rem', textAlign: 'center', fontFamily: 'sans-serif' }}>
+          <h2 style={{ marginBottom: '0.5rem' }}>Something went wrong</h2>
+          <p style={{ color: '#666', marginBottom: '1rem' }}>
+            This page ran into an unexpected error. Your session is intact.
+          </p>
+          <button
+            onClick={() => { this.setState({ hasError: false, error: null }); window.location.href = '/'; }}
+            style={{ padding: '0.5rem 1.25rem', cursor: 'pointer', borderRadius: 6, border: '1px solid #ccc' }}
+          >
+            Go to Home
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // Public pages
 import HomePage             from './pages/public/HomePage';
@@ -79,6 +112,7 @@ export default function App() {
         <Navbar />
         <RouterProgressBar />
         <div style={{ paddingTop: 56 }}>
+          <ErrorBoundary>
           <Routes>
             {/* Public */}
             <Route path="/"          element={<HomePage />} />
@@ -164,6 +198,7 @@ export default function App() {
             {/* 404 — must be last */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          </ErrorBoundary>
         <PublicFooter />
         </div>
       </BrowserRouter>
