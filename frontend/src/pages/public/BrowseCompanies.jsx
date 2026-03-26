@@ -23,6 +23,201 @@ const fmt = (val) => {
   return l >= 100 ? `₹${(l / 100).toFixed(1)}Cr` : `₹${l.toFixed(1)}L`;
 };
 
+// ── BENEFIT CATEGORIES ─────────────────────────────────────────────────────
+const BENEFIT_CATEGORIES = {
+  financial: {
+    label: 'Financial',
+    color: '#16a34a',
+    dotColor: '#22c55e',
+    keys: ['esop', 'stock', 'meal', 'food', 'relocation', 'bonus', 'performance'],
+  },
+  health: {
+    label: 'Health',
+    color: '#dc2626',
+    dotColor: '#ef4444',
+    keys: ['health', 'insurance', 'dental', 'vision', 'gym', 'wellness', 'mental'],
+  },
+  growth: {
+    label: 'Growth',
+    color: '#2563eb',
+    dotColor: '#3b82f6',
+    keys: ['learning', 'education', 'certification', 'training', 'conference'],
+  },
+  lifestyle: {
+    label: 'Lifestyle',
+    color: '#d97706',
+    dotColor: '#f59e0b',
+    keys: ['remote', 'wfh', 'parental', 'leave', 'pto', 'commute', 'transport', 'vacation'],
+  },
+};
+
+// Benefit icon SVGs keyed by common benefit name patterns
+const BENEFIT_ICONS = {
+  esop:        { svg: '$',  bg: '#dcfce7', color: '#16a34a' },
+  stock:       { svg: '$',  bg: '#dcfce7', color: '#16a34a' },
+  meal:        { svg: '▬',  bg: '#dcfce7', color: '#16a34a' },
+  food:        { svg: '▬',  bg: '#dcfce7', color: '#16a34a' },
+  relocation:  { svg: '⇄',  bg: '#dcfce7', color: '#16a34a' },
+  bonus:       { svg: '↗',  bg: '#dcfce7', color: '#16a34a' },
+  performance: { svg: '↗',  bg: '#dcfce7', color: '#16a34a' },
+  health:      { svg: '♡',  bg: '#fee2e2', color: '#dc2626' },
+  insurance:   { svg: '♡',  bg: '#fee2e2', color: '#dc2626' },
+  dental:      { svg: '⚕',  bg: '#fee2e2', color: '#dc2626' },
+  vision:      { svg: '⚕',  bg: '#fee2e2', color: '#dc2626' },
+  gym:         { svg: '☕', bg: '#fee2e2', color: '#dc2626' },
+  wellness:    { svg: '☕', bg: '#fee2e2', color: '#dc2626' },
+  mental:      { svg: '▐▌', bg: '#fee2e2', color: '#dc2626' },
+  learning:    { svg: '□',  bg: '#dbeafe', color: '#2563eb' },
+  education:   { svg: '□',  bg: '#dbeafe', color: '#2563eb' },
+  certification:{ svg: '◎', bg: '#dbeafe', color: '#2563eb' },
+  training:    { svg: '◎',  bg: '#dbeafe', color: '#2563eb' },
+  remote:      { svg: '⊡',  bg: '#fef3c7', color: '#d97706' },
+  wfh:         { svg: '⊡',  bg: '#fef3c7', color: '#d97706' },
+  parental:    { svg: '⚇',  bg: '#fef3c7', color: '#d97706' },
+  leave:       { svg: '⊟',  bg: '#fef3c7', color: '#d97706' },
+  pto:         { svg: '⊟',  bg: '#fef3c7', color: '#d97706' },
+  commute:     { svg: '⊞',  bg: '#fef3c7', color: '#d97706' },
+  transport:   { svg: '⊞',  bg: '#fef3c7', color: '#d97706' },
+  default:     { svg: '★',  bg: '#f1f5f9', color: '#64748b' },
+};
+
+function getBenefitIcon(name = '') {
+  const lower = name.toLowerCase();
+  for (const [key, icon] of Object.entries(BENEFIT_ICONS)) {
+    if (key !== 'default' && lower.includes(key)) return icon;
+  }
+  return BENEFIT_ICONS.default;
+}
+
+function categorizeBenefits(benefits) {
+  const categories = { financial: [], health: [], growth: [], lifestyle: [], other: [] };
+  for (const b of benefits) {
+    const name = (b.name ?? b ?? '').toLowerCase();
+    let matched = false;
+    for (const [catKey, cat] of Object.entries(BENEFIT_CATEGORIES)) {
+      if (cat.keys.some(k => name.includes(k))) {
+        categories[catKey].push(b);
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) categories.other.push(b);
+  }
+  return categories;
+}
+
+// ── BENEFIT ITEM ────────────────────────────────────────────────────────────
+function BenefitItem({ benefit }) {
+  const name  = benefit.name  ?? benefit ?? '';
+  const value = benefit.value ?? null;
+  const icon  = getBenefitIcon(name);
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '10px',
+      background: '#ffffff', borderRadius: '10px',
+      border: '1px solid #f1f5f9', padding: '9px 11px',
+      minWidth: 0,
+    }}>
+      <div style={{
+        width: '28px', height: '28px', borderRadius: '7px',
+        background: icon.bg, color: icon.color,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '12px', fontWeight: '700', flexShrink: 0,
+      }}>
+        {icon.svg}
+      </div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '500', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {name}
+        </div>
+        {value && (
+          <div style={{
+            fontSize: '12px', fontWeight: '700', color: value === 'No' ? '#dc2626' : value === 'Offered' || value === 'Covered' ? '#16a34a' : '#0f172a',
+            lineHeight: 1.3, marginTop: '1px', whiteSpace: 'nowrap',
+          }}>
+            {value}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── CATEGORY SECTION ────────────────────────────────────────────────────────
+function BenefitCategory({ catKey, items }) {
+  const cat = BENEFIT_CATEGORIES[catKey] ?? { label: 'Other', dotColor: '#94a3b8' };
+  return (
+    <div>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '6px',
+        marginBottom: '7px',
+      }}>
+        <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: cat.dotColor, flexShrink: 0 }} />
+        <span style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          {cat.label}
+        </span>
+        <div style={{ flex: 1, height: '1px', background: '#f1f5f9' }} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {items.map((b, i) => <BenefitItem key={i} benefit={b} />)}
+      </div>
+    </div>
+  );
+}
+
+// ── BENEFITS SECTION ────────────────────────────────────────────────────────
+function BenefitsSection({ benefits }) {
+  const [showAll, setShowAll] = useState(false);
+  const categorized = categorizeBenefits(benefits);
+  const catOrder = ['financial', 'health', 'growth', 'lifestyle', 'other'];
+  const filledCats = catOrder.filter(k => categorized[k]?.length > 0);
+
+  // Preview: show first 2 categories only, rest behind "Show more"
+  const previewCats = showAll ? filledCats : filledCats.slice(0, 2);
+  const hiddenCatCount = filledCats.length - 2;
+
+  return (
+    <div style={{ marginBottom: '4px' }}>
+      <div style={{
+        fontSize: '10px', fontWeight: '700', color: '#94a3b8',
+        letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '10px',
+      }}>
+        Benefits
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {previewCats.map(catKey => (
+          <BenefitCategory key={catKey} catKey={catKey} items={categorized[catKey]} />
+        ))}
+      </div>
+      {!showAll && hiddenCatCount > 0 && (
+        <button
+          onClick={() => setShowAll(true)}
+          style={{
+            marginTop: '10px', display: 'flex', alignItems: 'center', gap: '4px',
+            color: '#3b82f6', fontSize: '12px', fontWeight: '600',
+            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          }}
+        >
+          Show {hiddenCatCount} more {hiddenCatCount === 1 ? 'category' : 'categories'} ↓
+        </button>
+      )}
+      {showAll && hiddenCatCount > 0 && (
+        <button
+          onClick={() => setShowAll(false)}
+          style={{
+            marginTop: '10px', display: 'flex', alignItems: 'center', gap: '4px',
+            color: '#94a3b8', fontSize: '12px', fontWeight: '600',
+            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          }}
+        >
+          Show less ↑
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── ICONS ─────────────────────────────────────────────────────────────────
 const SearchIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -40,11 +235,6 @@ const ArrowIcon = () => (
     <path d="M5 12h14M12 5l7 7-7 7"/>
   </svg>
 );
-const CheckIcon = () => (
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-    <path d="M20 6 9 17l-5-5"/>
-  </svg>
-);
 
 // ── COMPANY CARD ──────────────────────────────────────────────────────────
 function CompanyCard({ company, openRoles, onViewRoles }) {
@@ -57,8 +247,6 @@ function CompanyCard({ company, openRoles, onViewRoles }) {
   const tcRange = tcMin && tcMax ? `${tcMin} – ${tcMax}` : tcMin || tcMax || '—';
 
   const benefits = company.benefits ?? [];
-  const visibleBenefits = benefits.slice(0, 2);
-  const hiddenCount = benefits.length - 2;
 
   function toggleExpand() {
     const next = !expanded;
@@ -208,27 +396,7 @@ function CompanyCard({ company, openRoles, onViewRoles }) {
       {/* Benefits + Footer */}
       <div style={{ padding: '10px 16px 14px' }}>
         {benefits.length > 0 && (
-          <>
-            <div style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
-              Benefits
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-              {visibleBenefits.map(b => (
-                <span key={b.name ?? b} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '4px',
-                  background: '#f8fafc', border: '1px solid #e2e8f0',
-                  borderRadius: '20px', padding: '4px 9px',
-                  fontSize: '11px', fontWeight: '600', color: '#475569',
-                }}>
-                  <span style={{ color: '#22c55e' }}><CheckIcon /></span>
-                  {b.name ?? b}
-                </span>
-              ))}
-              {hiddenCount > 0 && (
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#3b82f6' }}>+{hiddenCount} more</span>
-              )}
-            </div>
-          </>
+          <BenefitsSection benefits={benefits} />
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px' }}>
