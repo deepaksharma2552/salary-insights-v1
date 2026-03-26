@@ -37,36 +37,51 @@ function SaveBtn({ saving, label = 'Save', disabled }) {
    MAIN PAGE
 ═══════════════════════════════════════════════════════════════════════════ */
 export default function AdminJobFunctions() {
-  const { reloadFunctions } = useAppData(); // evict frontend context cache on save
+  const { reloadFunctions } = useAppData();
 
-  const [functions, setFunctions] = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [loadError, setLoadError] = useState(null);
+  const [functions,   setFunctions]   = useState([]);
+  const [stdLevels,   setStdLevels]   = useState([]); // standardized_levels from DB
+  const [loading,     setLoading]     = useState(true);
+  const [loadError,   setLoadError]   = useState(null);
 
-  // Function modal state
-  const [fnModal,  setFnModal]  = useState(null); // null | 'create' | fn-obj
+  // Function modal
+  const [fnModal,  setFnModal]  = useState(null);
   const [fnForm,   setFnForm]   = useState({ displayName: '', sortOrder: '' });
   const [fnSaving, setFnSaving] = useState(false);
   const [fnError,  setFnError]  = useState('');
 
-  // Level modal state
-  const [lvModal,     setLvModal]     = useState(null); // null | { fn } | { fn, level }
-  const [lvForm,      setLvForm]      = useState({ name: '', sortOrder: '', internalLevel: '' });
-  const [lvSaving,    setLvSaving]    = useState(false);
-  const [lvError,     setLvError]     = useState('');
+  // Level modal
+  const [lvModal,  setLvModal]  = useState(null);
+  const [lvForm,   setLvForm]   = useState({ name: '', sortOrder: '', standardizedLevelId: null });
+  const [lvSaving, setLvSaving] = useState(false);
+  const [lvError,  setLvError]  = useState('');
 
-  // Expanded function accordion
   const [expandedId, setExpandedId] = useState(null);
 
+  // ── Load functions + standardized levels in parallel ──
   const load = useCallback(() => {
     setLoading(true);
-    api.get('/admin/job-functions')
-      .then(r => { const fns = r.data?.data ?? []; console.log('[AdminJobFunctions] loaded:', fns.length, 'functions'); setFunctions(fns); setLoadError(null); })
+    Promise.all([
+      api.get('/admin/job-functions'),
+      api.get('/public/standardized-levels'),
+    ])
+      .then(([fnRes, slRes]) => {
+        setFunctions(fnRes.data?.data ?? []);
+        // Already sorted by hierarchy_rank from the API
+        setStdLevels(slRes.data?.data ?? []);
+        setLoadError(null);
+      })
       .catch(err => setLoadError(`${err.response?.status ?? 'Network error'}: ${err.response?.data?.message ?? err.message}`))
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // ── Helpers ──
+  function stdLevelName(id) {
+    if (!id) return null;
+    return stdLevels.find(sl => sl.id === id)?.name ?? null;
+  }
 
   /* ── Function CRUD ── */
   function openCreateFn() {
@@ -105,11 +120,15 @@ export default function AdminJobFunctions() {
 
   /* ── Level CRUD ── */
   function openAddLevel(fn) {
-    setLvForm({ name: '', sortOrder: (fn.levels?.length ?? 0) + 1, internalLevel: '' });
+    setLvForm({ name: '', sortOrder: (fn.levels?.length ?? 0) + 1, standardizedLevelId: null });
     setLvModal({ fn }); setLvError('');
   }
   function openEditLevel(fn, level) {
-    setLvForm({ name: level.name, sortOrder: level.sortOrder, internalLevel: level.internalLevel ?? '' });
+    setLvForm({
+      name: level.name,
+      sortOrder: level.sortOrder,
+      standardizedLevelId: level.standardizedLevelId ?? null,
+    });
     setLvModal({ fn, level }); setLvError('');
   }
 
@@ -121,7 +140,7 @@ export default function AdminJobFunctions() {
         jobFunctionId: lvModal.fn.id,
         name: lvForm.name.trim(),
         sortOrder: Number(lvForm.sortOrder),
-        internalLevel: lvForm.internalLevel || null,
+        standardizedLevelId: lvForm.standardizedLevelId || null,
       };
       if (lvModal.level) await api.put(`/admin/job-functions/levels/${lvModal.level.id}`, payload);
       else               await api.post('/admin/job-functions/levels', payload);
@@ -162,6 +181,7 @@ export default function AdminJobFunctions() {
           <button onClick={load} style={{ marginLeft: 'auto', padding: '4px 12px', fontSize: 12, fontWeight: 600, background: 'rgba(224,92,122,0.15)', color: 'var(--rose)', border: '1px solid rgba(224,92,122,0.3)', borderRadius: 6, cursor: 'pointer' }}>Retry</button>
         </div>
       )}
+
       {loading ? (
         <div style={{ color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>Loading…</div>
       ) : !loadError && functions.length === 0 ? (
@@ -211,9 +231,9 @@ export default function AdminJobFunctions() {
                         <div key={lv.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--bg-2)', borderRadius: 8, border: '1px solid var(--border)' }}>
                           <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono',monospace", color: '#3b82f6', fontWeight: 700, minWidth: 28 }}>#{lv.sortOrder}</span>
                           <span style={{ flex: 1, fontSize: 13, color: 'var(--text-1)', fontWeight: 500 }}>{lv.name}</span>
-                          {lv.internalLevel && (
+                          {lv.standardizedLevelName && (
                             <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: '#3b82f6', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
-                              {lv.internalLevel}
+                              {lv.standardizedLevelName}
                             </span>
                           )}
                           <div style={{ display: 'flex', gap: 6 }}>
@@ -272,25 +292,22 @@ export default function AdminJobFunctions() {
             </div>
             <div>
               <label className="form-label">
-                Maps to Internal Level
+                Maps to Standardized Level
                 <span style={{ fontWeight: 400, color: 'var(--text-3)', fontSize: 11, marginLeft: 6 }}>(optional)</span>
               </label>
-              <select className="form-input" value={lvForm.internalLevel} onChange={e => setLvForm(f => ({ ...f, internalLevel: e.target.value }))} style={{ cursor: 'pointer' }}>
+              <select
+                className="form-input"
+                value={lvForm.standardizedLevelId ?? ''}
+                onChange={e => setLvForm(f => ({ ...f, standardizedLevelId: e.target.value || null }))}
+                style={{ cursor: 'pointer' }}
+              >
                 <option value="">— No mapping —</option>
-                <option value="SDE_1">SDE 1</option>
-                <option value="SDE_2">SDE 2</option>
-                <option value="SDE_3">SDE 3</option>
-                <option value="STAFF_ENGINEER">Staff Engineer</option>
-                <option value="PRINCIPAL_ENGINEER">Principal Engineer</option>
-                <option value="ARCHITECT">Architect</option>
-                <option value="ENGINEERING_MANAGER">Engineering Manager</option>
-                <option value="SR_ENGINEERING_MANAGER">Sr. Engineering Manager</option>
-                <option value="DIRECTOR">Director</option>
-                <option value="SR_DIRECTOR">Sr. Director</option>
-                <option value="VP">VP</option>
+                {stdLevels.map(sl => (
+                  <option key={sl.id} value={sl.id}>{sl.name}</option>
+                ))}
               </select>
               <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontFamily: "'JetBrains Mono',monospace" }}>
-                Used to group salaries in the company breakdown chart
+                Used to group salaries in analytics charts. Levels are managed under Admin → Levels.
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
