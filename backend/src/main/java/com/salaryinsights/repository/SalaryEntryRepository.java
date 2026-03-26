@@ -19,7 +19,6 @@ import java.util.UUID;
 public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         JpaSpecificationExecutor<SalaryEntry> {
 
-    // Simple approved lookup — filtering done via Specification in SalaryService
     Page<SalaryEntry> findByReviewStatus(ReviewStatus status, Pageable pageable);
 
     @Query("SELECT s FROM SalaryEntry s JOIN FETCH s.company LEFT JOIN FETCH s.submittedBy " +
@@ -34,7 +33,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
            "WHERE s.id = :id")
     java.util.Optional<SalaryEntry> findByIdWithDetails(@Param("id") UUID id);
 
-    // CTE pre-computes AVG once; ORDER BY references the alias — no double aggregation
+    // Avg salary by location — unchanged, locations are still an enum
     @Query(value =
         "WITH loc_agg AS ( " +
         "  SELECT location AS groupKey, " +
@@ -52,39 +51,24 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         nativeQuery = true)
     List<Object[]> avgSalaryByLocationRaw();
 
-    // Avg salary by internal level across all companies
+    // Avg salary by standardized level — JOIN replaces the old CASE enum block.
+    // groupKey is now sl.name (e.g. "SDE 2"), ordered by hierarchy_rank for consistent display.
     @Query(value =
-        "WITH lvl_agg AS ( " +
-        "  SELECT CASE company_internal_level " +
-        "           WHEN 'SDE_1'                 THEN 'SDE 1' " +
-        "           WHEN 'SDE_2'                 THEN 'SDE 2' " +
-        "           WHEN 'SDE_3'                 THEN 'SDE 3' " +
-        "           WHEN 'STAFF_ENGINEER'         THEN 'Staff Engineer' " +
-        "           WHEN 'PRINCIPAL_ENGINEER'     THEN 'Principal Engineer' " +
-        "           WHEN 'ARCHITECT'              THEN 'Architect' " +
-        "           WHEN 'ENGINEERING_MANAGER'    THEN 'Engineering Manager' " +
-        "           WHEN 'SR_ENGINEERING_MANAGER' THEN 'Sr. Engineering Manager' " +
-        "           WHEN 'DIRECTOR'               THEN 'Director' " +
-        "           WHEN 'SR_DIRECTOR'            THEN 'Sr. Director' " +
-        "           WHEN 'VP'                     THEN 'VP' " +
-        "           ELSE 'Unknown' " +
-        "         END AS groupKey, " +
-        "         AVG(base_salary)        AS avgBaseSalary, " +
-        "         AVG(bonus)              AS avgBonus, " +
-        "         AVG(equity)             AS avgEquity, " +
-        "         AVG(total_compensation) AS avgTotalCompensation, " +
-        "         COUNT(*)                AS cnt " +
-        "  FROM salary_entries " +
-        "  WHERE review_status = 'APPROVED' AND company_internal_level IS NOT NULL " +
-        "  GROUP BY company_internal_level " +
-        ") " +
-        "SELECT groupKey, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt FROM lvl_agg " +
-        "ORDER BY avgBaseSalary DESC",
+        "SELECT sl.name                    AS groupKey, " +
+        "       AVG(se.base_salary)        AS avgBaseSalary, " +
+        "       AVG(se.bonus)              AS avgBonus, " +
+        "       AVG(se.equity)             AS avgEquity, " +
+        "       AVG(se.total_compensation) AS avgTotalCompensation, " +
+        "       COUNT(*)                   AS cnt " +
+        "FROM salary_entries se " +
+        "JOIN standardized_levels sl ON sl.id = se.standardized_level_id " +
+        "WHERE se.review_status = 'APPROVED' " +
+        "GROUP BY sl.id, sl.name, sl.hierarchy_rank " +
+        "ORDER BY sl.hierarchy_rank ASC",
         nativeQuery = true)
     List<Object[]> avgSalaryByInternalLevelRaw();
 
-    // Avg total compensation grouped by years_of_experience — for the YOE scatter chart.
-    // Returns each YOE bucket (0–20+) with avg base, bonus, equity, total comp and count.
+    // Avg total compensation grouped by years_of_experience — unchanged
     @Query(value =
         "SELECT years_of_experience                AS yoe, " +
         "       AVG(base_salary)                   AS avgBaseSalary, " +
@@ -101,40 +85,24 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         nativeQuery = true)
     List<Object[]> avgSalaryByYoeRaw();
 
-    // Same as above but filtered by a set of location enum values — empty list = all locations
+    // Location-filtered variant of avgSalaryByInternalLevelRaw
     @Query(value =
-        "WITH lvl_agg AS ( " +
-        "  SELECT CASE company_internal_level " +
-        "           WHEN 'SDE_1'                 THEN 'SDE 1' " +
-        "           WHEN 'SDE_2'                 THEN 'SDE 2' " +
-        "           WHEN 'SDE_3'                 THEN 'SDE 3' " +
-        "           WHEN 'STAFF_ENGINEER'         THEN 'Staff Engineer' " +
-        "           WHEN 'PRINCIPAL_ENGINEER'     THEN 'Principal Engineer' " +
-        "           WHEN 'ARCHITECT'              THEN 'Architect' " +
-        "           WHEN 'ENGINEERING_MANAGER'    THEN 'Engineering Manager' " +
-        "           WHEN 'SR_ENGINEERING_MANAGER' THEN 'Sr. Engineering Manager' " +
-        "           WHEN 'DIRECTOR'               THEN 'Director' " +
-        "           WHEN 'SR_DIRECTOR'            THEN 'Sr. Director' " +
-        "           WHEN 'VP'                     THEN 'VP' " +
-        "           ELSE 'Unknown' " +
-        "         END AS groupKey, " +
-        "         AVG(base_salary)        AS avgBaseSalary, " +
-        "         AVG(bonus)              AS avgBonus, " +
-        "         AVG(equity)             AS avgEquity, " +
-        "         AVG(total_compensation) AS avgTotalCompensation, " +
-        "         COUNT(*)                AS cnt " +
-        "  FROM salary_entries " +
-        "  WHERE review_status = 'APPROVED' " +
-        "    AND company_internal_level IS NOT NULL " +
-        "    AND (COALESCE(:locations) IS NULL OR location IN (:locations)) " +
-        "  GROUP BY company_internal_level " +
-        ") " +
-        "SELECT groupKey, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt FROM lvl_agg " +
-        "ORDER BY avgBaseSalary DESC",
+        "SELECT sl.name                    AS groupKey, " +
+        "       AVG(se.base_salary)        AS avgBaseSalary, " +
+        "       AVG(se.bonus)              AS avgBonus, " +
+        "       AVG(se.equity)             AS avgEquity, " +
+        "       AVG(se.total_compensation) AS avgTotalCompensation, " +
+        "       COUNT(*)                   AS cnt " +
+        "FROM salary_entries se " +
+        "JOIN standardized_levels sl ON sl.id = se.standardized_level_id " +
+        "WHERE se.review_status = 'APPROVED' " +
+        "  AND (COALESCE(:locations) IS NULL OR se.location IN (:locations)) " +
+        "GROUP BY sl.id, sl.name, sl.hierarchy_rank " +
+        "ORDER BY sl.hierarchy_rank ASC",
         nativeQuery = true)
     List<Object[]> avgSalaryByInternalLevelFilteredRaw(@Param("locations") List<String> locations);
 
-    // CTE pre-computes AVG once; ORDER BY references the alias — no double aggregation
+    // Avg salary by company — unchanged
     @Query(value =
         "WITH co_agg AS ( " +
         "  SELECT c.name                      AS groupKey, " +
@@ -157,11 +125,9 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         nativeQuery = true)
     List<Object[]> avgSalaryByCompanyRaw();
 
-    // CTE 1: rank the 10 most-recently-active companies (COALESCE guards NULL updated_at)
-    // CTE 2: aggregate levels only for those 10 companies
-    // CTE 1: rank companies by weighted score = AVG(total_comp) × LOG(entry_count + 1)
-    // CTE 2: aggregate per company+level, carry total company entry count for confidence badge
-    // Final SELECT references pre-computed aliases — zero re-aggregation
+    // Avg salary by company + standardized level (top 5 companies by weighted score).
+    // CASE block removed — JOIN to standardized_levels returns sl.name directly.
+    // ORDER BY sl.hierarchy_rank gives consistent level ordering within each company.
     @Query(value =
         "WITH top_companies AS ( " +
         "  SELECT c.id AS company_id, " +
@@ -186,39 +152,31 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "         tc.total_entries AS company_total_entries, " +
         "         tc.most_recent_entry, " +
         "         tc.weighted_score, " +
-        "         CASE s.company_internal_level " +
-        "           WHEN 'SDE_1'                THEN 'SDE 1' " +
-        "           WHEN 'SDE_2'                THEN 'SDE 2' " +
-        "           WHEN 'SDE_3'                THEN 'SDE 3' " +
-        "           WHEN 'STAFF_ENGINEER'        THEN 'Staff Engineer' " +
-        "           WHEN 'PRINCIPAL_ENGINEER'    THEN 'Principal Engineer' " +
-        "           WHEN 'ARCHITECT'             THEN 'Architect' " +
-        "           WHEN 'ENGINEERING_MANAGER'   THEN 'Engineering Manager' " +
-        "           WHEN 'SR_ENGINEERING_MANAGER' THEN 'Sr. Engineering Manager' " +
-        "           WHEN 'DIRECTOR'              THEN 'Director' " +
-        "           WHEN 'SR_DIRECTOR'           THEN 'Sr. Director' " +
-        "           WHEN 'VP'                    THEN 'VP' " +
-        "           ELSE 'Unknown' " +
-        "         END AS internalLevel, " +
+        "         sl.name AS internalLevel, " +
+        "         sl.hierarchy_rank, " +
         "         AVG(s.base_salary)        AS avgBaseSalary, " +
-        "         AVG(s.bonus)               AS avgBonus, " +
-        "         AVG(s.equity)              AS avgEquity, " +
-        "         AVG(s.total_compensation)  AS avgTotalCompensation, " +
-        "         COUNT(*)                   AS cnt " +
+        "         AVG(s.bonus)              AS avgBonus, " +
+        "         AVG(s.equity)             AS avgEquity, " +
+        "         AVG(s.total_compensation) AS avgTotalCompensation, " +
+        "         COUNT(*)                  AS cnt " +
         "  FROM salary_entries s " +
         "  JOIN top_companies tc ON s.company_id = tc.company_id " +
-        "  WHERE s.review_status = 'APPROVED' AND s.company_internal_level IS NOT NULL " +
-        "  GROUP BY tc.company_name, tc.company_id, tc.logo_url, tc.website, tc.total_entries, tc.most_recent_entry, tc.weighted_score, s.company_internal_level " +
+        "  JOIN standardized_levels sl ON sl.id = s.standardized_level_id " +
+        "  WHERE s.review_status = 'APPROVED' " +
+        "  GROUP BY tc.company_name, tc.company_id, tc.logo_url, tc.website, " +
+        "           tc.total_entries, tc.most_recent_entry, tc.weighted_score, " +
+        "           sl.id, sl.name, sl.hierarchy_rank " +
         ") " +
-        "SELECT company_name, company_id_str, logo_url, website, internalLevel, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt, company_total_entries, most_recent_entry " +
+        "SELECT company_name, company_id_str, logo_url, website, internalLevel, " +
+        "       avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt, " +
+        "       company_total_entries, most_recent_entry " +
         "FROM level_agg " +
-        "ORDER BY weighted_score DESC, avgBaseSalary DESC",
+        "ORDER BY weighted_score DESC, hierarchy_rank ASC",
         nativeQuery = true)
     List<Object[]> avgSalaryByCompanyAndLevelRaw();
 
-    // Avg base/bonus/equity per location × internal level.
-    // loc_recency CTE ranks the 5 most recently updated locations.
-    // loc_lvl aggregates salary data only for those 5 locations.
+    // Avg salary by location × standardized level (top 5 most-recent locations).
+    // CASE block removed — JOIN to standardized_levels returns sl.name directly.
     @Query(value =
         "WITH loc_recency AS ( " +
         "  SELECT location, MAX(created_at) AS most_recent_entry " +
@@ -232,20 +190,8 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  SELECT " +
         "    s.location, " +
         "    lr.most_recent_entry, " +
-        "    CASE s.company_internal_level " +
-        "      WHEN 'SDE_1'                 THEN 'SDE 1' " +
-        "      WHEN 'SDE_2'                 THEN 'SDE 2' " +
-        "      WHEN 'SDE_3'                 THEN 'SDE 3' " +
-        "      WHEN 'STAFF_ENGINEER'         THEN 'Staff Engineer' " +
-        "      WHEN 'PRINCIPAL_ENGINEER'     THEN 'Principal Engineer' " +
-        "      WHEN 'ARCHITECT'             THEN 'Architect' " +
-        "      WHEN 'ENGINEERING_MANAGER'   THEN 'Engineering Manager' " +
-        "      WHEN 'SR_ENGINEERING_MANAGER' THEN 'Sr. Engineering Manager' " +
-        "      WHEN 'DIRECTOR'              THEN 'Director' " +
-        "      WHEN 'SR_DIRECTOR'           THEN 'Sr. Director' " +
-        "      WHEN 'VP'                    THEN 'VP' " +
-        "      ELSE 'Unknown' " +
-        "    END AS internalLevel, " +
+        "    sl.name AS internalLevel, " +
+        "    sl.hierarchy_rank, " +
         "    AVG(s.base_salary)        AS avgBaseSalary, " +
         "    AVG(s.bonus)              AS avgBonus, " +
         "    AVG(s.equity)             AS avgEquity, " +
@@ -253,13 +199,13 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "    COUNT(*)                  AS cnt " +
         "  FROM salary_entries s " +
         "  JOIN loc_recency lr ON s.location = lr.location " +
+        "  JOIN standardized_levels sl ON sl.id = s.standardized_level_id " +
         "  WHERE s.review_status = 'APPROVED' " +
-        "    AND s.company_internal_level IS NOT NULL " +
-        "  GROUP BY s.location, lr.most_recent_entry, s.company_internal_level " +
+        "  GROUP BY s.location, lr.most_recent_entry, sl.id, sl.name, sl.hierarchy_rank " +
         ") " +
         "SELECT location, internalLevel, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt " +
         "FROM loc_lvl " +
-        "ORDER BY most_recent_entry DESC, avgBaseSalary DESC",
+        "ORDER BY most_recent_entry DESC, hierarchy_rank ASC",
         nativeQuery = true)
     List<Object[]> avgSalaryByLocationAndLevelRaw();
 
@@ -288,53 +234,25 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
     @Query("SELECT MAX(s.totalCompensation) FROM SalaryEntry s WHERE s.company.id = :companyId AND s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED AND s.totalCompensation IS NOT NULL")
     java.math.BigDecimal maxTCByCompany(@Param("companyId") UUID companyId);
 
-    // ── Salary summary by internal level for a single company (lazy card expand) ──
+    // Salary summary by standardized level for a single company (lazy card expand).
+    // Old CASE+ORDER BY enum block replaced by JOIN + ORDER BY hierarchy_rank.
     @Query(value =
-        "SELECT " +
-        "  CASE s.company_internal_level " +
-        "    WHEN 'SDE_1'                 THEN 'SDE 1' " +
-        "    WHEN 'SDE_2'                 THEN 'SDE 2' " +
-        "    WHEN 'SDE_3'                 THEN 'SDE 3' " +
-        "    WHEN 'STAFF_ENGINEER'         THEN 'Staff Engineer' " +
-        "    WHEN 'PRINCIPAL_ENGINEER'     THEN 'Principal Engineer' " +
-        "    WHEN 'ARCHITECT'              THEN 'Architect' " +
-        "    WHEN 'ENGINEERING_MANAGER'    THEN 'Engineering Manager' " +
-        "    WHEN 'SR_ENGINEERING_MANAGER' THEN 'Sr. Engineering Manager' " +
-        "    WHEN 'DIRECTOR'               THEN 'Director' " +
-        "    WHEN 'SR_DIRECTOR'            THEN 'Sr. Director' " +
-        "    WHEN 'VP'                     THEN 'VP' " +
-        "    ELSE 'Other' " +
-        "  END                            AS internalLevel, " +
-        "  AVG(base_salary)               AS avgBase, " +
-        "  AVG(bonus)                     AS avgBonus, " +
-        "  AVG(equity)                    AS avgEquity, " +
-        "  AVG(total_compensation)        AS avgTC, " +
-        "  COUNT(*)                       AS cnt " +
+        "SELECT sl.name                    AS internalLevel, " +
+        "       AVG(s.base_salary)         AS avgBase, " +
+        "       AVG(s.bonus)               AS avgBonus, " +
+        "       AVG(s.equity)              AS avgEquity, " +
+        "       AVG(s.total_compensation)  AS avgTC, " +
+        "       COUNT(*)                   AS cnt " +
         "FROM salary_entries s " +
+        "JOIN standardized_levels sl ON sl.id = s.standardized_level_id " +
         "WHERE s.company_id = CAST(:companyId AS uuid) " +
         "  AND s.review_status = 'APPROVED' " +
-        "  AND s.company_internal_level IS NOT NULL " +
-        "GROUP BY s.company_internal_level " +
-        "ORDER BY CASE s.company_internal_level " +
-        "  WHEN 'SDE_1'                  THEN 1 " +
-        "  WHEN 'SDE_2'                  THEN 2 " +
-        "  WHEN 'SDE_3'                  THEN 3 " +
-        "  WHEN 'STAFF_ENGINEER'          THEN 4 " +
-        "  WHEN 'PRINCIPAL_ENGINEER'      THEN 5 " +
-        "  WHEN 'ARCHITECT'               THEN 6 " +
-        "  WHEN 'ENGINEERING_MANAGER'     THEN 7 " +
-        "  WHEN 'SR_ENGINEERING_MANAGER'  THEN 8 " +
-        "  WHEN 'DIRECTOR'                THEN 9 " +
-        "  WHEN 'SR_DIRECTOR'             THEN 10 " +
-        "  WHEN 'VP'                      THEN 11 " +
-        "  ELSE 99 " +
-        "END ASC",
+        "GROUP BY sl.id, sl.name, sl.hierarchy_rank " +
+        "ORDER BY sl.hierarchy_rank ASC",
         nativeQuery = true)
     List<Object[]> salarySummaryByLevel(@Param("companyId") UUID companyId);
 
-    // ── Feature: Salary Benchmarker ──────────────────────────────────────────
-    // p25/p50/p75 + avg for TC and base — used by /public/salaries/benchmark.
-    // All params nullable: pass null to omit that filter (broadened search).
+    // Salary Benchmarker — unchanged, already uses function_level_id FK
     @Query(value =
         "SELECT " +
         "  PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY total_compensation) AS p25_tc, " +
@@ -362,9 +280,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         @Param("location")        String location
     );
 
-    // ── Feature: Salary Trends ────────────────────────────────────────────────
-    // Recent (0-6 months) vs prior (6-12 months) avg TC per company.
-    // Cached on "analytics" (1h TTL). Only companies with ≥1 recent entry returned.
+    // Salary Trends — unchanged
     @Query(value =
         "WITH windows AS ( " +
         "  SELECT " +
@@ -398,11 +314,6 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
                    "GROUP BY month ORDER BY month", nativeQuery = true)
     List<Object[]> submissionTrendLast12Months();
 
-    /**
-     * Weekly breakdown for a specific month.
-     * Returns one row per ISO week that intersects the given month.
-     * Columns: week_start (timestamp), week_num (int 1-5), count (long)
-     */
     @Query(value =
         "SELECT " +
         "  DATE_TRUNC('week', created_at) AS week_start, " +
@@ -414,20 +325,13 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "GROUP BY week_start " +
         "ORDER BY week_start",
         nativeQuery = true)
-    List<Object[]> submissionTrendWeeklyByMonth(
-        @Param("year")  int year,
-        @Param("month") int month);
+    List<Object[]> submissionTrendWeeklyByMonth(@Param("year") int year, @Param("month") int month);
 
     @Query("SELECT s FROM SalaryEntry s JOIN FETCH s.company LEFT JOIN FETCH s.submittedBy " +
            "WHERE s.reviewStatus = :status")
     Page<SalaryEntry> findByReviewStatusWithDetails(@Param("status") ReviewStatus status, Pageable pageable);
 
-    /**
-     * Location-filtered variant of avgSalaryByCompanyAndLevelRaw.
-     * top_companies CTE ranks by weighted score scoped to the requested locations.
-     * level_agg aggregates per company+level, also scoped to those locations.
-     * Used by DashboardPage when a location filter is active.
-     */
+    // Location-filtered variant of avgSalaryByCompanyAndLevelRaw
     @Query(value =
         "WITH top_companies AS ( " +
         "  SELECT c.id AS company_id, " +
@@ -453,36 +357,27 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "         tc.total_entries AS company_total_entries, " +
         "         tc.most_recent_entry, " +
         "         tc.weighted_score, " +
-        "         CASE s.company_internal_level " +
-        "           WHEN 'SDE_1'                THEN 'SDE 1' " +
-        "           WHEN 'SDE_2'                THEN 'SDE 2' " +
-        "           WHEN 'SDE_3'                THEN 'SDE 3' " +
-        "           WHEN 'STAFF_ENGINEER'        THEN 'Staff Engineer' " +
-        "           WHEN 'PRINCIPAL_ENGINEER'    THEN 'Principal Engineer' " +
-        "           WHEN 'ARCHITECT'             THEN 'Architect' " +
-        "           WHEN 'ENGINEERING_MANAGER'   THEN 'Engineering Manager' " +
-        "           WHEN 'SR_ENGINEERING_MANAGER' THEN 'Sr. Engineering Manager' " +
-        "           WHEN 'DIRECTOR'              THEN 'Director' " +
-        "           WHEN 'SR_DIRECTOR'           THEN 'Sr. Director' " +
-        "           WHEN 'VP'                    THEN 'VP' " +
-        "           ELSE 'Unknown' " +
-        "         END AS internalLevel, " +
+        "         sl.name AS internalLevel, " +
+        "         sl.hierarchy_rank, " +
         "         AVG(s.base_salary)        AS avgBaseSalary, " +
-        "         AVG(s.bonus)               AS avgBonus, " +
-        "         AVG(s.equity)              AS avgEquity, " +
-        "         AVG(s.total_compensation)  AS avgTotalCompensation, " +
-        "         COUNT(*)                   AS cnt " +
+        "         AVG(s.bonus)              AS avgBonus, " +
+        "         AVG(s.equity)             AS avgEquity, " +
+        "         AVG(s.total_compensation) AS avgTotalCompensation, " +
+        "         COUNT(*)                  AS cnt " +
         "  FROM salary_entries s " +
         "  JOIN top_companies tc ON s.company_id = tc.company_id " +
+        "  JOIN standardized_levels sl ON sl.id = s.standardized_level_id " +
         "  WHERE s.review_status = 'APPROVED' " +
-        "    AND s.company_internal_level IS NOT NULL " +
         "    AND s.location IN (:locations) " +
-        "  GROUP BY tc.company_name, tc.company_id, tc.logo_url, tc.website, tc.total_entries, tc.most_recent_entry, tc.weighted_score, s.company_internal_level " +
+        "  GROUP BY tc.company_name, tc.company_id, tc.logo_url, tc.website, " +
+        "           tc.total_entries, tc.most_recent_entry, tc.weighted_score, " +
+        "           sl.id, sl.name, sl.hierarchy_rank " +
         ") " +
-        "SELECT company_name, company_id_str, logo_url, website, internalLevel, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt, company_total_entries, most_recent_entry " +
+        "SELECT company_name, company_id_str, logo_url, website, internalLevel, " +
+        "       avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt, " +
+        "       company_total_entries, most_recent_entry " +
         "FROM level_agg " +
-        "ORDER BY weighted_score DESC, avgBaseSalary DESC",
+        "ORDER BY weighted_score DESC, hierarchy_rank ASC",
         nativeQuery = true)
     List<Object[]> avgSalaryByCompanyAndLevelFilteredRaw(@Param("locations") List<String> locations);
-
 }

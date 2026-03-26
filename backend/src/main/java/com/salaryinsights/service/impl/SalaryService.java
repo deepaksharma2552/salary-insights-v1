@@ -19,23 +19,24 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import com.salaryinsights.repository.JobFunctionRepository;
-import com.salaryinsights.repository.FunctionLevelRepository;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SalaryService {
 
-    private final SalaryEntryRepository salaryEntryRepository;
-    private final CompanyRepository companyRepository;
-    private final UserRepository userRepository;
-    private final SalaryMapper salaryMapper;
-    private final AuditLogService auditLogService;
+    private final SalaryEntryRepository    salaryEntryRepository;
+    private final CompanyRepository        companyRepository;
+    private final UserRepository           userRepository;
+    private final SalaryMapper             salaryMapper;
+    private final AuditLogService          auditLogService;
     private final JobFunctionRepository    jobFunctionRepository;
     private final FunctionLevelRepository  functionLevelRepository;
+    private final StandardizedLevelRepository standardizedLevelRepository;
     private final com.salaryinsights.repository.OpportunityRepository opportunityRepository;
 
     @Transactional(readOnly = true)
@@ -44,7 +45,7 @@ public class SalaryService {
         Page<SalaryEntry> page = salaryEntryRepository.findBySubmittedByEmail(email, pageable);
         List<SalaryResponse> content = page.getContent().stream()
                 .map(salaryMapper::toResponse)
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
         return PagedResponse.<SalaryResponse>builder()
                 .content(content)
                 .page(page.getNumber())
@@ -58,7 +59,7 @@ public class SalaryService {
     @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getApprovedSalaries(
             UUID companyId, String companyName, String jobTitle,
-            java.util.List<String> locations, java.util.List<String> experienceLevelStrs,
+            List<String> locations, List<String> experienceLevelStrs,
             Pageable pageable) {
         return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, null, null, pageable);
     }
@@ -66,8 +67,8 @@ public class SalaryService {
     @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getApprovedSalaries(
             UUID companyId, String companyName, String jobTitle,
-            java.util.List<String> locations, java.util.List<String> experienceLevelStrs,
-            java.util.List<String> internalLevelStrs,
+            List<String> locations, List<String> experienceLevelStrs,
+            List<String> internalLevelStrs,
             Pageable pageable) {
         return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, internalLevelStrs, null, pageable);
     }
@@ -75,7 +76,7 @@ public class SalaryService {
     @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getApprovedSalaries(
             UUID companyId, String companyName, String jobTitle,
-            java.util.List<String> locations, java.util.List<String> experienceLevelStrs,
+            List<String> locations, List<String> experienceLevelStrs,
             String employmentTypeStr,
             Pageable pageable) {
         return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, null, employmentTypeStr, pageable);
@@ -84,8 +85,8 @@ public class SalaryService {
     @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getApprovedSalaries(
             UUID companyId, String companyName, String jobTitle,
-            java.util.List<String> locations, java.util.List<String> experienceLevelStrs,
-            java.util.List<String> internalLevelStrs,
+            List<String> locations, List<String> experienceLevelStrs,
+            List<String> internalLevelStrs,
             String employmentTypeStr,
             Pageable pageable) {
 
@@ -94,7 +95,7 @@ public class SalaryService {
         final UUID   companyIdFilter   = companyId;
 
         // Convert display names ("Bengaluru") or enum names ("BENGALURU") → DB enum names
-        final java.util.List<String> locationEnumNames = (locations != null && !locations.isEmpty())
+        final List<String> locationEnumNames = (locations != null && !locations.isEmpty())
             ? locations.stream()
                 .map(l -> {
                     for (com.salaryinsights.enums.Location loc : com.salaryinsights.enums.Location.values()) {
@@ -102,24 +103,24 @@ public class SalaryService {
                     }
                     return l;
                 })
-                .collect(java.util.stream.Collectors.toList())
+                .collect(Collectors.toList())
             : null;
 
         // Convert raw strings → ExperienceLevel enums, silently skipping unknowns
-        final java.util.List<ExperienceLevel> levelFilters = (experienceLevelStrs != null && !experienceLevelStrs.isEmpty())
+        final List<ExperienceLevel> levelFilters = (experienceLevelStrs != null && !experienceLevelStrs.isEmpty())
             ? experienceLevelStrs.stream()
                 .map(s -> { try { return ExperienceLevel.valueOf(s.toUpperCase()); } catch (IllegalArgumentException e) { return null; } })
-                .filter(java.util.Objects::nonNull)
-                .collect(java.util.stream.Collectors.toList())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList())
             : null;
 
-        // Convert raw strings → InternalLevel enums, silently skipping unknowns
-        final java.util.List<com.salaryinsights.enums.InternalLevel> internalLevelFilters =
-            (internalLevelStrs != null && !internalLevelStrs.isEmpty())
+        // Resolve internalLevel filter strings → standardized_level UUIDs (DB-driven, no enum)
+        final List<UUID> stdLevelIds = (internalLevelStrs != null && !internalLevelStrs.isEmpty())
             ? internalLevelStrs.stream()
-                .map(s -> { try { return com.salaryinsights.enums.InternalLevel.valueOf(s.toUpperCase()); } catch (IllegalArgumentException e) { return null; } })
-                .filter(java.util.Objects::nonNull)
-                .collect(java.util.stream.Collectors.toList())
+                .map(s -> standardizedLevelRepository.findByNameIgnoreCase(s)
+                        .map(StandardizedLevel::getId).orElse(null))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList())
             : null;
 
         // Convert employmentType string → EmploymentType enum, null if blank/unknown
@@ -143,7 +144,7 @@ public class SalaryService {
                     query.distinct(true);
                 }
 
-                java.util.List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+                List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
                 predicates.add(cb.equal(root.get("reviewStatus"), com.salaryinsights.enums.ReviewStatus.APPROVED));
 
                 if (companyIdFilter != null) {
@@ -156,19 +157,16 @@ public class SalaryService {
                         cb.like(cb.lower(root.get("jobTitle")), "%" + searchTerm + "%")
                     ));
                 }
-                // Multi-location IN predicate
                 if (locationEnumNames != null && !locationEnumNames.isEmpty()) {
                     predicates.add(root.get("location").in(locationEnumNames));
                 }
-                // Multi-level IN predicate (ExperienceLevel)
                 if (levelFilters != null && !levelFilters.isEmpty()) {
                     predicates.add(root.get("experienceLevel").in(levelFilters));
                 }
-                // Multi-internalLevel IN predicate (company-specific levels e.g. SDE_1)
-                if (internalLevelFilters != null && !internalLevelFilters.isEmpty()) {
-                    predicates.add(root.get("companyInternalLevel").in(internalLevelFilters));
+                // Filter by standardized level FK — replaces the old companyInternalLevel enum predicate
+                if (stdLevelIds != null && !stdLevelIds.isEmpty()) {
+                    predicates.add(root.get("standardizedLevel").get("id").in(stdLevelIds));
                 }
-                // Employment type filter
                 if (employmentTypeFilter != null) {
                     predicates.add(cb.equal(root.get("employmentType"), employmentTypeFilter));
                 }
@@ -177,10 +175,9 @@ public class SalaryService {
             };
 
         Page<SalaryEntry> page = salaryEntryRepository.findAll(spec, pageable);
-        // Force mapping inside the transaction so lazy fields can be accessed
         List<SalaryResponse> mapped = page.getContent().stream()
                 .map(salaryMapper::toResponse)
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
         return PagedResponse.<SalaryResponse>builder()
                 .content(mapped)
                 .page(page.getNumber())
@@ -197,7 +194,6 @@ public class SalaryService {
         log.info("getPendingSalaries called — total PENDING in DB: {}, page: {}", totalPending, pageable);
         Page<SalaryEntry> page = salaryEntryRepository.findByReviewStatusWithDetails(ReviewStatus.PENDING, pageable);
         log.info("findByReviewStatus returned {} entries on this page", page.getNumberOfElements());
-        // Force mapping inside the transaction so lazy fields (company, submittedBy) can be accessed
         List<SalaryResponse> mapped = page.getContent().stream()
                 .map(entry -> {
                     try {
@@ -207,7 +203,7 @@ public class SalaryService {
                         throw e;
                     }
                 })
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
         log.info("Mapped {} entries successfully", mapped.size());
         return PagedResponse.<SalaryResponse>builder()
                 .content(mapped)
@@ -230,11 +226,9 @@ public class SalaryService {
     public SalaryResponse submitSalary(SalaryRequest request) {
         Company company;
         if (request.getCompanyId() != null) {
-            // Existing company selected from autocomplete
             company = companyRepository.findById(request.getCompanyId())
                     .orElseThrow(() -> new ResourceNotFoundException("Company not found: " + request.getCompanyId()));
         } else if (request.getCompanyName() != null && !request.getCompanyName().isBlank()) {
-            // Auto-create or find by name
             company = companyRepository.findByNameIgnoreCase(request.getCompanyName().trim())
                     .orElseGet(() -> {
                         com.salaryinsights.entity.Company newCompany = com.salaryinsights.entity.Company.builder()
@@ -248,44 +242,39 @@ public class SalaryService {
                         return saved;
                     });
         } else {
-            throw new com.salaryinsights.exception.BadRequestException("Either companyId or companyName must be provided");
+            throw new BadRequestException("Either companyId or companyName must be provided");
         }
 
         String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User submitter = userRepository.findByEmail(currentUserEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // Standardized level mapping removed — always null
-        StandardizedLevel standardizedLevel = null;
-
         SalaryEntry entry = salaryMapper.toEntity(request);
-        // Auto-derive experienceLevel when not provided — DB column is NOT NULL
-        if (entry.getExperienceLevel() == null) {
-            entry.setExperienceLevel(deriveExperienceLevel(request));
-        }
         entry.setCompany(company);
         entry.setSubmittedBy(submitter);
-        entry.setStandardizedLevel(standardizedLevel);
 
-        // Resolve job function + function level if provided.
-        // Also derive companyInternalLevel from the level name if not explicitly set —
-        // avoids asking the user for a duplicate field on the submit form.
-        // Use a final reference — entry is reassigned after save() so can't be captured directly
         final SalaryEntry entryRef = entry;
+
         if (request.getJobFunctionId() != null) {
             jobFunctionRepository.findById(request.getJobFunctionId())
                     .ifPresent(entryRef::setJobFunction);
         }
+
         if (request.getFunctionLevelId() != null) {
             functionLevelRepository.findById(request.getFunctionLevelId())
                     .ifPresent(fl -> {
                         entryRef.setFunctionLevel(fl);
-                        // Use the admin-configured mapping stored on the level — no name-string matching.
-                        // If the admin hasn't mapped this level, companyInternalLevel stays null.
-                        if (entryRef.getCompanyInternalLevel() == null && fl.getInternalLevel() != null) {
-                            entryRef.setCompanyInternalLevel(fl.getInternalLevel());
+                        // Propagate the standardized level from the function level mapping.
+                        // This is the DB-driven replacement for the old InternalLevel enum copy.
+                        if (fl.getStandardizedLevel() != null) {
+                            entryRef.setStandardizedLevel(fl.getStandardizedLevel());
                         }
                     });
+        }
+
+        // Auto-derive experienceLevel when not provided — DB column is NOT NULL
+        if (entry.getExperienceLevel() == null) {
+            entry.setExperienceLevel(deriveExperienceLevel(request, entry.getStandardizedLevel()));
         }
 
         entry.setReviewStatus(ReviewStatus.PENDING);
@@ -299,8 +288,12 @@ public class SalaryService {
         return salaryMapper.toResponse(entry);
     }
 
-    // Derives ExperienceLevel from yearsOfExperience, falling back to companyInternalLevel mapping
-    private ExperienceLevel deriveExperienceLevel(com.salaryinsights.dto.request.SalaryRequest request) {
+    /**
+     * Derives ExperienceLevel from yearsOfExperience, then falls back to the
+     * standardized level's hierarchy_rank (DB-driven — no enum switch).
+     * The rank ranges mirror the old enum mapping exactly so existing data is unaffected.
+     */
+    private ExperienceLevel deriveExperienceLevel(SalaryRequest request, StandardizedLevel resolvedLevel) {
         if (request.getYearsOfExperience() != null) {
             int y = request.getYearsOfExperience();
             if (y <= 1)  return ExperienceLevel.INTERN;
@@ -312,22 +305,24 @@ public class SalaryService {
             if (y <= 20) return ExperienceLevel.DIRECTOR;
             return ExperienceLevel.VP;
         }
-        if (request.getCompanyInternalLevel() != null) {
-            return switch (request.getCompanyInternalLevel()) {
-                case SDE_1                -> ExperienceLevel.ENTRY;
-                case SDE_2                -> ExperienceLevel.MID;
-                case SDE_3                -> ExperienceLevel.SENIOR;
-                case STAFF_ENGINEER,
-                     PRINCIPAL_ENGINEER,
-                     ARCHITECT            -> ExperienceLevel.LEAD;
-                case ENGINEERING_MANAGER,
-                     SR_ENGINEERING_MANAGER -> ExperienceLevel.MANAGER;
-                case DIRECTOR,
-                     SR_DIRECTOR          -> ExperienceLevel.DIRECTOR;
-                case VP                   -> ExperienceLevel.VP;
-            };
+        if (resolvedLevel != null) {
+            return deriveFromRank(resolvedLevel.getHierarchyRank());
         }
         return ExperienceLevel.MID; // safe default
+    }
+
+    /**
+     * Maps a standardized_levels.hierarchy_rank to an ExperienceLevel.
+     * Rank ranges correspond to the seeds in V27 (10-step gaps, 10–100).
+     */
+    private ExperienceLevel deriveFromRank(int rank) {
+        if (rank <= 10)  return ExperienceLevel.ENTRY;    // SDE 1
+        if (rank <= 20)  return ExperienceLevel.MID;      // SDE 2
+        if (rank <= 30)  return ExperienceLevel.SENIOR;   // SDE 3
+        if (rank <= 55)  return ExperienceLevel.LEAD;     // Staff / Principal / Architect
+        if (rank <= 70)  return ExperienceLevel.MANAGER;  // EM / Sr EM
+        if (rank <= 90)  return ExperienceLevel.DIRECTOR; // Director / Sr. Director
+        return ExperienceLevel.VP;
     }
 
     @Transactional
@@ -354,14 +349,11 @@ public class SalaryService {
 
         entry = salaryEntryRepository.save(entry);
 
-        // Keep tc_min/tc_max on the company row fresh when a salary is approved
         if (status == ReviewStatus.APPROVED && entry.getCompany() != null) {
             UUID companyId = entry.getCompany().getId();
             companyRepository.findById(companyId).ifPresent(company -> {
-                java.math.BigDecimal newMin = salaryEntryRepository.minTCByCompany(companyId);
-                java.math.BigDecimal newMax = salaryEntryRepository.maxTCByCompany(companyId);
-                company.setTcMin(newMin);
-                company.setTcMax(newMax);
+                company.setTcMin(salaryEntryRepository.minTCByCompany(companyId));
+                company.setTcMax(salaryEntryRepository.maxTCByCompany(companyId));
                 companyRepository.save(company);
             });
         }
@@ -375,16 +367,16 @@ public class SalaryService {
     // Analytics
     @Transactional(readOnly = true)
     @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'byYoe'")
-    public List<com.salaryinsights.dto.response.YoeSalaryDTO> getAvgSalaryByYoe() {
+    public List<YoeSalaryDTO> getAvgSalaryByYoe() {
         return salaryEntryRepository.avgSalaryByYoeRaw().stream().map(row -> {
-            Integer yoe      = row[0] != null ? ((Number) row[0]).intValue()    : null;
-            Double  base     = row[1] != null ? ((Number) row[1]).doubleValue() : null;
-            Double  bonus    = row[2] != null ? ((Number) row[2]).doubleValue() : null;
-            Double  equity   = row[3] != null ? ((Number) row[3]).doubleValue() : null;
-            Double  total    = row[4] != null ? ((Number) row[4]).doubleValue() : null;
-            Long    count    = row[5] != null ? ((Number) row[5]).longValue()   : 0L;
-            return new com.salaryinsights.dto.response.YoeSalaryDTO(yoe, base, bonus, equity, total, count);
-        }).collect(java.util.stream.Collectors.toList());
+            Integer yoe    = row[0] != null ? ((Number) row[0]).intValue()    : null;
+            Double  base   = row[1] != null ? ((Number) row[1]).doubleValue() : null;
+            Double  bonus  = row[2] != null ? ((Number) row[2]).doubleValue() : null;
+            Double  equity = row[3] != null ? ((Number) row[3]).doubleValue() : null;
+            Double  total  = row[4] != null ? ((Number) row[4]).doubleValue() : null;
+            Long    count  = row[5] != null ? ((Number) row[5]).longValue()   : 0L;
+            return new YoeSalaryDTO(yoe, base, bonus, equity, total, count);
+        }).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -399,28 +391,23 @@ public class SalaryService {
                     displayName = loc.getDisplayName();
                 } catch (IllegalArgumentException ignored) { }
             }
-            Double avgBase  = row[1] != null ? ((Number) row[1]).doubleValue() : null;
-            Double avgBonus = row[2] != null ? ((Number) row[2]).doubleValue() : null;
-            Double avgEquity= row[3] != null ? ((Number) row[3]).doubleValue() : null;
-            Double avgTotal = row[4] != null ? ((Number) row[4]).doubleValue() : null;
-            Long   count    = row[5] != null ? ((Number) row[5]).longValue()   : 0L;
             SalaryAggregationDTO dto = new SalaryAggregationDTO();
             dto.setGroupKey(displayName);
-            dto.setAvgBaseSalary(avgBase);
-            dto.setAvgBonus(avgBonus);
-            dto.setAvgEquity(avgEquity);
-            dto.setAvgTotalCompensation(avgTotal);
-            dto.setCount(count);
+            dto.setAvgBaseSalary(row[1] != null ? ((Number) row[1]).doubleValue() : null);
+            dto.setAvgBonus(row[2] != null ? ((Number) row[2]).doubleValue() : null);
+            dto.setAvgEquity(row[3] != null ? ((Number) row[3]).doubleValue() : null);
+            dto.setAvgTotalCompensation(row[4] != null ? ((Number) row[4]).doubleValue() : null);
+            dto.setCount(row[5] != null ? ((Number) row[5]).longValue() : 0L);
             return dto;
-        }).collect(java.util.stream.Collectors.toList());
+        }).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'byLocationLevel'")
-    public List<com.salaryinsights.dto.response.LocationLevelSalaryDTO> getAvgSalaryByLocationAndLevel() {
+    public List<LocationLevelSalaryDTO> getAvgSalaryByLocationAndLevel() {
         return salaryEntryRepository.avgSalaryByLocationAndLevelRaw().stream().map(row -> {
-            // col: location[0], internalLevel[1], avgBaseSalary[2], avgBonus[3], avgEquity[4], avgTotalComp[5], cnt[6]
-            String enumName    = row[0] != null ? row[0].toString() : null;
+            // col: location[0], levelName[1], avgBaseSalary[2], avgBonus[3], avgEquity[4], avgTotalComp[5], cnt[6]
+            String enumName = row[0] != null ? row[0].toString() : null;
             String displayName = enumName;
             if (enumName != null) {
                 try {
@@ -428,8 +415,7 @@ public class SalaryService {
                     displayName = loc.getDisplayName();
                 } catch (IllegalArgumentException ignored) {}
             }
-            com.salaryinsights.dto.response.LocationLevelSalaryDTO dto =
-                new com.salaryinsights.dto.response.LocationLevelSalaryDTO();
+            LocationLevelSalaryDTO dto = new LocationLevelSalaryDTO();
             dto.setLocation(displayName);
             dto.setInternalLevel(row[1] != null ? row[1].toString() : null);
             dto.setAvgBaseSalary(row[2] != null ? ((Number) row[2]).doubleValue() : null);
@@ -438,13 +424,11 @@ public class SalaryService {
             dto.setAvgTotalCompensation(row[5] != null ? ((Number) row[5]).doubleValue() : null);
             dto.setCount(row[6] != null ? ((Number) row[6]).longValue() : 0L);
             return dto;
-        }).collect(java.util.stream.Collectors.toList());
+        }).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<SalaryAggregationDTO> getAvgSalaryByInternalLevel(List<String> locationDisplayNames) {
-        // Convert display names (e.g. "Delhi-NCR") → DB enum names (e.g. "DELHI_NCR")
-        // Empty list means no filter — pass null so the SQL COALESCE trick short-circuits
         List<String> locationEnumNames = null;
         if (locationDisplayNames != null && !locationDisplayNames.isEmpty()) {
             locationEnumNames = locationDisplayNames.stream()
@@ -454,9 +438,9 @@ public class SalaryService {
                             return loc.name();
                         }
                     }
-                    return name; // pass through unknown values — SQL IN will just not match
+                    return name;
                 })
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
         }
 
         List<Object[]> rows = (locationEnumNames == null || locationEnumNames.isEmpty())
@@ -464,37 +448,24 @@ public class SalaryService {
             : salaryEntryRepository.avgSalaryByInternalLevelFilteredRaw(locationEnumNames);
 
         return rows.stream().map(row -> {
-            String groupKey = row[0] != null ? row[0].toString() : null;
-            Double avgBase  = row[1] != null ? ((Number) row[1]).doubleValue() : null;
-            Double avgBonus = row[2] != null ? ((Number) row[2]).doubleValue() : null;
-            Double avgEquity= row[3] != null ? ((Number) row[3]).doubleValue() : null;
-            Double avgTotal = row[4] != null ? ((Number) row[4]).doubleValue() : null;
-            Long   count    = row[5] != null ? ((Number) row[5]).longValue()   : 0L;
             SalaryAggregationDTO dto = new SalaryAggregationDTO();
-            dto.setGroupKey(groupKey);
-            dto.setAvgBaseSalary(avgBase);
-            dto.setAvgBonus(avgBonus);
-            dto.setAvgEquity(avgEquity);
-            dto.setAvgTotalCompensation(avgTotal);
-            dto.setCount(count);
+            dto.setGroupKey(row[0] != null ? row[0].toString() : null);
+            dto.setAvgBaseSalary(row[1] != null ? ((Number) row[1]).doubleValue() : null);
+            dto.setAvgBonus(row[2] != null ? ((Number) row[2]).doubleValue() : null);
+            dto.setAvgEquity(row[3] != null ? ((Number) row[3]).doubleValue() : null);
+            dto.setAvgTotalCompensation(row[4] != null ? ((Number) row[4]).doubleValue() : null);
+            dto.setCount(row[5] != null ? ((Number) row[5]).longValue() : 0L);
             return dto;
-        }).collect(java.util.stream.Collectors.toList());
+        }).collect(Collectors.toList());
     }
 
-    /**
-     * Two-signal confidence score (mirrors Glassdoor / Levels.fyi approach):
-     *   score = log(count + 1)  ×  recency_factor
-     * recency_factor = e^(-λ × months_since_last_entry), λ = 0.05
-     * Tiers:  HIGH ≥ 1.5 · MEDIUM ≥ 0.6 · LOW < 0.6
-     * Suppressed (tier = "INSUFFICIENT") when count < 2.
-     */
     private String[] computeConfidence(long count, LocalDateTime mostRecent) {
         if (count < 2) {
             return new String[]{"INSUFFICIENT", "Insufficient data · " + count + " entr" + (count == 1 ? "y" : "ies")};
         }
         double monthsAgo = mostRecent != null
             ? ChronoUnit.DAYS.between(mostRecent, LocalDateTime.now()) / 30.0
-            : 24.0; // assume stale if unknown
+            : 24.0;
         double recencyFactor = Math.exp(-0.05 * monthsAgo);
         double score = Math.log(count + 1) * recencyFactor;
         String tier;
@@ -515,39 +486,29 @@ public class SalaryService {
     @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'byCompany'")
     public List<SalaryAggregationDTO> getAvgSalaryByCompany() {
         return salaryEntryRepository.avgSalaryByCompanyRaw().stream().map(row -> {
-            // col order: groupKey[0], companyId[1], logoUrl[2], website[3],
-            //            avgBaseSalary[4], avgBonus[5], avgEquity[6], avgTotalComp[7], cnt[8], mostRecentEntry[9]
-            String name            = row[0] != null ? row[0].toString() : null;
-            String companyId       = row[1] != null ? row[1].toString() : null;
-            String logoUrl         = row[2] != null ? row[2].toString() : null;
-            String website         = row[3] != null ? row[3].toString() : null;
-            Double avgBase         = row[4] != null ? ((Number) row[4]).doubleValue() : null;
-            Double avgBonus        = row[5] != null ? ((Number) row[5]).doubleValue() : null;
-            Double avgEquity       = row[6] != null ? ((Number) row[6]).doubleValue() : null;
-            Double avgTotal        = row[7] != null ? ((Number) row[7]).doubleValue() : null;
-            Long   count           = row[8] != null ? ((Number) row[8]).longValue()   : 0L;
-            LocalDateTime recent   = row[9] != null ? ((java.sql.Timestamp) row[9]).toLocalDateTime() : null;
-            String[] conf          = computeConfidence(count, recent);
+            Long          count  = row[8] != null ? ((Number) row[8]).longValue()   : 0L;
+            LocalDateTime recent = row[9] != null ? ((java.sql.Timestamp) row[9]).toLocalDateTime() : null;
+            String[]      conf   = computeConfidence(count, recent);
             SalaryAggregationDTO dto = new SalaryAggregationDTO();
-            dto.setGroupKey(name);
-            dto.setCompanyId(companyId);
-            dto.setLogoUrl(logoUrl);
-            dto.setWebsite(website);
-            dto.setAvgBaseSalary(avgBase);
-            dto.setAvgBonus(avgBonus);
-            dto.setAvgEquity(avgEquity);
-            dto.setAvgTotalCompensation(avgTotal);
+            dto.setGroupKey(row[0] != null ? row[0].toString() : null);
+            dto.setCompanyId(row[1] != null ? row[1].toString() : null);
+            dto.setLogoUrl(row[2] != null ? row[2].toString() : null);
+            dto.setWebsite(row[3] != null ? row[3].toString() : null);
+            dto.setAvgBaseSalary(row[4] != null ? ((Number) row[4]).doubleValue() : null);
+            dto.setAvgBonus(row[5] != null ? ((Number) row[5]).doubleValue() : null);
+            dto.setAvgEquity(row[6] != null ? ((Number) row[6]).doubleValue() : null);
+            dto.setAvgTotalCompensation(row[7] != null ? ((Number) row[7]).doubleValue() : null);
             dto.setCount(count);
             dto.setMostRecentEntry(recent);
             dto.setConfidenceTier(conf[0]);
             dto.setConfidenceLabel(conf[1]);
             return dto;
-        }).collect(java.util.stream.Collectors.toList());
+        }).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'byCompanyLevel'")
-    public List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevel() {
+    public List<CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevel() {
         return mapCompanyLevelRows(salaryEntryRepository.avgSalaryByCompanyAndLevelRaw());
     }
 
@@ -556,8 +517,7 @@ public class SalaryService {
         value = "analytics",
         key = "'byCompanyLevel_' + T(java.util.Arrays).toString(new java.util.ArrayList(new java.util.TreeSet(#locationDisplayNames)).toArray())"
     )
-    public List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevelFiltered(
-            List<String> locationDisplayNames) {
+    public List<CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevelFiltered(List<String> locationDisplayNames) {
         List<String> locationEnumNames = locationDisplayNames.stream()
             .map(name -> {
                 for (com.salaryinsights.enums.Location loc : com.salaryinsights.enums.Location.values()) {
@@ -565,16 +525,16 @@ public class SalaryService {
                 }
                 return name;
             })
-            .collect(java.util.stream.Collectors.toList());
+            .collect(Collectors.toList());
         return mapCompanyLevelRows(salaryEntryRepository.avgSalaryByCompanyAndLevelFilteredRaw(locationEnumNames));
     }
 
-    private List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> mapCompanyLevelRows(List<Object[]> rows) {
+    private List<CompanyLevelSalaryDTO> mapCompanyLevelRows(List<Object[]> rows) {
         return rows.stream().map(row -> {
-            Long companyTotalEntries = row[10] != null ? ((Number) row[10]).longValue() : 0L;
-            LocalDateTime recent     = row[11] != null ? ((java.sql.Timestamp) row[11]).toLocalDateTime() : null;
-            String[] conf            = computeConfidence(companyTotalEntries, recent);
-            com.salaryinsights.dto.response.CompanyLevelSalaryDTO dto = new com.salaryinsights.dto.response.CompanyLevelSalaryDTO();
+            Long          companyTotalEntries = row[10] != null ? ((Number) row[10]).longValue() : 0L;
+            LocalDateTime recent             = row[11] != null ? ((java.sql.Timestamp) row[11]).toLocalDateTime() : null;
+            String[]      conf               = computeConfidence(companyTotalEntries, recent);
+            CompanyLevelSalaryDTO dto = new CompanyLevelSalaryDTO();
             dto.setCompanyName(row[0] != null ? row[0].toString() : null);
             dto.setCompanyId(row[1] != null ? row[1].toString() : null);
             dto.setLogoUrl(row[2] != null ? row[2].toString() : null);
@@ -590,22 +550,20 @@ public class SalaryService {
             dto.setConfidenceTier(conf[0]);
             dto.setConfidenceLabel(conf[1]);
             return dto;
-        }).collect(java.util.stream.Collectors.toList());
+        }).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'dashboard:' + #year + ':' + #month")
     public AdminDashboardResponse getAdminDashboard(Integer year, Integer month) {
-        // Monthly trend — always fetched (12-month window, drives the month selector)
         List<Object[]> trends = salaryEntryRepository.submissionTrendLast12Months();
         List<java.util.Map<String, Object>> trendData = trends.stream().map(row -> {
             java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
             m.put("month", row[0] != null ? row[0].toString() : "");
             m.put("count", row[1]);
             return m;
-        }).collect(java.util.stream.Collectors.toList());
+        }).collect(Collectors.toList());
 
-        // Weekly trend — only when year+month requested
         List<java.util.Map<String, Object>> weeklyData = null;
         if (year != null && month != null) {
             List<Object[]> weeks = salaryEntryRepository.submissionTrendWeeklyByMonth(year, month);
@@ -614,7 +572,6 @@ public class SalaryService {
             for (Object[] row : weeks) {
                 java.util.Map<String, Object> w = new java.util.LinkedHashMap<>();
                 String weekStart = row[0] != null ? row[0].toString() : "";
-                // Compute human-readable range: "Mar 3 – Mar 9"
                 String label = "Week " + weekNum;
                 try {
                     java.time.LocalDate start = java.time.LocalDate.parse(weekStart.substring(0, 10));
@@ -644,93 +601,51 @@ public class SalaryService {
                 .build();
     }
 
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public long getSubmissionsThisMonth() {
         LocalDateTime startOfMonth = LocalDateTime.now()
                 .withDayOfMonth(1)
                 .withHour(0).withMinute(0).withSecond(0).withNano(0);
-        return salaryEntryRepository.countByCreatedAtAfterAndReviewStatus(
-                startOfMonth, ReviewStatus.APPROVED);
+        return salaryEntryRepository.countByCreatedAtAfterAndReviewStatus(startOfMonth, ReviewStatus.APPROVED);
     }
 
-        // ──────────────────────────────────────────────────────────────
-    // Admin: Approved Salaries — list, edit, delete
-    // ──────────────────────────────────────────────────────────────
-
-    /**
-     * Returns a paginated list of APPROVED salary entries for the admin panel.
-     * Supports filtering by company ID, company name (partial), job title (partial),
-     * locations (multi), experience levels (multi), and employment type.
-     *
-     * Uses the same JpaSpecificationExecutor path as the public endpoint so it
-     * benefits from all the composite indexes added in V26.
-     *
-     * Scalability notes:
-     *  - Page size capped at 100 server-side to prevent runaway queries.
-     *  - Specification only fetches company + standardizedLevel eagerly on data
-     *    pages (not count queries), avoiding N+1 at the mapper step.
-     *  - Cache is deliberately NOT applied here: admin views must always reflect
-     *    live data and must not share the same cache region as public analytics.
-     */
     @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getApprovedSalariesAdmin(
-            UUID companyId,
-            String companyName,
-            String jobTitle,
-            java.util.List<String> locations,
-            java.util.List<String> experienceLevelStrs,
-            String employmentTypeStr,
-            Pageable pageable) {
+            UUID companyId, String companyName, String jobTitle,
+            List<String> locations, List<String> experienceLevelStrs,
+            String employmentTypeStr, Pageable pageable) {
 
-        // Normalise text filters
-        final String companyNameFilter = (companyName != null && !companyName.isBlank())
-                ? companyName.toLowerCase() : null;
-        final String jobTitleFilter = (jobTitle != null && !jobTitle.isBlank())
-                ? jobTitle.toLowerCase() : null;
+        final String companyNameFilter = (companyName != null && !companyName.isBlank()) ? companyName.toLowerCase() : null;
+        final String jobTitleFilter    = (jobTitle    != null && !jobTitle.isBlank())    ? jobTitle.toLowerCase()    : null;
 
-        // Locations: accept display names ("Bengaluru") or enum names ("BENGALURU")
-        final java.util.List<String> locationEnumNames =
-                (locations != null && !locations.isEmpty())
-                        ? locations.stream()
-                                .map(l -> {
-                                    for (com.salaryinsights.enums.Location loc
-                                            : com.salaryinsights.enums.Location.values()) {
-                                        if (loc.getDisplayName().equalsIgnoreCase(l)
-                                                || loc.name().equalsIgnoreCase(l)) {
-                                            return loc.name();
-                                        }
-                                    }
-                                    return l;
-                                })
-                                .collect(java.util.stream.Collectors.toList())
-                        : null;
+        final List<String> locationEnumNames = (locations != null && !locations.isEmpty())
+                ? locations.stream()
+                        .map(l -> {
+                            for (com.salaryinsights.enums.Location loc : com.salaryinsights.enums.Location.values()) {
+                                if (loc.getDisplayName().equalsIgnoreCase(l) || loc.name().equalsIgnoreCase(l)) return loc.name();
+                            }
+                            return l;
+                        })
+                        .collect(Collectors.toList())
+                : null;
 
-        // Experience levels
-        final java.util.List<ExperienceLevel> levelFilters =
-                (experienceLevelStrs != null && !experienceLevelStrs.isEmpty())
-                        ? experienceLevelStrs.stream()
-                                .map(s -> {
-                                    try { return ExperienceLevel.valueOf(s.toUpperCase()); }
-                                    catch (IllegalArgumentException e) { return null; }
-                                })
-                                .filter(java.util.Objects::nonNull)
-                                .collect(java.util.stream.Collectors.toList())
-                        : null;
+        final List<ExperienceLevel> levelFilters = (experienceLevelStrs != null && !experienceLevelStrs.isEmpty())
+                ? experienceLevelStrs.stream()
+                        .map(s -> { try { return ExperienceLevel.valueOf(s.toUpperCase()); } catch (IllegalArgumentException e) { return null; } })
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList())
+                : null;
 
-        // Employment type
         com.salaryinsights.enums.EmploymentType empTypeTmp = null;
         if (employmentTypeStr != null && !employmentTypeStr.isBlank()) {
-            try {
-                empTypeTmp = com.salaryinsights.enums.EmploymentType
-                        .valueOf(employmentTypeStr.toUpperCase());
-            } catch (IllegalArgumentException ignored) { }
+            try { empTypeTmp = com.salaryinsights.enums.EmploymentType.valueOf(employmentTypeStr.toUpperCase()); }
+            catch (IllegalArgumentException ignored) { }
         }
         final com.salaryinsights.enums.EmploymentType empTypeFilter = empTypeTmp;
 
         org.springframework.data.jpa.domain.Specification<SalaryEntry> spec =
                 (root, query, cb) -> {
-                    boolean isCount = query.getResultType() == Long.class
-                            || query.getResultType() == long.class;
+                    boolean isCount = query.getResultType() == Long.class || query.getResultType() == long.class;
 
                     jakarta.persistence.criteria.Join<Object, Object> companyJoin =
                             root.join("company", jakarta.persistence.criteria.JoinType.LEFT);
@@ -741,68 +656,34 @@ public class SalaryService {
                         query.distinct(true);
                     }
 
-                    java.util.List<jakarta.persistence.criteria.Predicate> predicates =
-                            new java.util.ArrayList<>();
-                    predicates.add(cb.equal(
-                            root.get("reviewStatus"),
-                            com.salaryinsights.enums.ReviewStatus.APPROVED));
+                    List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+                    predicates.add(cb.equal(root.get("reviewStatus"), com.salaryinsights.enums.ReviewStatus.APPROVED));
 
-                    if (companyId != null) {
-                        predicates.add(cb.equal(companyJoin.get("id"), companyId));
-                    }
-                    if (companyNameFilter != null) {
-                        predicates.add(cb.like(
-                                cb.lower(companyJoin.get("name")),
-                                "%" + companyNameFilter + "%"));
-                    }
-                    if (jobTitleFilter != null) {
-                        predicates.add(cb.like(
-                                cb.lower(root.get("jobTitle")),
-                                "%" + jobTitleFilter + "%"));
-                    }
-                    if (locationEnumNames != null && !locationEnumNames.isEmpty()) {
-                        predicates.add(root.get("location").in(locationEnumNames));
-                    }
-                    if (levelFilters != null && !levelFilters.isEmpty()) {
-                        predicates.add(root.get("experienceLevel").in(levelFilters));
-                    }
-                    if (empTypeFilter != null) {
-                        predicates.add(cb.equal(root.get("employmentType"), empTypeFilter));
-                    }
+                    if (companyId != null)        predicates.add(cb.equal(companyJoin.get("id"), companyId));
+                    if (companyNameFilter != null) predicates.add(cb.like(cb.lower(companyJoin.get("name")), "%" + companyNameFilter + "%"));
+                    if (jobTitleFilter != null)    predicates.add(cb.like(cb.lower(root.get("jobTitle")), "%" + jobTitleFilter + "%"));
+                    if (locationEnumNames != null && !locationEnumNames.isEmpty()) predicates.add(root.get("location").in(locationEnumNames));
+                    if (levelFilters != null && !levelFilters.isEmpty())           predicates.add(root.get("experienceLevel").in(levelFilters));
+                    if (empTypeFilter != null)     predicates.add(cb.equal(root.get("employmentType"), empTypeFilter));
 
-                    return cb.and(predicates.toArray(
-                            new jakarta.persistence.criteria.Predicate[0]));
+                    return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
                 };
 
         Page<SalaryEntry> page = salaryEntryRepository.findAll(spec, pageable);
-        List<SalaryResponse> mapped = page.getContent().stream()
-                .map(salaryMapper::toResponse)
-                .collect(java.util.stream.Collectors.toList());
+        List<SalaryResponse> mapped = page.getContent().stream().map(salaryMapper::toResponse).collect(Collectors.toList());
 
         return PagedResponse.<SalaryResponse>builder()
-                .content(mapped)
-                .page(page.getNumber())
-                .size(page.getSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .last(page.isLast())
+                .content(mapped).page(page.getNumber()).size(page.getSize())
+                .totalElements(page.getTotalElements()).totalPages(page.getTotalPages()).last(page.isLast())
                 .build();
     }
 
-    /**
-     * Partial update of an approved salary entry (admin only).
-     * Only non-null fields in the request are applied.
-     * Evicts analytics and company-list caches because editing a salary
-     * can change aggregate values shown to public users.
-     */
     @Transactional
     @org.springframework.cache.annotation.Caching(evict = {
         @org.springframework.cache.annotation.CacheEvict(value = "analytics",   allEntries = true),
         @org.springframework.cache.annotation.CacheEvict(value = "companyList", allEntries = true)
     })
-    public SalaryResponse updateApprovedSalary(
-            UUID id,
-            com.salaryinsights.dto.request.AdminSalaryUpdateRequest req) {
+    public SalaryResponse updateApprovedSalary(UUID id, com.salaryinsights.dto.request.AdminSalaryUpdateRequest req) {
 
         SalaryEntry entry = salaryEntryRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Salary entry not found: " + id));
@@ -811,27 +692,28 @@ public class SalaryService {
             throw new BadRequestException("Only APPROVED entries can be edited via this endpoint");
         }
 
-        // Apply partial updates — only non-null fields
-        if (req.getCompanyId() != null) {
+        if (req.getCompanyId()        != null) {
             Company company = companyRepository.findById(req.getCompanyId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Company not found: " + req.getCompanyId()));
+                    .orElseThrow(() -> new ResourceNotFoundException("Company not found: " + req.getCompanyId()));
             entry.setCompany(company);
         }
-        if (req.getJobTitle()           != null) entry.setJobTitle(req.getJobTitle());
-        if (req.getDepartment()          != null) entry.setDepartment(req.getDepartment());
-        if (req.getExperienceLevel()     != null) entry.setExperienceLevel(req.getExperienceLevel());
-        if (req.getCompanyInternalLevel()!= null) entry.setCompanyInternalLevel(req.getCompanyInternalLevel());
-        if (req.getLocation()            != null) entry.setLocation(req.getLocation());
-        if (req.getYearsOfExperience()   != null) entry.setYearsOfExperience(req.getYearsOfExperience());
-        if (req.getBaseSalary()          != null) entry.setBaseSalary(req.getBaseSalary());
-        if (req.getBonus()               != null) entry.setBonus(req.getBonus());
-        if (req.getEquity()              != null) entry.setEquity(req.getEquity());
-        if (req.getEmploymentType()      != null) entry.setEmploymentType(req.getEmploymentType());
+        if (req.getJobTitle()          != null) entry.setJobTitle(req.getJobTitle());
+        if (req.getDepartment()         != null) entry.setDepartment(req.getDepartment());
+        if (req.getExperienceLevel()    != null) entry.setExperienceLevel(req.getExperienceLevel());
+        if (req.getLocation()           != null) entry.setLocation(req.getLocation());
+        if (req.getYearsOfExperience()  != null) entry.setYearsOfExperience(req.getYearsOfExperience());
+        if (req.getBaseSalary()         != null) entry.setBaseSalary(req.getBaseSalary());
+        if (req.getBonus()              != null) entry.setBonus(req.getBonus());
+        if (req.getEquity()             != null) entry.setEquity(req.getEquity());
+        if (req.getEmploymentType()     != null) entry.setEmploymentType(req.getEmploymentType());
+        // Reassign standardized level if provided by admin
+        if (req.getStandardizedLevelId() != null) {
+            standardizedLevelRepository.findById(req.getStandardizedLevelId())
+                    .ifPresent(entry::setStandardizedLevel);
+        }
 
         entry = salaryEntryRepository.save(entry);
 
-        // Refresh company TC range after salary change
         UUID companyId = entry.getCompany().getId();
         companyRepository.findById(companyId).ifPresent(c -> {
             c.setTcMin(salaryEntryRepository.minTCByCompany(companyId));
@@ -845,10 +727,6 @@ public class SalaryService {
         return salaryMapper.toResponse(entry);
     }
 
-    /**
-     * Hard-deletes an approved salary entry (admin only).
-     * Evicts all analytics caches — the deleted row affected aggregates.
-     */
     @Transactional
     @org.springframework.cache.annotation.Caching(evict = {
         @org.springframework.cache.annotation.CacheEvict(value = "analytics",   allEntries = true),
@@ -867,10 +745,8 @@ public class SalaryService {
 
         auditLogService.log("SalaryEntry", id.toString(), "ADMIN_DELETED",
                 "Admin deleted approved salary for company: " + companyName);
-
         salaryEntryRepository.deleteById(id);
 
-        // Refresh company TC range after deletion
         if (companyId != null) {
             companyRepository.findById(companyId).ifPresent(c -> {
                 c.setTcMin(salaryEntryRepository.minTCByCompany(companyId));
@@ -880,82 +756,56 @@ public class SalaryService {
         }
     }
 
-
-    // ── Feature 1: Salary Benchmarker ────────────────────────────────────────
-    /**
-     * Returns percentile stats (p25/p50/p75 + avg) for TC and base salary
-     * matching the given role keyword + experience level + optional location.
-     * If the exact-match sample size is < 5, location is dropped (broadened search).
-     * If still < 5, experienceLevel is also dropped.
-     * Benchmark results are NOT cached — they are parameterised per-user input
-     * and would create unbounded cache entries. The query uses a partial index
-     * on (review_status, experience_level, location) which keeps it fast.
-     */
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public com.salaryinsights.dto.response.BenchmarkResponse getBenchmark(
             String jobTitle, String jobFunctionId, String functionLevelId, String location) {
 
-        // Resolve display names for echo in response
-        String jobFunctionDisplay = null;
-        if (jobFunctionId != null && !jobFunctionId.isBlank()) {
-            try {
-                jobFunctionRepository.findById(java.util.UUID.fromString(jobFunctionId))
-                    .ifPresent(fn -> {});
-                // fetch display name
-                var fn = jobFunctionRepository.findById(java.util.UUID.fromString(jobFunctionId));
-                jobFunctionDisplay = fn.map(f -> f.getDisplayName()).orElse(null);
-            } catch (IllegalArgumentException ignored) {}
-        }
-
+        String jobFunctionDisplay  = null;
         String functionLevelDisplay = null;
+
+        if (jobFunctionId != null && !jobFunctionId.isBlank()) {
+            try { jobFunctionDisplay = jobFunctionRepository.findById(UUID.fromString(jobFunctionId))
+                    .map(f -> f.getDisplayName()).orElse(null);
+            } catch (IllegalArgumentException ignored) {}
+        }
         if (functionLevelId != null && !functionLevelId.isBlank()) {
-            try {
-                var lv = functionLevelRepository.findById(java.util.UUID.fromString(functionLevelId));
-                functionLevelDisplay = lv.map(l -> l.getName()).orElse(null);
+            try { functionLevelDisplay = functionLevelRepository.findById(UUID.fromString(functionLevelId))
+                    .map(l -> l.getName()).orElse(null);
             } catch (IllegalArgumentException ignored) {}
         }
 
-        // Normalise location: display name or enum name
         String normLocation = null;
         if (location != null && !location.isBlank()) {
             for (com.salaryinsights.enums.Location loc : com.salaryinsights.enums.Location.values()) {
                 if (loc.getDisplayName().equalsIgnoreCase(location) || loc.name().equalsIgnoreCase(location)) {
-                    normLocation = loc.name();
-                    break;
+                    normLocation = loc.name(); break;
                 }
             }
             if (normLocation == null) normLocation = location.toUpperCase();
         }
 
-        String normTitle        = (jobTitle != null && !jobTitle.isBlank()) ? jobTitle.trim() : null;
-        String normFunctionId   = (jobFunctionId != null && !jobFunctionId.isBlank()) ? jobFunctionId.trim() : null;
-        String normLevelId      = (functionLevelId != null && !functionLevelId.isBlank()) ? functionLevelId.trim() : null;
+        String normTitle      = (jobTitle      != null && !jobTitle.isBlank())      ? jobTitle.trim()      : null;
+        String normFunctionId = (jobFunctionId  != null && !jobFunctionId.isBlank()) ? jobFunctionId.trim() : null;
+        String normLevelId    = (functionLevelId != null && !functionLevelId.isBlank()) ? functionLevelId.trim() : null;
 
-        // Attempt exact match (function + level + location)
-        java.util.List<Object[]> rows = salaryEntryRepository.benchmarkRaw(normTitle, normFunctionId, normLevelId, normLocation);
+        List<Object[]> rows = salaryEntryRepository.benchmarkRaw(normTitle, normFunctionId, normLevelId, normLocation);
         Object[] row = (rows != null && !rows.isEmpty()) ? rows.get(0) : null;
         long count = row != null && row[10] != null ? ((Number) row[10]).longValue() : 0L;
         boolean broadened = false;
         String broadeningReason = null;
 
-        // Broaden 1: drop specific level, keep function + location
         if (count < 5 && normLevelId != null) {
             rows = salaryEntryRepository.benchmarkRaw(normTitle, normFunctionId, null, normLocation);
             row = (rows != null && !rows.isEmpty()) ? rows.get(0) : null;
             count = row != null && row[10] != null ? ((Number) row[10]).longValue() : 0L;
-            broadened = true;
-            broadeningReason = "Level filter removed to expand sample";
+            broadened = true; broadeningReason = "Level filter removed to expand sample";
         }
-
-        // Broaden 2: drop location too, keep function only
         if (count < 5 && normLocation != null) {
             rows = salaryEntryRepository.benchmarkRaw(normTitle, normFunctionId, null, null);
             row = (rows != null && !rows.isEmpty()) ? rows.get(0) : null;
             count = row != null && row[10] != null ? ((Number) row[10]).longValue() : 0L;
             broadeningReason = "Level and location filters removed to expand sample";
         }
-
-        // Broaden 3: drop function too — match on job title only
         if (count < 5 && normFunctionId != null) {
             rows = salaryEntryRepository.benchmarkRaw(normTitle, null, null, null);
             row = (rows != null && !rows.isEmpty()) ? rows.get(0) : null;
@@ -965,77 +815,53 @@ public class SalaryService {
 
         if (row == null || count == 0) {
             return com.salaryinsights.dto.response.BenchmarkResponse.builder()
-                    .role(normTitle)
-                    .jobFunction(jobFunctionDisplay)
-                    .level(functionLevelDisplay)
-                    .location(normLocation)
-                    .sampleSize(0)
-                    .broadened(true)
-                    .broadeningReason("No matching salary data found")
-                    .build();
+                    .role(normTitle).jobFunction(jobFunctionDisplay).level(functionLevelDisplay)
+                    .location(normLocation).sampleSize(0).broadened(true)
+                    .broadeningReason("No matching salary data found").build();
         }
 
         return com.salaryinsights.dto.response.BenchmarkResponse.builder()
-                .role(normTitle)
-                .jobFunction(jobFunctionDisplay)
-                .level(functionLevelDisplay)
-                .location(normLocation)
-                .sampleSize(count)
-                .p25Tc(row[0] != null ? new java.math.BigDecimal(row[0].toString()) : null)
-                .p50Tc(row[1] != null ? new java.math.BigDecimal(row[1].toString()) : null)
-                .p75Tc(row[2] != null ? new java.math.BigDecimal(row[2].toString()) : null)
-                .avgTc(row[3] != null ? new java.math.BigDecimal(row[3].toString()) : null)
+                .role(normTitle).jobFunction(jobFunctionDisplay).level(functionLevelDisplay)
+                .location(normLocation).sampleSize(count)
+                .p25Tc(row[0]  != null ? new java.math.BigDecimal(row[0].toString())  : null)
+                .p50Tc(row[1]  != null ? new java.math.BigDecimal(row[1].toString())  : null)
+                .p75Tc(row[2]  != null ? new java.math.BigDecimal(row[2].toString())  : null)
+                .avgTc(row[3]  != null ? new java.math.BigDecimal(row[3].toString())  : null)
                 .p25Base(row[4] != null ? new java.math.BigDecimal(row[4].toString()) : null)
                 .p50Base(row[5] != null ? new java.math.BigDecimal(row[5].toString()) : null)
                 .p75Base(row[6] != null ? new java.math.BigDecimal(row[6].toString()) : null)
                 .avgBase(row[7] != null ? new java.math.BigDecimal(row[7].toString()) : null)
-                .avgBonus(row[8] != null ? new java.math.BigDecimal(row[8].toString()) : null)
+                .avgBonus(row[8]  != null ? new java.math.BigDecimal(row[8].toString())  : null)
                 .avgEquity(row[9] != null ? new java.math.BigDecimal(row[9].toString()) : null)
-                .broadened(broadened)
-                .broadeningReason(broadeningReason)
-                .build();
+                .broadened(broadened).broadeningReason(broadeningReason).build();
     }
 
-    // ── Feature 2: Salary Trends ──────────────────────────────────────────────
-    /**
-     * Returns recent (0-6 months) vs prior (6-12 months) avg TC per company.
-     * Used to render ↑ ↓ → trend arrows on salary rows.
-     * Cached on "analytics" (1h TTL) — same eviction points as other analytics.
-     */
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'salaryTrends'")
-    public java.util.List<com.salaryinsights.dto.response.CompanyTrendDTO> getSalaryTrends() {
+    public List<com.salaryinsights.dto.response.CompanyTrendDTO> getSalaryTrends() {
         return salaryEntryRepository.salaryTrendsRaw().stream().map(row -> {
-            String companyIdStr = row[0] != null ? row[0].toString() : null;
-            java.util.UUID companyId = null;
-            try { if (companyIdStr != null) companyId = java.util.UUID.fromString(companyIdStr); }
-            catch (IllegalArgumentException ignored) {}
-            String companyName   = row[1] != null ? row[1].toString() : null;
-            java.math.BigDecimal recentAvg = row[2] != null ? new java.math.BigDecimal(row[2].toString()) : null;
-            java.math.BigDecimal priorAvg  = row[3] != null ? new java.math.BigDecimal(row[3].toString()) : null;
-            long recentCount = row[4] != null ? ((Number) row[4]).longValue() : 0L;
-            long priorCount  = row[5] != null ? ((Number) row[5]).longValue() : 0L;
+            String idStr = row[0] != null ? row[0].toString() : null;
+            UUID cId = null;
+            try { if (idStr != null) cId = UUID.fromString(idStr); } catch (IllegalArgumentException ignored) {}
             return new com.salaryinsights.dto.response.CompanyTrendDTO(
-                    companyId, companyName, recentAvg, priorAvg, recentCount, priorCount);
-        }).collect(java.util.stream.Collectors.toList());
+                    cId,
+                    row[1] != null ? row[1].toString() : null,
+                    row[2] != null ? new java.math.BigDecimal(row[2].toString()) : null,
+                    row[3] != null ? new java.math.BigDecimal(row[3].toString()) : null,
+                    row[4] != null ? ((Number) row[4]).longValue() : 0L,
+                    row[5] != null ? ((Number) row[5]).longValue() : 0L);
+        }).collect(Collectors.toList());
     }
 
-    // ── Feature 3: Hiring Now ─────────────────────────────────────────────────
-    /**
-     * Returns companyId → open role count for all companies with ≥1 LIVE opportunity.
-     * Cached on "companyList" (5-min TTL) — evicted on any opportunity approval/change.
-     */
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     @org.springframework.cache.annotation.Cacheable(value = "companyList", key = "'hiringNow'")
-    public java.util.List<com.salaryinsights.dto.response.CompanyHiringDTO> getHiringNow() {
+    public List<com.salaryinsights.dto.response.CompanyHiringDTO> getHiringNow() {
         return opportunityRepository.companyOpenRoleCountsRaw().stream().map(row -> {
             String idStr = row[0] != null ? row[0].toString() : null;
-            java.util.UUID companyId = null;
-            try { if (idStr != null) companyId = java.util.UUID.fromString(idStr); }
-            catch (IllegalArgumentException ignored) {}
-            long openRoles = row[1] != null ? ((Number) row[1]).longValue() : 0L;
-            return new com.salaryinsights.dto.response.CompanyHiringDTO(companyId, openRoles);
-        }).collect(java.util.stream.Collectors.toList());
+            UUID cId = null;
+            try { if (idStr != null) cId = UUID.fromString(idStr); } catch (IllegalArgumentException ignored) {}
+            return new com.salaryinsights.dto.response.CompanyHiringDTO(
+                    cId, row[1] != null ? ((Number) row[1]).longValue() : 0L);
+        }).collect(Collectors.toList());
     }
-
 }

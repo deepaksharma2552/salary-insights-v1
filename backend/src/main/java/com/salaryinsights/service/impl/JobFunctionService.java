@@ -6,10 +6,12 @@ import com.salaryinsights.dto.response.FunctionLevelResponse;
 import com.salaryinsights.dto.response.JobFunctionResponse;
 import com.salaryinsights.entity.FunctionLevel;
 import com.salaryinsights.entity.JobFunction;
+import com.salaryinsights.entity.StandardizedLevel;
 import com.salaryinsights.exception.BadRequestException;
 import com.salaryinsights.exception.ResourceNotFoundException;
 import com.salaryinsights.repository.FunctionLevelRepository;
 import com.salaryinsights.repository.JobFunctionRepository;
+import com.salaryinsights.repository.StandardizedLevelRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -24,16 +26,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class JobFunctionService {
 
-    private final JobFunctionRepository    functionRepo;
-    private final FunctionLevelRepository  levelRepo;
+    private final JobFunctionRepository       functionRepo;
+    private final FunctionLevelRepository     levelRepo;
+    private final StandardizedLevelRepository standardizedLevelRepo;
 
     // ── Public read — cached ──────────────────────────────────────────────────
 
-    /**
-     * Returns all functions with their levels in one query.
-     * Cached under "referenceData" — TTL 24h in Caffeine config.
-     * Cache is evicted on any admin write (add/edit/delete function or level).
-     */
     @Transactional(readOnly = true)
     @Cacheable(value = "referenceData", key = "'jobFunctions'")
     public List<JobFunctionResponse> getAllFunctionsWithLevels() {
@@ -73,7 +71,7 @@ public class JobFunctionService {
     public void deleteFunction(UUID id) {
         JobFunction jf = functionRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Function not found: " + id));
-        functionRepo.delete(jf); // cascade deletes all levels
+        functionRepo.delete(jf);
     }
 
     // ── Admin: Levels ─────────────────────────────────────────────────────────
@@ -86,11 +84,12 @@ public class JobFunctionService {
         if (levelRepo.existsByJobFunctionIdAndName(req.getJobFunctionId(), req.getName().trim())) {
             throw new BadRequestException("Level '" + req.getName() + "' already exists in " + jf.getDisplayName());
         }
+        StandardizedLevel sl = resolveStandardizedLevel(req.getStandardizedLevelId());
         FunctionLevel fl = FunctionLevel.builder()
                 .jobFunction(jf)
                 .name(req.getName().trim())
                 .sortOrder(req.getSortOrder())
-                .internalLevel(req.getInternalLevel())
+                .standardizedLevel(sl)
                 .build();
         return toLevelResponse(levelRepo.save(fl));
     }
@@ -102,7 +101,7 @@ public class JobFunctionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Level not found: " + id));
         fl.setName(req.getName().trim());
         fl.setSortOrder(req.getSortOrder());
-        fl.setInternalLevel(req.getInternalLevel());
+        fl.setStandardizedLevel(resolveStandardizedLevel(req.getStandardizedLevelId()));
         return toLevelResponse(levelRepo.save(fl));
     }
 
@@ -112,6 +111,15 @@ public class JobFunctionService {
         FunctionLevel fl = levelRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Level not found: " + id));
         levelRepo.delete(fl);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /** Returns the StandardizedLevel for the given UUID, or null if id is null. */
+    private StandardizedLevel resolveStandardizedLevel(UUID id) {
+        if (id == null) return null;
+        return standardizedLevelRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Standardized level not found: " + id));
     }
 
     // ── Mappers ───────────────────────────────────────────────────────────────
@@ -133,7 +141,10 @@ public class JobFunctionService {
         r.setId(fl.getId());
         r.setName(fl.getName());
         r.setSortOrder(fl.getSortOrder());
-        r.setInternalLevel(fl.getInternalLevel() != null ? fl.getInternalLevel().name() : null);
+        if (fl.getStandardizedLevel() != null) {
+            r.setStandardizedLevelId(fl.getStandardizedLevel().getId());
+            r.setStandardizedLevelName(fl.getStandardizedLevel().getName());
+        }
         return r;
     }
 }

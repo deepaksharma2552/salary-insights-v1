@@ -29,7 +29,11 @@ public class AdminSalaryUpdateRequest {
 
     private ExperienceLevel experienceLevel;
 
-    private com.salaryinsights.enums.InternalLevel companyInternalLevel;
+    /**
+     * Reassign the standardized level (replaces old companyInternalLevel enum field).
+     * Pass the UUID of the desired standardized_levels row, or null to leave unchanged.
+     */
+    private UUID standardizedLevelId;
 
     private com.salaryinsights.enums.Location location;
 

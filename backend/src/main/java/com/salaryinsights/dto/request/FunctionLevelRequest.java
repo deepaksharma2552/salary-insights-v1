@@ -19,6 +19,9 @@ public class FunctionLevelRequest {
     @NotNull @Min(0)
     private Integer sortOrder;
 
-    /** Optional mapping to InternalLevel enum — null means no mapping. */
-    private com.salaryinsights.enums.InternalLevel internalLevel;
+    /**
+     * Optional FK to standardized_levels.id — null means no cross-function mapping.
+     * Replaces the old InternalLevel enum field.
+     */
+    private UUID standardizedLevelId;
 }
