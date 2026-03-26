@@ -60,6 +60,11 @@ public class PublicSalaryController {
         return ResponseEntity.ok(ApiResponse.success(salaryService.getSubmissionsThisMonth()));
     }
 
+    @GetMapping("/stats/last-month")
+    public ResponseEntity<ApiResponse<Long>> getSubmissionsLastMonth() {
+        return ResponseEntity.ok(ApiResponse.success(salaryService.getSubmissionsLastMonth()));
+    }
+
     @GetMapping("/analytics/by-company")
     public ResponseEntity<ApiResponse<List<SalaryAggregationDTO>>> getByCompany() {
         return ResponseEntity.ok(ApiResponse.success(salaryService.getAvgSalaryByCompany()));
