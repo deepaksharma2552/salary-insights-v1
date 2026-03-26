@@ -417,84 +417,6 @@ export default function HomePage() {
               <Link to="/submit" className="btn-hero btn-hero-secondary">Share My Salary →</Link>
             </div>
 
-            {/* ── Benchmark banner — sits below CTAs, aligns with stat cards ── */}
-            <style>{`
-              .benchmark-banner {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 14px;
-                background: var(--panel);
-                border: 1px solid var(--border);
-                border-radius: 10px;
-                padding: 13px 16px;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-                transition: border-color 0.15s, box-shadow 0.15s;
-                cursor: pointer;
-                margin-top: 16px;
-                text-decoration: none;
-              }
-              .benchmark-banner:hover {
-                border-color: #3b82f6;
-                box-shadow: 0 2px 8px rgba(59,130,246,0.12);
-              }
-              .benchmark-banner-btn {
-                font-size: 12px;
-                font-weight: 600;
-                padding: 7px 14px;
-                border-radius: 7px;
-                background: #1e40af;
-                color: #fff;
-                white-space: nowrap;
-                flex-shrink: 0;
-              }
-              @media (max-width: 768px) {
-                .benchmark-banner {
-                  margin-top: 14px;
-                  flex-wrap: nowrap;
-                  padding: 12px 14px;
-                }
-                .benchmark-banner-btn {
-                  font-size: 11px;
-                  padding: 6px 11px;
-                }
-              }
-              @media (max-width: 390px) {
-                .benchmark-banner {
-                  flex-direction: column;
-                  align-items: flex-start;
-                  gap: 10px;
-                }
-                .benchmark-banner-btn {
-                  width: 100%;
-                  text-align: center;
-                }
-              }
-            `}</style>
-            <Link to="/salaries?tab=benchmark" className="benchmark-banner">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: 9, flexShrink: 0,
-                  background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round">
-                    <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-                  </svg>
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.3 }}>
-                    Got an offer? See how it stacks up.
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                    Benchmark against {totalEntries != null ? fmtCount(totalEntries) : '—'} data points across {totalCompanies != null ? fmtCount(totalCompanies) : '—'} companies.
-                  </div>
-                </div>
-              </div>
-              <div className="benchmark-banner-btn">
-                Benchmark my offer →
-              </div>
-            </Link>
           </div>
 
           {/* Right: stat cards — skeleton while loading, trend badge on "this month" */}
@@ -565,6 +487,74 @@ export default function HomePage() {
           </div>
 
         </div>
+
+        {/* ── Benchmark banner — full width below both columns ── */}
+        <style>{`
+          .benchmark-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 13px 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: border-color 0.15s, box-shadow 0.15s;
+            cursor: pointer;
+            margin-top: 20px;
+            text-decoration: none;
+          }
+          .benchmark-banner:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 2px 8px rgba(59,130,246,0.12);
+          }
+          .benchmark-banner-btn {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 7px 14px;
+            border-radius: 7px;
+            background: #1e40af;
+            color: #fff;
+            white-space: nowrap;
+            flex-shrink: 0;
+          }
+          @media (max-width: 768px) {
+            .benchmark-banner { padding: 12px 14px; flex-wrap: nowrap; }
+            .benchmark-banner-btn { font-size: 11px; padding: 6px 11px; }
+          }
+          @media (max-width: 390px) {
+            .benchmark-banner { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .benchmark-banner-btn { width: 100%; text-align: center; }
+          }
+        `}</style>
+        <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+          <Link to="/salaries?tab=benchmark" className="benchmark-banner">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+                background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round">
+                  <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.3 }}>
+                  Got an offer? See how it stacks up.
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                  Benchmark against {totalEntries != null ? fmtCount(totalEntries) : '—'} real data points across {totalCompanies != null ? fmtCount(totalCompanies) : '—'} companies.
+                </div>
+              </div>
+            </div>
+            <div className="benchmark-banner-btn">
+              Benchmark my offer →
+            </div>
+          </Link>
+        </div>
+
       </section>
 
 
