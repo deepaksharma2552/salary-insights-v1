@@ -7,9 +7,11 @@ export default function Navbar() {
   const navigate          = useNavigate();
   const { user, logout }  = useContext(AuthContext);
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [mobileOpen, setMobileOpen]     = useState(false);
-  const dropdownRef = useRef(null);
+  const [dropdownOpen, setDropdownOpen]       = useState(false);
+  const [salariesOpen, setSalariesOpen]       = useState(false);
+  const [mobileOpen, setMobileOpen]           = useState(false);
+  const dropdownRef  = useRef(null);
+  const salariesRef  = useRef(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -21,6 +23,9 @@ export default function Navbar() {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setDropdownOpen(false);
       }
+      if (salariesRef.current && !salariesRef.current.contains(e.target)) {
+        setSalariesOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -28,6 +33,7 @@ export default function Navbar() {
 
   useEffect(() => {
     setDropdownOpen(false);
+    setSalariesOpen(false);
     setMobileOpen(false);
   }, [location.pathname]);
 
@@ -67,6 +73,53 @@ export default function Navbar() {
           z-index: 200;
           animation: dropdownIn 0.15s ease;
         }
+        .salaries-dropdown-menu {
+          position: absolute;
+          top: calc(100% + 8px);
+          left: 0;
+          min-width: 280px;
+          background: var(--panel);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+          z-index: 200;
+          animation: dropdownIn 0.15s ease;
+          padding: 6px;
+        }
+        .salaries-menu-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          padding: 9px 10px;
+          border-radius: 8px;
+          text-decoration: none;
+          transition: background 0.1s;
+          cursor: pointer;
+        }
+        .salaries-menu-item:hover { background: var(--bg-3); }
+        .salaries-menu-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          margin-top: 1px;
+        }
+        .salaries-menu-label {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text-1);
+          line-height: 1.3;
+        }
+        .salaries-menu-desc {
+          font-size: 12px;
+          color: var(--text-3);
+          margin-top: 2px;
+          line-height: 1.4;
+        }
+        .salaries-menu-divider { height: 1px; background: var(--border); margin: 4px 0; }
         @keyframes dropdownIn {
           from { opacity: 0; transform: translateY(-6px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -148,7 +201,75 @@ export default function Navbar() {
       {/* ── NAV LINKS (desktop only) ── */}
       <ul className="nav-links">
         <li><Link to="/"             className={isActive('/')}>Home</Link></li>
-        <li><Link to="/salaries"     className={isActive('/salaries')}>Salaries</Link></li>
+        <li ref={salariesRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setSalariesOpen(o => !o)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              fontSize: 'inherit', fontFamily: 'inherit', padding: '6px 2px',
+              color: ['/salaries', '/level-guide', '/benchmark'].includes(location.pathname)
+                ? 'var(--text-1)' : 'var(--text-2)',
+              fontWeight: ['/salaries', '/level-guide', '/benchmark'].includes(location.pathname) ? 600 : 400,
+            }}
+          >
+            Salaries
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+              style={{ transition: 'transform 0.18s', transform: salariesOpen ? 'rotate(180deg)' : 'none', opacity: 0.6 }}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+
+          {salariesOpen && (
+            <div className="salaries-dropdown-menu">
+              <Link to="/salaries" className="salaries-menu-item">
+                <div className="salaries-menu-icon" style={{ background: 'rgba(59,130,246,0.1)' }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="8" y1="13" x2="16" y2="13"/>
+                    <line x1="8" y1="17" x2="13" y2="17"/>
+                  </svg>
+                </div>
+                <div>
+                  <div className="salaries-menu-label">Salary database</div>
+                  <div className="salaries-menu-desc">Browse real salaries by role, company &amp; location</div>
+                </div>
+              </Link>
+              <Link to="/salaries?tab=levels" className="salaries-menu-item">
+                <div className="salaries-menu-icon" style={{ background: 'rgba(139,92,246,0.1)' }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                  </svg>
+                </div>
+                <div>
+                  <div className="salaries-menu-label">Level guide</div>
+                  <div className="salaries-menu-desc">Understand career levels across companies</div>
+                </div>
+              </Link>
+              <Link to="/salaries?tab=benchmark" className="salaries-menu-item">
+                <div className="salaries-menu-icon" style={{ background: 'rgba(16,185,129,0.1)' }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2">
+                    <line x1="18" y1="20" x2="18" y2="10"/>
+                    <line x1="12" y1="20" x2="12" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="14"/>
+                  </svg>
+                </div>
+                <div>
+                  <div className="salaries-menu-label">Benchmark my offer</div>
+                  <div className="salaries-menu-desc">See how your offer stacks up in the market</div>
+                </div>
+              </Link>
+              <div className="salaries-menu-divider" />
+              <Link to="/submit" className="salaries-menu-item" style={{ padding: '7px 10px' }}>
+                <div style={{ fontSize: 12, color: '#3b82f6', fontWeight: 500 }}>
+                  ₹ Share your salary → help the community
+                </div>
+              </Link>
+            </div>
+          )}
+        </li>
         <li><Link to="/companies"    className={isActive('/companies')}>Companies</Link></li>
         <li><Link to="/dashboard"    className={isActive('/dashboard')}>Analytics</Link></li>
         <li><Link to="/opportunities" className={isActive('/opportunities')}>Opportunities</Link></li>
@@ -328,11 +449,12 @@ export default function Navbar() {
 
         <ul className="mobile-nav-links">
           <li><Link to="/"              className={isActive('/')}>🏠 Home</Link></li>
-          <li><Link to="/salaries"      className={isActive('/salaries')}>💰 Salaries</Link></li>
+          <li><Link to="/salaries"      className={isActive('/salaries')}>💰 Salary database</Link></li>
+          <li><Link to="/salaries?tab=levels"    className={location.search.includes('tab=levels') ? 'active' : ''}>🗂 Level guide</Link></li>
+          <li><Link to="/salaries?tab=benchmark" className={location.search.includes('tab=benchmark') ? 'active' : ''}>📊 Benchmark my offer</Link></li>
           <li><Link to="/companies"     className={isActive('/companies')}>🏢 Companies</Link></li>
           <li><Link to="/dashboard"     className={isActive('/dashboard')}>📊 Analytics</Link></li>
           <li><Link to="/opportunities" className={isActive('/opportunities')}>🎯 Opportunities</Link></li>
-          <li><Link to="/level-guide"   className={isActive('/level-guide')}>🗂 Level Guide</Link></li>
           {user?.role === 'ADMIN' && (
             <li><Link to="/admin" className={isActive('/admin')}>⚙️ Admin</Link></li>
           )}
