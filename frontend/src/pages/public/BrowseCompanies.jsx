@@ -78,6 +78,7 @@ function CompanyCard({ company, openRoles, onViewRoles }) {
       border: '1px solid #e8ecf0', overflow: 'hidden',
       boxShadow: '0 1px 4px rgba(0,0,0,0.06)', transition: 'box-shadow 0.2s',
     }}>
+      <style>{`@keyframes rippleStat { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.4); opacity: 0; } }`}</style>
       {/* Card Header */}
       <div style={{ padding: '16px 16px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
@@ -97,36 +98,15 @@ function CompanyCard({ company, openRoles, onViewRoles }) {
               <span style={{ fontWeight: '700', fontSize: '15px', color: '#0f172a', lineHeight: 1.3 }}>
                 {company.name}
               </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                {openRoles > 0 && (
-                  <button
-                    onClick={() => onViewRoles(company.name)}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: '4px',
-                      fontSize: '11px', fontWeight: '700',
-                      color: '#16a34a', background: '#dcfce7',
-                      border: '1px solid #bbf7d0', borderRadius: '20px',
-                      padding: '3px 8px', whiteSpace: 'nowrap',
-                      cursor: 'pointer',
-                    }}
-                    title={`View ${openRoles} open ${openRoles === 1 ? 'role' : 'roles'} on Opportunities Board`}
-                  >
-                    <svg width="6" height="6" viewBox="0 0 8 8" fill="#16a34a" style={{ flexShrink: 0 }}>
-                      <circle cx="4" cy="4" r="4"/>
-                    </svg>
-                    {openRoles} open {openRoles === 1 ? 'role' : 'roles'}
-                  </button>
-                )}
-                {company.entryCount > 0 && (
-                  <span style={{
-                    fontSize: '11px', fontWeight: '600', color: '#64748b',
-                    background: '#f1f5f9', borderRadius: '20px', padding: '3px 8px',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {company.entryCount} {company.entryCount === 1 ? 'entry' : 'entries'}
-                  </span>
-                )}
-              </div>
+              {company.entryCount > 0 && (
+                <span style={{
+                  fontSize: '11px', fontWeight: '600', color: '#64748b',
+                  background: '#f1f5f9', borderRadius: '20px', padding: '3px 8px',
+                  whiteSpace: 'nowrap', flexShrink: 0,
+                }}>
+                  {company.entryCount} {company.entryCount === 1 ? 'entry' : 'entries'}
+                </span>
+              )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
               <span style={{
@@ -139,6 +119,36 @@ function CompanyCard({ company, openRoles, onViewRoles }) {
             </div>
           </div>
         </div>
+
+        {/* Open roles row — only shown when there are openings */}
+        {openRoles > 0 && (
+          <button
+            onClick={() => onViewRoles(company.name)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              width: '100%', marginTop: '10px',
+              padding: '7px 10px', borderRadius: '8px',
+              background: '#f0fdf4', border: '1px solid #bbf7d0',
+              cursor: 'pointer', textAlign: 'left',
+            }}
+            title={`View ${openRoles} open ${openRoles === 1 ? 'role' : 'roles'} on Opportunities Board`}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 8, height: 8, flexShrink: 0 }}>
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22c55e', animation: 'rippleStat 1.8s ease-out infinite' }} />
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22c55e', animation: 'rippleStat 1.8s .6s ease-out infinite' }} />
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', position: 'relative', zIndex: 1 }} />
+              </div>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: '#166534' }}>{openRoles}</span>
+              <span style={{ fontSize: '12px', color: '#166534', opacity: 0.8 }}>
+                open {openRoles === 1 ? 'role' : 'roles'}
+              </span>
+            </div>
+            <span style={{ fontSize: '11px', fontWeight: '600', color: '#166534', opacity: 0.7 }}>
+              View →
+            </span>
+          </button>
+        )}
 
         {/* TC Range pill */}
         <div style={{

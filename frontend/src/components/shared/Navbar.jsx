@@ -201,7 +201,10 @@ export default function Navbar() {
       {/* ── NAV LINKS (desktop only) ── */}
       <ul className="nav-links">
         <li><Link to="/"             className={isActive('/')}>Home</Link></li>
-        <li ref={salariesRef} style={{ position: 'relative' }}>
+        <li ref={salariesRef} style={{ position: 'relative' }}
+          onMouseEnter={() => setSalariesOpen(true)}
+          onMouseLeave={() => setSalariesOpen(false)}
+        >
           <button
             onClick={() => setSalariesOpen(o => !o)}
             style={{
