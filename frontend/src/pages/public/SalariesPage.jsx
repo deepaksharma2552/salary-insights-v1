@@ -46,8 +46,10 @@ export default function SalariesPage() {
   const locationOptions = [{ value: '', label: 'All Locations' }, ...locations];
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // ── Read initial state from URL ──
-  const [view, setView] = useState('salaries');
+  const [view, setView] = useState(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    return ['salaries', 'levels', 'benchmark'].includes(tab) ? tab : 'salaries';
+  });
 
   const [rows,          setRows]          = useState([]);
   const [loading,       setLoading]       = useState(true);

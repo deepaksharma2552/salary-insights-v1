@@ -14,16 +14,16 @@ function fmtCount(n) {
 }
 
 /* ── JourneyCard — desktop only (unchanged) ─────────────────────────────── */
-function JourneyCard({ emoji, title, desc, stats, actions, amber, featured, green, purple }) {
+function JourneyCard({ emoji, title, desc, stats, actions, amber, featured, green, purple, negotiation, highlights }) {
   return (
     <div style={{
-      background: amber ? 'linear-gradient(135deg,#fffbeb,#fef3c7)' : featured ? 'linear-gradient(135deg,#f0f9ff,#e0f2fe)' : 'var(--panel)',
-      border: amber ? '1px solid #fde68a' : featured ? '2px solid #0ea5e9' : '1px solid var(--border)',
+      background: negotiation ? 'linear-gradient(145deg,#f8faff,#f0fdf9)' : amber ? 'linear-gradient(135deg,#fffbeb,#fef3c7)' : featured ? 'linear-gradient(135deg,#f0f9ff,#e0f2fe)' : 'var(--panel)',
+      border: negotiation ? '1.5px solid #99f6e4' : amber ? '1px solid #fde68a' : featured ? '2px solid #0ea5e9' : '1px solid var(--border)',
       borderRadius: 14,
       padding: 18,
       display: 'flex',
       flexDirection: 'column',
-      boxShadow: featured ? '0 4px 20px rgba(14,165,233,0.15)' : 'none',
+      boxShadow: negotiation ? '0 4px 20px rgba(6,182,212,0.10)' : featured ? '0 4px 20px rgba(14,165,233,0.15)' : 'none',
       position: 'relative',
       overflow: 'hidden',
     }}>
@@ -38,22 +38,58 @@ function JourneyCard({ emoji, title, desc, stats, actions, amber, featured, gree
         </div>
       )}
       <div style={{ fontSize: 22, marginBottom: 10, height: 30, display: 'flex', alignItems: 'center' }}>{emoji}</div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: amber ? '#78350f' : featured ? '#0284c7' : purple ? '#6d28d9' : 'var(--text-1)', lineHeight: 1.35, minHeight: 38, marginBottom: 8 }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: negotiation ? '#0e7490' : amber ? '#78350f' : featured ? '#0284c7' : purple ? '#6d28d9' : 'var(--text-1)', lineHeight: 1.35, minHeight: 38, marginBottom: 8 }}>
         {title}
       </div>
       <div style={{ fontSize: 12, color: amber ? '#92400e' : 'var(--text-2)', lineHeight: 1.65, height: 60, overflow: 'hidden', marginBottom: 14 }}>
         {desc}
       </div>
-      <div style={{ display: 'flex', border: amber ? '1px solid #fcd34d' : '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: 52, flexShrink: 0, marginBottom: 12 }}>
-        {stats.map((s, i) => (
-          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 4px', borderRight: i < stats.length - 1 ? (amber ? '1px solid #fcd34d' : '1px solid var(--border)') : 'none', background: amber ? 'rgba(255,255,255,0.5)' : 'transparent' }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: amber ? '#78350f' : featured ? '#0284c7' : purple ? '#6d28d9' : 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>
-              {s.value ?? <span style={{ opacity: 0.3 }}>—</span>}
-            </div>
-            <div style={{ fontSize: 10, color: amber ? '#92400e' : 'var(--text-3)', marginTop: 3, textAlign: 'center' }}>{s.label}</div>
+
+      {/* Negotiation card: feature highlight tiles */}
+      {negotiation && highlights ? (
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 12 }}>
+            {highlights.map((h, i) => (
+              <Link key={i} to={h.to} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                background: h.bg, border: `1px solid ${h.border}`,
+                borderRadius: 9, padding: '9px 11px', textDecoration: 'none',
+                transition: 'filter 0.15s',
+              }}>
+                <span style={{ fontSize: 18, lineHeight: 1 }}>{h.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: h.color, lineHeight: 1.2 }}>{h.label}</div>
+                  <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.sub}</div>
+                </div>
+                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke={h.color} strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+              </Link>
+            ))}
           </div>
-        ))}
-      </div>
+          {/* Compact stats strip */}
+          <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: 44, flexShrink: 0, marginBottom: 12 }}>
+            {stats.map((s, i) => (
+              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 4px', borderRight: i < stats.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#0e7490', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>
+                  {s.value ?? <span style={{ opacity: 0.3 }}>—</span>}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-3)', marginTop: 3, textAlign: 'center' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div style={{ display: 'flex', border: amber ? '1px solid #fcd34d' : '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: 52, flexShrink: 0, marginBottom: 12 }}>
+          {stats.map((s, i) => (
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 4px', borderRight: i < stats.length - 1 ? (amber ? '1px solid #fcd34d' : '1px solid var(--border)') : 'none', background: amber ? 'rgba(255,255,255,0.5)' : 'transparent' }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: amber ? '#78350f' : featured ? '#0284c7' : purple ? '#6d28d9' : 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>
+                {s.value ?? <span style={{ opacity: 0.3 }}>—</span>}
+              </div>
+              <div style={{ fontSize: 10, color: amber ? '#92400e' : 'var(--text-3)', marginTop: 3, textAlign: 'center' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={{ flex: 1 }} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
         {actions.map((a, i) => (
@@ -84,6 +120,7 @@ function MobileJourneyCarousel({ cards }) {
   }
 
   const cardBg = (card) => {
+    if (card.negotiation) return { bg: 'linear-gradient(145deg,#f8faff,#f0fdf9)', border: '1.5px solid #99f6e4' };
     if (card.featured) return { bg: '#eff6ff', border: '1.5px solid #bfdbfe' };
     if (card.purple)   return { bg: '#fdfbff', border: '0.5px solid #ede9fe' };
     if (card.amber)    return { bg: '#fffbeb', border: '0.5px solid #fde68a' };
@@ -91,6 +128,7 @@ function MobileJourneyCarousel({ cards }) {
   };
 
   const titleColor = (card) => {
+    if (card.negotiation) return '#0e7490';
     if (card.featured) return '#1e3a8a';
     if (card.purple)   return '#3b0764';
     if (card.amber)    return '#78350f';
@@ -98,6 +136,7 @@ function MobileJourneyCarousel({ cards }) {
   };
 
   const descColor = (card) => {
+    if (card.negotiation) return '#64748b';
     if (card.featured) return '#3b5998';
     if (card.purple)   return '#7c3aed';
     if (card.amber)    return '#92400e';
@@ -105,6 +144,7 @@ function MobileJourneyCarousel({ cards }) {
   };
 
   const statBg = (card) => {
+    if (card.negotiation) return { bg: '#f0fdf9', border: '0.5px solid #99f6e4', valColor: '#0e7490', lblColor: '#22d3ee' };
     if (card.featured) return { bg: '#fff', border: '0.5px solid #bfdbfe', valColor: '#1e3a8a', lblColor: '#60a5fa' };
     if (card.purple)   return { bg: '#f5f3ff', border: '0.5px solid #ddd6fe', valColor: '#3b0764', lblColor: '#a78bfa' };
     if (card.amber)    return { bg: 'rgba(255,255,255,0.6)', border: '0.5px solid #fcd34d', valColor: '#78350f', lblColor: '#d97706' };
@@ -178,7 +218,33 @@ function MobileJourneyCarousel({ cards }) {
                   {card.desc}
                 </div>
 
-                {/* Stat pills */}
+                {/* Negotiation highlights or stat pills */}
+                {card.negotiation && card.highlights ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                    {card.highlights.map((h, hi) => (
+                      <Link key={hi} to={h.to} style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        background: h.bg, border: `1px solid ${h.border}`,
+                        borderRadius: 8, padding: '8px 10px', textDecoration: 'none',
+                      }}>
+                        <span style={{ fontSize: 16 }}>{h.icon}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: h.color }}>{h.label}</div>
+                          <div style={{ fontSize: 9, color: '#64748b', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.sub}</div>
+                        </div>
+                        <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke={h.color} strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+                      </Link>
+                    ))}
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {card.stats.map((s, si) => (
+                        <div key={si} style={{ background: sBg, border: sBorder, borderRadius: 8, padding: '5px 9px' }}>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: '#0e7490', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>{s.value ?? '—'}</div>
+                          <div style={{ fontSize: 9, color: lblColor, marginTop: 2 }}>{s.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
                 <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
                   {card.stats.map((s, si) => (
                     <div key={si} style={{ background: sBg, border: sBorder, borderRadius: 8, padding: '7px 11px' }}>
@@ -189,6 +255,7 @@ function MobileJourneyCarousel({ cards }) {
                     </div>
                   ))}
                 </div>
+                )}
 
                 {/* Action buttons */}
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -328,15 +395,20 @@ export default function HomePage() {
     {
       emoji: '🎯',
       title: 'I\'m negotiating an offer',
-      desc: 'See what the company actually pays across roles and levels before your HR call. Walk in knowing your number.',
+      negotiation: true,
+      desc: 'Know your worth before the call. Use our Salary Benchmark and Level Guide to walk in with a number — not a guess.',
+      highlights: [
+        { icon: '📊', label: 'Salary Benchmark', sub: 'See exact pay bands by role & level', to: '/salaries?tab=benchmark', color: '#0e7490', bg: '#ecfeff', border: '#a5f3fc' },
+        { icon: '🏅', label: 'Level Guide',       sub: '11 levels mapped across top companies',  to: '/salaries?tab=levels', color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe' },
+      ],
       stats: [
         { value: fmtCount(totalEntries),   label: 'salary entries' },
         { value: fmtCount(totalCompanies), label: 'companies'      },
         { value: '11',                     label: 'levels'         },
       ],
       actions: [
-        { to: '/salaries',         label: 'Browse salaries →', bg: '#eff6ff', color: '#1d4ed8' },
-        { to: '/level-guide',         label: 'Compare levels →', bg: '#ecfeff', color: '#0e7490' },
+        { to: '/salaries?tab=benchmark', label: 'View Salary Benchmark →', bg: '#ecfeff', color: '#0e7490' },
+        { to: '/salaries?tab=levels',    label: 'Explore Level Guide →',   bg: '#f5f3ff', color: '#6d28d9' },
       ],
     },
     {
