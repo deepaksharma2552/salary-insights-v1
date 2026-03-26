@@ -13,82 +13,65 @@ function fmtCount(n) {
   return n.toLocaleString('en-IN');
 }
 
-/* ── JourneyCard — desktop only (unchanged) ─────────────────────────────── */
-function JourneyCard({ emoji, title, desc, stats, actions, amber, featured, green, purple, negotiation, highlights }) {
+/* ── JourneyCard — desktop only ─────────────────────────────── */
+function JourneyCard({ emoji, title, desc, stats, actions, highlights, accentColor, gradientBg, gradientBorder, gradientShadow, badge }) {
   return (
     <div style={{
-      background: negotiation ? 'linear-gradient(145deg,#f8faff,#f0fdf9)' : amber ? 'linear-gradient(135deg,#fffbeb,#fef3c7)' : featured ? 'linear-gradient(135deg,#f0f9ff,#e0f2fe)' : 'var(--panel)',
-      border: negotiation ? '1.5px solid #99f6e4' : amber ? '1px solid #fde68a' : featured ? '2px solid #0ea5e9' : '1px solid var(--border)',
+      background: gradientBg ?? 'var(--panel)',
+      border: gradientBorder ?? '1px solid var(--border)',
       borderRadius: 14,
       padding: 18,
       display: 'flex',
       flexDirection: 'column',
-      boxShadow: negotiation ? '0 4px 20px rgba(6,182,212,0.10)' : featured ? '0 4px 20px rgba(14,165,233,0.15)' : 'none',
+      boxShadow: gradientShadow ?? 'none',
       position: 'relative',
       overflow: 'hidden',
     }}>
-      {featured && (
-        <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 9, fontWeight: 700, color: '#0284c7', background: '#bae6fd', padding: '2px 8px', borderRadius: 20, letterSpacing: '.05em', textTransform: 'uppercase' }}>
-          Most popular
-        </div>
-      )}
-      {purple && (
-        <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 9, fontWeight: 700, color: '#6d28d9', background: '#ede9fe', padding: '2px 8px', borderRadius: 20, letterSpacing: '.05em', textTransform: 'uppercase' }}>
-          New
+      {badge && (
+        <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 9, fontWeight: 700, color: badge.color, background: badge.bg, padding: '2px 8px', borderRadius: 20, letterSpacing: '.05em', textTransform: 'uppercase' }}>
+          {badge.label}
         </div>
       )}
       <div style={{ fontSize: 22, marginBottom: 10, height: 30, display: 'flex', alignItems: 'center' }}>{emoji}</div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: negotiation ? '#0e7490' : amber ? '#78350f' : featured ? '#0284c7' : purple ? '#6d28d9' : 'var(--text-1)', lineHeight: 1.35, minHeight: 38, marginBottom: 8 }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: accentColor ?? 'var(--text-1)', lineHeight: 1.35, minHeight: 38, marginBottom: 8 }}>
         {title}
       </div>
-      <div style={{ fontSize: 12, color: amber ? '#92400e' : 'var(--text-2)', lineHeight: 1.65, height: 60, overflow: 'hidden', marginBottom: 14 }}>
+      <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.65, height: 60, overflow: 'hidden', marginBottom: 14 }}>
         {desc}
       </div>
 
-      {/* Negotiation card: feature highlight tiles */}
-      {negotiation && highlights ? (
-        <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 12 }}>
-            {highlights.map((h, i) => (
-              <Link key={i} to={h.to} style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                background: h.bg, border: `1px solid ${h.border}`,
-                borderRadius: 9, padding: '9px 11px', textDecoration: 'none',
-                transition: 'filter 0.15s',
-              }}>
-                <span style={{ fontSize: 18, lineHeight: 1 }}>{h.icon}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: h.color, lineHeight: 1.2 }}>{h.label}</div>
-                  <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.sub}</div>
-                </div>
-                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke={h.color} strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
-              </Link>
-            ))}
-          </div>
-          {/* Compact stats strip */}
-          <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: 44, flexShrink: 0, marginBottom: 12 }}>
-            {stats.map((s, i) => (
-              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 4px', borderRight: i < stats.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#0e7490', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>
-                  {s.value ?? <span style={{ opacity: 0.3 }}>—</span>}
-                </div>
-                <div style={{ fontSize: 9, color: 'var(--text-3)', marginTop: 3, textAlign: 'center' }}>{s.label}</div>
+      {/* Feature highlight tiles */}
+      {highlights && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 12 }}>
+          {highlights.map((h, i) => (
+            <Link key={i} to={h.to} style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              background: h.bg, border: `1px solid ${h.border}`,
+              borderRadius: 9, padding: '9px 11px', textDecoration: 'none',
+              transition: 'opacity 0.15s',
+            }}>
+              <span style={{ fontSize: 18, lineHeight: 1 }}>{h.icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: h.color, lineHeight: 1.2 }}>{h.label}</div>
+                <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.sub}</div>
               </div>
-            ))}
-          </div>
-        </>
-      ) : (
-        <div style={{ display: 'flex', border: amber ? '1px solid #fcd34d' : '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: 52, flexShrink: 0, marginBottom: 12 }}>
-          {stats.map((s, i) => (
-            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 4px', borderRight: i < stats.length - 1 ? (amber ? '1px solid #fcd34d' : '1px solid var(--border)') : 'none', background: amber ? 'rgba(255,255,255,0.5)' : 'transparent' }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: amber ? '#78350f' : featured ? '#0284c7' : purple ? '#6d28d9' : 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>
-                {s.value ?? <span style={{ opacity: 0.3 }}>—</span>}
-              </div>
-              <div style={{ fontSize: 10, color: amber ? '#92400e' : 'var(--text-3)', marginTop: 3, textAlign: 'center' }}>{s.label}</div>
-            </div>
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke={h.color} strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </Link>
           ))}
         </div>
       )}
+
+      {/* Compact stats strip */}
+      <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: 44, flexShrink: 0, marginBottom: 12 }}>
+        {stats.map((s, i) => (
+          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 4px', borderRight: i < stats.length - 1 ? '1px solid var(--border)' : 'none' }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: accentColor ?? 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>
+              {s.value ?? <span style={{ opacity: 0.3 }}>—</span>}
+            </div>
+            <div style={{ fontSize: 9, color: 'var(--text-3)', marginTop: 3, textAlign: 'center' }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
 
       <div style={{ flex: 1 }} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
@@ -119,38 +102,6 @@ function MobileJourneyCarousel({ cards }) {
     }
   }
 
-  const cardBg = (card) => {
-    if (card.negotiation) return { bg: 'linear-gradient(145deg,#f8faff,#f0fdf9)', border: '1.5px solid #99f6e4' };
-    if (card.featured) return { bg: '#eff6ff', border: '1.5px solid #bfdbfe' };
-    if (card.purple)   return { bg: '#fdfbff', border: '0.5px solid #ede9fe' };
-    if (card.amber)    return { bg: '#fffbeb', border: '0.5px solid #fde68a' };
-    return { bg: '#ffffff', border: '0.5px solid #e8ecf0' };
-  };
-
-  const titleColor = (card) => {
-    if (card.negotiation) return '#0e7490';
-    if (card.featured) return '#1e3a8a';
-    if (card.purple)   return '#3b0764';
-    if (card.amber)    return '#78350f';
-    return 'var(--text-1)';
-  };
-
-  const descColor = (card) => {
-    if (card.negotiation) return '#64748b';
-    if (card.featured) return '#3b5998';
-    if (card.purple)   return '#7c3aed';
-    if (card.amber)    return '#92400e';
-    return 'var(--text-2)';
-  };
-
-  const statBg = (card) => {
-    if (card.negotiation) return { bg: '#f0fdf9', border: '0.5px solid #99f6e4', valColor: '#0e7490', lblColor: '#22d3ee' };
-    if (card.featured) return { bg: '#fff', border: '0.5px solid #bfdbfe', valColor: '#1e3a8a', lblColor: '#60a5fa' };
-    if (card.purple)   return { bg: '#f5f3ff', border: '0.5px solid #ddd6fe', valColor: '#3b0764', lblColor: '#a78bfa' };
-    if (card.amber)    return { bg: 'rgba(255,255,255,0.6)', border: '0.5px solid #fcd34d', valColor: '#78350f', lblColor: '#d97706' };
-    return { bg: '#f8fafc', border: '0.5px solid #e8ecf0', valColor: 'var(--text-1)', lblColor: '#94a3b8' };
-  };
-
   return (
     <div style={{ paddingBottom: 4 }}>
       {/* Section header */}
@@ -178,101 +129,80 @@ function MobileJourneyCarousel({ cards }) {
             if (Math.abs(dx) > 40) goTo(idx + (dx > 0 ? 1 : -1));
           }}
         >
-          {cards.map((card, i) => {
-            const { bg, border } = cardBg(card);
-            const { bg: sBg, border: sBorder, valColor, lblColor } = statBg(card);
-            return (
-              <div key={i} style={{
-                flexShrink: 0, width: CARD_WIDTH,
-                background: bg, border, borderRadius: 16,
-                padding: 18, position: 'relative', overflow: 'hidden',
-                boxShadow: '0 1px 6px rgba(0,0,0,0.06)',
-              }}>
-                {/* Score corner */}
-                <div style={{ position: 'absolute', top: 10, right: 12, fontSize: 9, fontWeight: 700, color: 'rgba(0,0,0,0.1)', fontFamily: 'monospace' }}>
-                  {[12, 8, 6, 5][i] ?? 4} pts
+          {cards.map((card, i) => (
+            <div key={i} style={{
+              flexShrink: 0, width: CARD_WIDTH,
+              background: card.gradientBg ?? '#ffffff',
+              border: card.gradientBorder ?? '0.5px solid #e8ecf0',
+              borderRadius: 16,
+              padding: 18, position: 'relative', overflow: 'hidden',
+              boxShadow: '0 1px 6px rgba(0,0,0,0.06)',
+            }}>
+              {/* Badge */}
+              {card.badge && (
+                <div style={{ display: 'inline-block', background: card.badge.bg, color: card.badge.color, fontSize: 9, fontWeight: 700, borderRadius: 20, padding: '2px 8px', marginBottom: 10, letterSpacing: '.05em', textTransform: 'uppercase' }}>
+                  {card.badge.label}
                 </div>
+              )}
 
-                {/* Badge */}
-                {card.featured && (
-                  <div style={{ display: 'inline-block', background: '#dbeafe', color: '#1d4ed8', fontSize: 9, fontWeight: 700, borderRadius: 20, padding: '2px 8px', marginBottom: 10, letterSpacing: '.05em', textTransform: 'uppercase' }}>
-                    Most popular
-                  </div>
-                )}
-                {card.purple && (
-                  <div style={{ display: 'inline-block', background: '#ede9fe', color: '#6d28d9', fontSize: 9, fontWeight: 700, borderRadius: 20, padding: '2px 8px', marginBottom: 8, letterSpacing: '.05em', textTransform: 'uppercase' }}>
-                    New
-                  </div>
-                )}
+              {/* Emoji */}
+              <div style={{ fontSize: 22, marginBottom: 8 }}>{card.emoji}</div>
 
-                {/* Emoji */}
-                <div style={{ fontSize: 22, marginBottom: 8 }}>{card.emoji}</div>
+              {/* Title */}
+              <div style={{ fontSize: 15, fontWeight: 700, color: card.accentColor ?? 'var(--text-1)', lineHeight: 1.3, marginBottom: 6 }}>
+                {card.title}
+              </div>
 
-                {/* Title */}
-                <div style={{ fontSize: 15, fontWeight: 700, color: titleColor(card), lineHeight: 1.3, marginBottom: 6 }}>
-                  {card.title}
-                </div>
+              {/* Desc */}
+              <div style={{ fontSize: 11, color: 'var(--text-2)', lineHeight: 1.55, marginBottom: 12 }}>
+                {card.desc}
+              </div>
 
-                {/* Desc */}
-                <div style={{ fontSize: 11, color: descColor(card), lineHeight: 1.55, marginBottom: 14, opacity: card.purple ? 0.8 : 1 }}>
-                  {card.desc}
-                </div>
-
-                {/* Negotiation highlights or stat pills */}
-                {card.negotiation && card.highlights ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-                    {card.highlights.map((h, hi) => (
-                      <Link key={hi} to={h.to} style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        background: h.bg, border: `1px solid ${h.border}`,
-                        borderRadius: 8, padding: '8px 10px', textDecoration: 'none',
-                      }}>
-                        <span style={{ fontSize: 16 }}>{h.icon}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: h.color }}>{h.label}</div>
-                          <div style={{ fontSize: 9, color: '#64748b', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.sub}</div>
-                        </div>
-                        <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke={h.color} strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
-                      </Link>
-                    ))}
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      {card.stats.map((s, si) => (
-                        <div key={si} style={{ background: sBg, border: sBorder, borderRadius: 8, padding: '5px 9px' }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: '#0e7490', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>{s.value ?? '—'}</div>
-                          <div style={{ fontSize: 9, color: lblColor, marginTop: 2 }}>{s.label}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-                  {card.stats.map((s, si) => (
-                    <div key={si} style={{ background: sBg, border: sBorder, borderRadius: 8, padding: '7px 11px' }}>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: valColor, fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>
-                        {s.value ?? '—'}
-                      </div>
-                      <div style={{ fontSize: 9, color: lblColor, marginTop: 2 }}>{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-                )}
-
-                {/* Action buttons */}
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {card.actions.map((a, ai) => (
-                    <Link key={ai} to={a.to} style={{
-                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      height: 34, borderRadius: 8, fontSize: 11, fontWeight: 700,
-                      textDecoration: 'none', background: a.bg, color: a.color,
-                      ...(a.border ? { border: a.border } : {}),
+              {/* Highlight tiles */}
+              {card.highlights && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                  {card.highlights.map((h, hi) => (
+                    <Link key={hi} to={h.to} style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      background: h.bg, border: `1px solid ${h.border}`,
+                      borderRadius: 8, padding: '8px 10px', textDecoration: 'none',
                     }}>
-                      {a.label}
+                      <span style={{ fontSize: 16 }}>{h.icon}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: h.color }}>{h.label}</div>
+                        <div style={{ fontSize: 9, color: '#64748b', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.sub}</div>
+                      </div>
+                      <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke={h.color} strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
                     </Link>
                   ))}
                 </div>
+              )}
+
+              {/* Compact stats strip */}
+              <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: 40, marginBottom: 12 }}>
+                {card.stats.map((s, si) => (
+                  <div key={si} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 4px', borderRight: si < card.stats.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: card.accentColor ?? 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>{s.value ?? '—'}</div>
+                    <div style={{ fontSize: 9, color: 'var(--text-3)', marginTop: 2 }}>{s.label}</div>
+                  </div>
+                ))}
               </div>
-            );
-          })}
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: 6 }}>
+                {card.actions.map((a, ai) => (
+                  <Link key={ai} to={a.to} style={{
+                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    height: 34, borderRadius: 8, fontSize: 11, fontWeight: 700,
+                    textDecoration: 'none', background: a.bg, color: a.color,
+                    ...(a.border ? { border: a.border } : {}),
+                  }}>
+                    {a.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -382,24 +312,36 @@ export default function HomePage() {
       emoji: '💼',
       title: 'Am I paid fairly?',
       featured: true,
+      accentColor: '#1d4ed8',
+      gradientBg: 'linear-gradient(145deg,#f0f9ff,#eff6ff)',
+      gradientBorder: '2px solid #bfdbfe',
+      gradientShadow: '0 4px 20px rgba(14,165,233,0.15)',
+      badge: { label: 'Most popular', color: '#0284c7', bg: '#bae6fd' },
       desc: 'Compare your base, bonus and equity against real verified data from peers at your company and level.',
+      highlights: [
+        { icon: '📄', label: 'Salary Database',  sub: `${fmtCount(totalEntries)} verified entries across ${fmtCount(totalCompanies)} companies`, to: '/salaries',  color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
+        { icon: '📈', label: 'Peer Analytics',   sub: 'Compare comp by role, level & location', to: '/dashboard', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+      ],
       stats: [
         { value: fmtCount(totalEntries),   label: 'salary entries' },
         { value: fmtCount(totalCompanies), label: 'companies'      },
       ],
       actions: [
-        { to: '/salaries',  label: 'Browse salaries →', bg: '#eff6ff', color: '#1d4ed8' },
-        { to: '/dashboard', label: 'View analytics →',  bg: '#f5f3ff', color: '#6d28d9' },
+        { to: '/salaries',  label: 'Browse Salary Data →', bg: '#eff6ff', color: '#1d4ed8' },
+        { to: '/dashboard', label: 'View Analytics →',     bg: '#f5f3ff', color: '#7c3aed' },
       ],
     },
     {
       emoji: '🎯',
-      title: 'I\'m negotiating an offer',
-      negotiation: true,
+      title: "I'm negotiating an offer",
+      accentColor: '#0e7490',
+      gradientBg: 'linear-gradient(145deg,#f8faff,#f0fdf9)',
+      gradientBorder: '1.5px solid #99f6e4',
+      gradientShadow: '0 4px 20px rgba(6,182,212,0.10)',
       desc: 'Know your worth before the call. Use our Salary Benchmark and Level Guide to walk in with a number — not a guess.',
       highlights: [
-        { icon: '📊', label: 'Salary Benchmark', sub: 'See exact pay bands by role & level', to: '/salaries?tab=benchmark', color: '#0e7490', bg: '#ecfeff', border: '#a5f3fc' },
-        { icon: '🏅', label: 'Level Guide',       sub: '11 levels mapped across top companies',  to: '/salaries?tab=levels', color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe' },
+        { icon: '📊', label: 'Benchmark My Offer', sub: 'See exact pay bands by role & level',         to: '/salaries?tab=benchmark', color: '#0e7490', bg: '#ecfeff', border: '#a5f3fc' },
+        { icon: '🏅', label: 'Level Guide',         sub: '11 levels mapped across top companies',       to: '/salaries?tab=levels',    color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe' },
       ],
       stats: [
         { value: fmtCount(totalEntries),   label: 'salary entries' },
@@ -414,14 +356,22 @@ export default function HomePage() {
     {
       emoji: '🔍',
       title: "I'm looking for a job",
-      desc: 'Browse community-posted referrals, internships and openings. Get a warm referral and skip straight to the interview queue.',
+      accentColor: '#0369a1',
+      gradientBg: 'linear-gradient(145deg,#f8fafc,#f0f7ff)',
+      gradientBorder: '1.5px solid #bae6fd',
+      gradientShadow: '0 4px 20px rgba(3,105,161,0.08)',
+      desc: 'Browse community-posted referrals and openings. Get a warm referral and skip straight to the interview queue.',
+      highlights: [
+        { icon: '🤝', label: 'Referrals & Openings', sub: `${fmtCount(jobCount)} active openings across ${fmtCount(totalCompanies)} companies`, to: '/opportunities', color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd' },
+        { icon: '🏢', label: 'Company Profiles',      sub: 'Culture, pay & interview insights',                    to: '/companies',     color: '#0f766e', bg: '#f0fdfa', border: '#99f6e4' },
+      ],
       stats: [
-        { value: fmtCount(jobCount),      label: 'active openings' },
+        { value: fmtCount(jobCount),       label: 'active openings' },
         { value: fmtCount(totalCompanies), label: 'companies'       },
       ],
       actions: [
-        { to: '/opportunities',      label: 'Browse opportunities →', bg: '#eff6ff', color: '#1d4ed8' },
-        { to: '/companies', label: 'Company profiles →', bg: 'var(--bg-2)', color: 'var(--text-2)', border: '1px solid var(--border)' },
+        { to: '/opportunities', label: 'Browse Opportunities →', bg: '#f0f9ff', color: '#0369a1' },
+        { to: '/companies',     label: 'Company Profiles →',     bg: '#f0fdfa', color: '#0f766e' },
       ],
     },
   ];
@@ -429,15 +379,23 @@ export default function HomePage() {
   const opportunitiesCard = {
     emoji: '🎓',
     title: "I'm looking for an internship",
-    purple: true,
+    accentColor: '#6d28d9',
+    gradientBg: 'linear-gradient(145deg,#fdfbff,#f5f3ff)',
+    gradientBorder: '1.5px solid #ddd6fe',
+    gradientShadow: '0 4px 20px rgba(109,40,217,0.08)',
+    badge: { label: 'New', color: '#6d28d9', bg: '#ede9fe' },
     desc: 'Browse verified internship openings posted by the community. See stipends, duration, and get a referral to jump straight to the queue.',
+    highlights: [
+      { icon: '📋', label: 'Browse Internships', sub: `${fmtCount(internshipCount)} openings across ${fmtCount(totalCompanies)} companies`, to: '/opportunities',      color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe' },
+      { icon: '📢', label: 'Post an Opening',    sub: 'Help students land their first role',                                                to: '/opportunities/post', color: '#be185d', bg: '#fdf2f8', border: '#fbcfe8' },
+    ],
     stats: [
-      { value: fmtCount(internshipCount), label: 'internships'     },
-      { value: fmtCount(totalCompanies), label: 'companies'       },
+      { value: fmtCount(internshipCount), label: 'internships' },
+      { value: fmtCount(totalCompanies),  label: 'companies'   },
     ],
     actions: [
-      { to: '/opportunities',      label: 'Browse internships →',  bg: '#f5f3ff', color: '#6d28d9' },
-      { to: '/opportunities/post', label: 'Post an opening →',     bg: '#f5f3ff', color: '#6d28d9' },
+      { to: '/opportunities',      label: 'Browse Internships →', bg: '#f5f3ff', color: '#6d28d9' },
+      { to: '/opportunities/post', label: 'Post an Opening →',    bg: '#fdf2f8', color: '#be185d' },
     ],
   };
 
