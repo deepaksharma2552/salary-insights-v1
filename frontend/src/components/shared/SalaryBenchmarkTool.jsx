@@ -160,30 +160,48 @@ function GapChip({ offerVal, medianVal, label }) {
 }
 
 // ── Offer input ───────────────────────────────────────────────────────────────
-function OfferInput({ label, value, onChange }) {
+function OfferInput({ label, value, onChange, placeholder = '0' }) {
   return (
     <div>
-      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-3)', marginBottom: 5 }}>
         {label}
       </div>
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+        <span style={{
+          position: 'absolute', left: 10,
+          fontSize: 12, color: 'var(--text-3)',
+          pointerEvents: 'none', fontFamily: "'IBM Plex Mono',monospace",
+        }}>₹</span>
         <input
           className="input-field"
-          type="number"
-          placeholder="e.g. 25"
+          type="text"
+          inputMode="decimal"
+          placeholder={placeholder}
           value={value}
-          onChange={e => onChange(e.target.value)}
+          onChange={e => {
+            const v = e.target.value.replace(/[^0-9.]/g, '');
+            onChange(v);
+          }}
           style={{
-            width: '100%', height: 36, padding: '0 32px 0 10px', borderRadius: 8,
-            border: '1px solid var(--border)', background: 'var(--bg-2)',
-            color: 'var(--text-1)', fontSize: 13, boxSizing: 'border-box',
+            width: '100%', height: 38,
+            padding: '0 28px 0 22px',
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            background: 'var(--panel)',
+            color: 'var(--text-1)',
+            fontSize: 14, fontWeight: 500,
+            fontFamily: "'IBM Plex Mono',monospace",
+            boxSizing: 'border-box',
+            MozAppearance: 'textfield',
           }}
         />
         <span style={{
-          position: 'absolute', right: 9, top: '50%', transform: 'translateY(-50%)',
-          fontSize: 10, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace",
+          position: 'absolute', right: 8,
+          fontSize: 10, color: 'var(--text-4)',
           pointerEvents: 'none',
-        }}>₹L</span>
+          fontFamily: "'IBM Plex Mono',monospace",
+          letterSpacing: '0.03em',
+        }}>L</span>
       </div>
     </div>
   );
@@ -270,15 +288,15 @@ export default function SalaryBenchmarkTool() {
   const verdict = verdictSummary(derivedTc, offerBaseRaw, result);
 
   const selectStyle = {
-    width: '100%', height: 36, padding: '0 30px 0 10px', borderRadius: 8,
+    width: '100%', height: 38, padding: '0 30px 0 10px', borderRadius: 8,
     border: '1px solid var(--border)', background: 'var(--bg-2)',
     color: 'var(--text-1)', fontSize: 13, cursor: 'pointer', appearance: 'none',
     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
     backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center',
   };
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block' };
   const inputStyle = {
-    width: '100%', height: 36, padding: '0 10px', borderRadius: 8,
+    width: '100%', height: 38, padding: '0 10px', borderRadius: 8,
     border: '1px solid var(--border)', background: 'var(--bg-2)',
     color: 'var(--text-1)', fontSize: 13, boxSizing: 'border-box',
   };
@@ -289,12 +307,13 @@ export default function SalaryBenchmarkTool() {
         @keyframes bmFadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
         @keyframes bmSpin { to { transform: rotate(360deg); } }
         .bm-fadein { animation: bmFadeUp 0.28s ease both; }
-        @media (max-width: 640px) { .bm-shell { grid-template-columns: 1fr !important; } }
-        @media (max-width: 480px) { .bm-offer-row { grid-template-columns: 1fr 1fr !important; } }
-        @media (max-width: 640px) { .bm-stat-pills { grid-template-columns: 1fr 1fr !important; } }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        @media (max-width: 680px) { .bm-shell { grid-template-columns: 1fr !important; } }
+        @media (max-width: 680px) { .bm-stat-pills { grid-template-columns: 1fr 1fr !important; } }
       `}</style>
 
-      <div className="bm-shell" style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 14, alignItems: 'start' }}>
+      <div className="bm-shell" style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16, alignItems: 'start' }}>
 
         {/* ── LEFT: Form card ── */}
         <div style={{
@@ -319,9 +338,9 @@ export default function SalaryBenchmarkTool() {
           </div>
 
           {/* Role fields */}
-          <div style={{ padding: '16px 18px 0' }}>
-            <div style={{ marginBottom: 12 }}>
-              <div style={labelStyle}>Role / Job Title</div>
+          <div style={{ padding: '18px 18px 0' }}>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Role / Job Title</label>
               <input
                 className="input-field"
                 type="text"
@@ -333,16 +352,16 @@ export default function SalaryBenchmarkTool() {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
               <div>
-                <div style={labelStyle}>Function</div>
+                <label style={labelStyle}>Function</label>
                 <select value={jobFunctionId} onChange={handleFunctionChange} style={selectStyle} disabled={!functionsReady}>
                   <option value="">{functionsReady ? 'Any' : 'Loading…'}</option>
                   {functions.map(fn => <option key={fn.id} value={fn.id}>{fn.displayName}</option>)}
                 </select>
               </div>
               <div>
-                <div style={labelStyle}>Level</div>
+                <label style={labelStyle}>Level</label>
                 <select
                   value={functionLevelId}
                   onChange={e => setFunctionLevelId(e.target.value)}
@@ -355,8 +374,8 @@ export default function SalaryBenchmarkTool() {
               </div>
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <div style={labelStyle}>Location</div>
+            <div style={{ marginBottom: 18 }}>
+              <label style={labelStyle}>Location</label>
               <select value={location} onChange={e => setLocation(e.target.value)} style={selectStyle}>
                 <option value="">All locations</option>
                 {locations.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
@@ -365,38 +384,53 @@ export default function SalaryBenchmarkTool() {
           </div>
 
           {/* Offer inputs */}
-          <div style={{ padding: '14px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg-2)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}>
+          <div style={{ padding: '16px 18px', borderTop: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <span style={labelStyle}>Your Offer</span>
               <span style={{
                 fontSize: 10, color: 'var(--text-3)',
-                background: 'var(--bg-3)', padding: '1px 7px',
+                background: 'var(--bg-3)', padding: '2px 8px',
                 borderRadius: 20, border: '1px solid var(--border)',
-              }}>optional</span>
+                fontWeight: 500,
+              }}>optional · ₹ Lakhs/yr</span>
             </div>
-            <div className="bm-offer-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              <OfferInput label="Total"  value={offerTc}     onChange={setOfferTc} />
-              <OfferInput label="Base"   value={offerBase}   onChange={setOfferBase} />
-              <OfferInput label="Equity" value={offerEquity} onChange={setOfferEquity} />
+
+            {/* Three inputs stacked full-width */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <OfferInput label="Base Salary"  value={offerBase}   onChange={setOfferBase}   placeholder="e.g. 22" />
+              <OfferInput label="Bonus"        value={offerTc}     onChange={setOfferTc}     placeholder="e.g. 3" />
+              <OfferInput label="Equity / RSU" value={offerEquity} onChange={setOfferEquity} placeholder="e.g. 2" />
             </div>
-            {/* Auto-derived TC hint */}
-            {(offerBaseRaw || offerEquityRaw) && !offerTcRaw && (
-              <div style={{ marginTop: 9, fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span>Auto total:</span>
-                <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, color: 'var(--viz-1)' }}>
-                  {fmt(derivedTc)}
+
+            {/* Auto total chip */}
+            {(offerBaseRaw || offerEquityRaw || offerTcRaw) && (
+              <div style={{
+                marginTop: 12,
+                padding: '10px 12px',
+                background: 'var(--viz-1-dim)',
+                border: '1px solid var(--blue-mid)',
+                borderRadius: 9,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <span style={{ fontSize: 12, color: 'var(--viz-1)', fontWeight: 500 }}>Total comp</span>
+                <span style={{
+                  fontSize: 15, fontWeight: 700,
+                  fontFamily: "'IBM Plex Mono',monospace",
+                  color: 'var(--viz-1)',
+                }}>
+                  {fmt(derivedTc ?? (offerTcRaw ?? 0))}
                 </span>
               </div>
             )}
           </div>
 
           {/* CTA */}
-          <div style={{ padding: '14px 18px 18px' }}>
+          <div style={{ padding: '16px 18px 20px' }}>
             <button
               onClick={handleBenchmark}
               disabled={!canSubmit || loading}
               style={{
-                width: '100%', height: 40, borderRadius: 9, border: 'none',
+                width: '100%', height: 42, borderRadius: 9, border: 'none',
                 background: canSubmit ? 'var(--viz-1)' : 'var(--bg-4)',
                 color: canSubmit ? '#fff' : 'var(--text-3)',
                 fontSize: 13, fontWeight: 600,
@@ -427,7 +461,7 @@ export default function SalaryBenchmarkTool() {
             </button>
             {!canSubmit && (
               <p style={{ fontSize: 11, color: 'var(--text-3)', textAlign: 'center', marginTop: 8 }}>
-                Enter a job title or select a function to start
+                Enter a job title or select a function
               </p>
             )}
           </div>
