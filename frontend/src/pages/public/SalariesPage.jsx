@@ -52,7 +52,10 @@ export default function SalariesPage() {
   const debounceRef  = useRef(null);
 
   // Filters — seeded from URL
+  // jobFunctionId is a UI-only filter: changing it alone does NOT refresh the table.
+  // The table only picks it up when another fetch-triggering filter changes (search, level, location, empType).
   const [jobFunctionId,  setJobFunctionId]  = useState(() => searchParams.get('function')      ?? '');
+  const [committedJobFunctionId, setCommittedJobFunctionId] = useState(() => searchParams.get('function') ?? '');
   const [functionLevelId, setFunctionLevelId] = useState(() => searchParams.get('fnLevel')     ?? '');
   const [location,       setLocation]       = useState(() => searchParams.get('location')      ?? '');
   const [empType,        setEmpType]        = useState(() => searchParams.get('empType')        ?? '');
@@ -81,22 +84,22 @@ export default function SalariesPage() {
   // Deep-link entry id — opening a specific drawer from URL
   const [openEntryId, setOpenEntryId] = useState(() => searchParams.get('entry') ?? null);
 
-  const isFiltering   = search || jobFunctionId || functionLevelId || location || empType;
+  const isFiltering   = search || committedJobFunctionId || functionLevelId || location || empType;
   const isDirty       = inputValue !== search;
   const showHint      = inputValue.length > 0 && inputValue.length < SEARCH_MIN_CHARS;
 
   // ── Sync filters → URL (replace so back-button works naturally) ──
   useEffect(() => {
     const params = {};
-    if (search)          params.q        = search;
-    if (jobFunctionId)   params.function = jobFunctionId;
-    if (functionLevelId) params.fnLevel  = functionLevelId;
-    if (location)        params.location = location;
-    if (empType)         params.empType  = empType;
-    if (page > 0)        params.page     = String(page);
-    if (openEntryId)     params.entry    = openEntryId;
+    if (search)                    params.q        = search;
+    if (committedJobFunctionId)    params.function = committedJobFunctionId;
+    if (functionLevelId)           params.fnLevel  = functionLevelId;
+    if (location)                  params.location = location;
+    if (empType)                   params.empType  = empType;
+    if (page > 0)                  params.page     = String(page);
+    if (openEntryId)               params.entry    = openEntryId;
     setSearchParams(params, { replace: true });
-  }, [search, jobFunctionId, functionLevelId, location, empType, page, openEntryId]); // eslint-disable-line
+  }, [search, committedJobFunctionId, functionLevelId, location, empType, page, openEntryId]); // eslint-disable-line
 
   // ── Commit the current inputValue as the search query ──
   function commitSearch(value) {
@@ -126,7 +129,7 @@ export default function SalariesPage() {
   function clearFilters() {
     clearTimeout(debounceRef.current);
     setInputValue(''); setSearch('');
-    setJobFunctionId(''); setFunctionLevelId('');
+    setJobFunctionId(''); setCommittedJobFunctionId(''); setFunctionLevelId('');
     setLocation(''); setEmpType('');
     setPage(0);
   }
@@ -136,15 +139,17 @@ export default function SalariesPage() {
   const fetchSalaries = useCallback(() => {
     setLoading(true);
     setError(null);
+    // Commit the current jobFunctionId at the moment of fetch
+    setCommittedJobFunctionId(jobFunctionId);
     const params = {
       page,
       size: pageSize,
       sort: 'createdAt,desc',
-      ...(location        && { location }),
-      ...(jobFunctionId   && { jobFunctionId }),
-      ...(functionLevelId && { functionLevelId }),
-      ...(search          && { companyName: search, jobTitle: search }),
-      ...(empType         && { employmentType: empType }),
+      ...(location              && { location }),
+      ...(jobFunctionId         && { jobFunctionId }),
+      ...(functionLevelId       && { functionLevelId }),
+      ...(search                && { companyName: search, jobTitle: search }),
+      ...(empType               && { employmentType: empType }),
     };
     api.get('/public/salaries', { params })
       .then(res => {
@@ -158,7 +163,11 @@ export default function SalariesPage() {
         setError(`Failed to load salaries (${err.response?.status ?? 'network error'})`);
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, search, jobFunctionId, functionLevelId, location, empType]);
+  // NOTE: jobFunctionId is intentionally excluded from the dependency array.
+  // Changing "All Functions" alone should NOT refresh the table — it only takes
+  // effect when another trigger (search, level, location, empType, page) fires.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize, search, functionLevelId, location, empType]);
 
   useEffect(() => { fetchSalaries(); }, [fetchSalaries]);
 
