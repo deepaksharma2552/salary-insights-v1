@@ -160,8 +160,8 @@ export default function MySubmissionsPage() {
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {e.jobTitle ?? '—'}
-                        {(e.standardizedLevelName ?? e.companyInternalLevel) && (
-                          <> · {e.standardizedLevelName ?? e.companyInternalLevel}</>
+                        {e.standardizedLevelName && (
+                          <> · {e.standardizedLevelName}</>
                         )}
                       </div>
                     </div>
@@ -241,9 +241,9 @@ export default function MySubmissionsPage() {
 
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ fontSize: 13, color: 'var(--text-1)' }}>{e.jobTitle ?? '—'}</div>
-                        {(e.standardizedLevelName ?? e.companyInternalLevel) && (
+                        {e.standardizedLevelName && (
                           <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                            {e.standardizedLevelName ?? e.companyInternalLevel}
+                            {e.standardizedLevelName}
                           </div>
                         )}
                       </td>

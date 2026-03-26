@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LEVEL_BADGE_CLASS, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../data/salaryData';
+import { LEVEL_BADGE_CLASS, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../utils/salaryMapper';
 import api from '../../services/api';
 import { mapSalary } from '../../utils/salaryMapper';
 

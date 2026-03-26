@@ -38,7 +38,7 @@ function mapSalary(s) {
   return {
     id: s.id, role: s.jobTitle ?? '—',
     level: levelMap[s.experienceLevel] ?? 'mid',
-    internalLevel: s.companyInternalLevel ?? s.experienceLevel ?? '—',
+    internalLevel: s.standardizedLevelName ?? '—',
     location: s.location ?? '—',
     base: fmt(s.baseSalary), bonus: fmt(s.bonus),
     equity: fmt(s.equity), tc: fmt(s.totalCompensation),

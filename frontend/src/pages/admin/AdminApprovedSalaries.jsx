@@ -209,7 +209,6 @@ function EditDrawer({ entry, onClose, onSaved }) {
     jobTitle:            entry.jobTitle            ?? '',
     department:          entry.department          ?? '',
     experienceLevel:     entry.experienceLevel     ?? '',
-    companyInternalLevel:entry.companyInternalLevel?? '',
     location:            entry.location            ?? '',
     yearsOfExperience:   entry.yearsOfExperience   ?? '',
     baseSalary:          entry.baseSalary           ?? '',
@@ -229,7 +228,6 @@ function EditDrawer({ entry, onClose, onSaved }) {
     if (form.jobTitle)             payload.jobTitle             = form.jobTitle;
     if (form.department)           payload.department           = form.department;
     if (form.experienceLevel)      payload.experienceLevel      = form.experienceLevel;
-    if (form.companyInternalLevel) payload.companyInternalLevel = form.companyInternalLevel;
     if (form.location)             payload.location             = form.location;
     if (form.yearsOfExperience !== '') payload.yearsOfExperience = Number(form.yearsOfExperience);
     if (form.baseSalary  !== '')   payload.baseSalary  = Number(form.baseSalary);

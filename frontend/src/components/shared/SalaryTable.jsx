@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SalaryDetailDrawer from './SalaryDetailDrawer';
-import { LEVEL_BADGE_CLASS, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../data/salaryData';
+import { LEVEL_BADGE_CLASS, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../utils/salaryMapper';
 import CompanyLogo from '../shared/CompanyLogo';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useSalaryEnrichment } from '../../hooks/useSalaryEnrichment';

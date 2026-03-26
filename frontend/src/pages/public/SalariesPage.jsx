@@ -137,7 +137,7 @@ export default function SalariesPage() {
     api.get('/public/salaries', { params })
       .then(res => {
         const paged = res.data?.data;
-        setRows((paged?.content ?? []).map(s => mapSalary(s, { useStandardizedLevel: true })));
+        setRows((paged?.content ?? []).map(s => mapSalary(s)));
         setTotalPages(paged?.totalPages ?? 1);
         setTotalElements(paged?.totalElements ?? 0);
       })

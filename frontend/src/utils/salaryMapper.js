@@ -1,22 +1,44 @@
 /**
- * Shared salary mapping utility.
- * Previously duplicated between HomePage.jsx and SalariesPage.jsx —
- * any changes to display logic now only need to happen here.
+ * Shared salary mapping utility and badge/status constants.
+ * Previously split between salaryMapper.js and salaryData.js — consolidated here.
  */
 
 const VIZ_COLORS = ['#3b82f6', '#8b5cf6', '#06b6d4', '#6366f1', '#a78bfa', '#818cf8'];
 
 const LEVEL_MAP = {
-  INTERN:    'junior',
-  ENTRY:     'junior',
-  MID:       'mid',
-  SENIOR:    'senior',
-  LEAD:      'lead',
-  MANAGER:   'lead',
-  DIRECTOR:  'lead',
-  VP:        'lead',
-  C_LEVEL:   'lead',
+  INTERN:   'junior',
+  ENTRY:    'junior',
+  MID:      'mid',
+  SENIOR:   'senior',
+  LEAD:     'lead',
+  MANAGER:  'lead',
+  DIRECTOR: 'lead',
+  VP:       'lead',
+  C_LEVEL:  'lead',
 };
+
+// ── Badge / status helpers (previously in salaryData.js) ─────────────────────
+
+export const LEVEL_BADGE_CLASS = {
+  junior: 'badge badge-level-junior',
+  mid:    'badge badge-level-mid',
+  senior: 'badge badge-level-senior',
+  lead:   'badge badge-level-lead',
+};
+
+export const STATUS_BADGE_CLASS = {
+  approved: 'status-badge status-approved',
+  pending:  'status-badge status-pending',
+  rejected: 'status-badge status-rejected',
+};
+
+export const STATUS_LABEL = {
+  approved: '✓ Verified',
+  pending:  '⧗ Pending',
+  rejected: '✕ Rejected',
+};
+
+// ── Formatters ────────────────────────────────────────────────────────────────
 
 export function fmtSalary(val) {
   if (!val && val !== 0) return '—';
@@ -34,12 +56,13 @@ function formatDate(iso) {
   });
 }
 
+// ── Main mapper ───────────────────────────────────────────────────────────────
+
 /**
  * Maps a raw API salary entry to the shape expected by SalaryTable / drawers.
- * Pass `useStandardizedLevel = true` (SalariesPage) to prefer standardizedLevelName,
- * or omit / pass false (HomePage) to use companyInternalLevel.
+ * internalLevel is always populated from standardizedLevelName (the DB-driven field).
  */
-export function mapSalary(s, { useStandardizedLevel = false } = {}) {
+export function mapSalary(s) {
   const colorIdx = s.companyName ? s.companyName.charCodeAt(0) % VIZ_COLORS.length : 0;
   const color    = VIZ_COLORS[colorIdx];
 
@@ -54,12 +77,10 @@ export function mapSalary(s, { useStandardizedLevel = false } = {}) {
     compBg:        `${color}26`,
     compInd:       '',
     role:          s.jobTitle       ?? '—',
-    internalLevel: useStandardizedLevel
-      ? (s.standardizedLevelName ?? s.companyInternalLevel ?? '—')
-      : (s.companyInternalLevel  ?? ''),
+    internalLevel: s.standardizedLevelName ?? '—',
     level:         LEVEL_MAP[s.experienceLevel] ?? 'mid',
     location:      s.location       ?? '—',
-    exp:           s.yearsOfExperience != null ? `${s.yearsOfExperience} yr`   : '—',
+    exp:           s.yearsOfExperience != null ? `${s.yearsOfExperience} yr`  : '—',
     yoe:           s.yearsOfExperience != null
       ? `${s.yearsOfExperience} year${s.yearsOfExperience !== 1 ? 's' : ''}`
       : '—',
