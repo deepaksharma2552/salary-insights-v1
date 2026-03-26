@@ -15,10 +15,10 @@ const fmt = (val) => {
 function offerPosition(offerVal, p25, p50, p75) {
   if (!offerVal || !p50) return null;
   const v = Number(offerVal);
-  if (v >= Number(p75)) return { key: 'top',   color: 'var(--green)',  label: 'Top quartile',          pillBg: 'var(--green-dim)',  border: '#bbf7d0' };
-  if (v >= Number(p50)) return { key: 'above', color: 'var(--viz-1)', label: 'Above median',           pillBg: 'var(--viz-1-dim)', border: '#bfdbfe' };
-  if (v >= Number(p25)) return { key: 'near',  color: 'var(--orange)',label: 'Below median',           pillBg: 'var(--orange-dim)',border: '#fde68a' };
-  return                        { key: 'below', color: 'var(--rose)',  label: 'Below 25th percentile', pillBg: 'var(--rose-dim)',  border: '#fecdd3' };
+  if (v >= Number(p75)) return { key: 'top',   color: '#16a34a', label: 'Top quartile',          pillBg: '#dcfce7', border: '#bbf7d0' };
+  if (v >= Number(p50)) return { key: 'above', color: '#16a34a', label: 'Above median',           pillBg: '#dcfce7', border: '#bbf7d0' };
+  if (v >= Number(p25)) return { key: 'near',  color: '#2563eb', label: 'Below median',           pillBg: '#dbeafe', border: '#bfdbfe' };
+  return                        { key: 'below', color: '#dc2626', label: 'Below 25th percentile', pillBg: '#fee2e2', border: '#fecaca' };
 }
 
 function calcPercentile(val, p25, p50, p75) {
@@ -56,6 +56,11 @@ function PercentileBar({ p25, p50, p75, avg, userVal, label, animate }) {
   const percentile = userVal ? calcPercentile(userVal, p25, p50, p75) : null;
   const [dotReady, setDotReady] = useState(false);
 
+  // Bar zone colours — neutral when no user value, coloured when we know position
+  const iqrColor    = pos ? `${pos.color}22` : 'var(--bg-3)';
+  const iqrBorder   = pos ? `${pos.color}44` : 'rgba(0,0,0,0.08)';
+  const medianColor = pos ? pos.color        : 'var(--viz-1)';
+
   useEffect(() => {
     if (animate) { const t = setTimeout(() => setDotReady(true), 80); return () => clearTimeout(t); }
     setDotReady(false);
@@ -70,7 +75,7 @@ function PercentileBar({ p25, p50, p75, avg, userVal, label, animate }) {
         </span>
         {pos && (
           <span style={{
-            fontSize: 11, fontWeight: 600, color: pos.color,
+            fontSize: 11, fontWeight: 700, color: pos.color,
             background: pos.pillBg, border: `1px solid ${pos.border}`,
             padding: '2px 10px', borderRadius: 20,
           }}>
@@ -84,7 +89,7 @@ function PercentileBar({ p25, p50, p75, avg, userVal, label, animate }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-2)' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: pos.color, display: 'inline-block', flexShrink: 0 }} />
-            Your offer:&nbsp;<strong style={{ color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace" }}>{fmt(userVal)}</strong>
+            Your offer:&nbsp;<strong style={{ color: pos.color, fontFamily: "'IBM Plex Mono',monospace" }}>{fmt(userVal)}</strong>
           </div>
           {percentile !== null && (
             <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
@@ -96,19 +101,21 @@ function PercentileBar({ p25, p50, p75, avg, userVal, label, animate }) {
 
       {/* Bar track */}
       <div style={{ position: 'relative', height: 8, background: 'var(--bg-3)', borderRadius: 99 }}>
-        {/* IQR fill */}
+        {/* IQR fill — coloured by position */}
         <div style={{
           position: 'absolute', left: `${pct(p25)}%`,
           width: `${pct(p75) - pct(p25)}%`,
-          height: '100%', background: 'var(--viz-1-dim)',
-          borderRadius: 99, border: '1px solid rgba(59,130,246,0.2)',
+          height: '100%', background: iqrColor,
+          borderRadius: 99, border: `1px solid ${iqrBorder}`,
+          transition: 'background 0.3s ease',
         }} />
-        {/* Median tick */}
+        {/* Median tick — coloured by position */}
         <div style={{
           position: 'absolute', left: `${pct(p50)}%`,
           transform: 'translateX(-50%)',
           width: 2, height: 16, top: -4,
-          background: 'var(--viz-1)', borderRadius: 2, opacity: 0.75,
+          background: medianColor, borderRadius: 2, opacity: 0.85,
+          transition: 'background 0.3s ease',
         }} />
         {/* User dot */}
         {userVal && (
@@ -128,7 +135,7 @@ function PercentileBar({ p25, p50, p75, avg, userVal, label, animate }) {
       {/* P-labels */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 7, fontSize: 10, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
         <span>P25&nbsp;{fmt(p25)}</span>
-        <span style={{ color: 'var(--viz-1)', fontWeight: 600 }}>Median&nbsp;{fmt(p50)}</span>
+        <span style={{ color: medianColor, fontWeight: 600 }}>Median&nbsp;{fmt(p50)}</span>
         <span>P75&nbsp;{fmt(p75)}</span>
       </div>
       {avg && (
@@ -663,6 +670,24 @@ export default function SalaryBenchmarkTool() {
                         p25={result.p25Tc} p50={result.p50Tc} p75={result.p75Tc}
                         avg={result.avgTc} userVal={derivedTc} animate={animate}
                       />
+                    )}
+                    {/* Arrow divider between TC and Base bars */}
+                    {result.p50Tc && result.p50Base && (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        margin: '-8px 0 18px',
+                      }}>
+                        <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+                        <div style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                          color: 'var(--text-4)', flexShrink: 0,
+                        }}>
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M7 2v10M3.5 8.5L7 12l3.5-3.5" stroke="var(--text-3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                        <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+                      </div>
                     )}
                     {result.p50Base && (
                       <PercentileBar
