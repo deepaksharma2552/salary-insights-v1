@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import api from '../../services/api';
 import { useLocations } from '../../hooks/useLocations';
 import { useAppData } from '../../context/AppDataContext';
@@ -272,6 +272,9 @@ export default function SalaryBenchmarkTool() {
   const { locations } = useLocations();
   const { functions, getLevelsForFunction, functionsReady } = useAppData();
 
+  const formRef    = useRef(null);
+  const resultsRef = useRef(null);
+
   const [jobFunctionId,   setJobFunctionId]   = useState('');
   const [functionLevelId, setFunctionLevelId] = useState('');
   const [location,        setLocation]        = useState('');
@@ -306,7 +309,13 @@ export default function SalaryBenchmarkTool() {
       if (location)          params.location        = location;
       const res = await api.get('/public/salaries/benchmark', { params });
       setResult(res.data?.data ?? null);
-      setTimeout(() => setAnimate(true), 60);
+      setTimeout(() => {
+        setAnimate(true);
+        // On mobile (single-column), scroll results into view
+        if (window.innerWidth <= 780 && resultsRef.current) {
+          resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 60);
     } catch {
       setError('Failed to load benchmark data. Please try again.');
     } finally {
@@ -355,12 +364,13 @@ export default function SalaryBenchmarkTool() {
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         @media (max-width: 780px) { .bm-shell { grid-template-columns: 1fr !important; } }
         @media (max-width: 780px) { .bm-stat-pills { grid-template-columns: 1fr 1fr !important; } }
+        @media (max-width: 780px) { .bm-edit-filters-btn { display: flex !important; } }
       `}</style>
 
       <div className="bm-shell" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
 
         {/* ── LEFT: Form card ── */}
-        <div style={{
+        <div ref={formRef} style={{
           background: 'var(--panel)', border: '1px solid var(--border)',
           borderRadius: 14, overflow: 'hidden',
           position: 'sticky', top: 80,
@@ -502,7 +512,29 @@ export default function SalaryBenchmarkTool() {
         </div>
 
         {/* ── RIGHT: Results panel ── */}
-        <div>
+        <div ref={resultsRef}>
+          {/* Mobile-only: Edit Filters button — shown when results are visible */}
+          {(result || loading || error) && (
+            <button
+              onClick={() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              style={{
+                display: 'none',  // shown via CSS below
+                width: '100%', marginBottom: 12,
+                padding: '10px 16px', borderRadius: 9,
+                border: '1px solid var(--border)',
+                background: 'var(--panel)',
+                color: 'var(--text-2)', fontSize: 13, fontWeight: 600,
+                cursor: 'pointer',
+                alignItems: 'center', justifyContent: 'center', gap: 7,
+              }}
+              className="bm-edit-filters-btn"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              Edit Filters
+            </button>
+          )}
           {/* Error */}
           {error && (
             <div className="bm-fadein" style={{

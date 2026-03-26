@@ -96,6 +96,7 @@ export default function Navbar() {
         @media (max-width: 768px) {
           .nav-desktop-only { display: none !important; }
           .nav-mobile-user  { display: flex !important; }
+          .theme-toggle     { display: none !important; }
         }
       `}</style>
 
@@ -315,7 +316,7 @@ export default function Navbar() {
 
       {/* ── MOBILE DRAWER ── */}
       <div className={`mobile-nav-overlay${mobileOpen ? ' open' : ''}`} onClick={() => setMobileOpen(false)} />
-      <div className={`mobile-nav-drawer${mobileOpen ? ' open' : ''}`}>
+      <div className={`mobile-nav-drawer${mobileOpen ? ' open' : ''}`} style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
         <div className="mobile-nav-header">
           <Link to="/" className="nav-logo" style={{ textDecoration: 'none' }} onClick={() => setMobileOpen(false)}>
             <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--text-1)' }}>
