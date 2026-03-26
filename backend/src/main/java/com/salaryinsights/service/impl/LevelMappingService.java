@@ -51,6 +51,8 @@ public class LevelMappingService {
         StandardizedLevel level = StandardizedLevel.builder()
                 .name(request.getName())
                 .hierarchyRank(request.getHierarchyRank())
+                .description(request.getDescription())
+                .experienceLevel(request.getExperienceLevel())
                 .build();
 
         level = standardizedLevelRepository.save(level);
@@ -64,6 +66,8 @@ public class LevelMappingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Standardized level not found: " + id));
         level.setName(request.getName());
         level.setHierarchyRank(request.getHierarchyRank());
+        level.setDescription(request.getDescription());
+        level.setExperienceLevel(request.getExperienceLevel());
         level = standardizedLevelRepository.save(level);
         return levelMapper.toStandardizedResponse(level);
     }

@@ -1,6 +1,5 @@
 package com.salaryinsights.dto.response;
 
-import com.salaryinsights.enums.InternalLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

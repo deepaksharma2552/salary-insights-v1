@@ -290,8 +290,7 @@ public class SalaryService {
 
     /**
      * Derives ExperienceLevel from yearsOfExperience, then falls back to the
-     * standardized level's hierarchy_rank (DB-driven — no enum switch).
-     * The rank ranges mirror the old enum mapping exactly so existing data is unaffected.
+     * standardized level's explicit experienceLevel field (DB-driven — no rank ladder).
      */
     private ExperienceLevel deriveExperienceLevel(SalaryRequest request, StandardizedLevel resolvedLevel) {
         if (request.getYearsOfExperience() != null) {
@@ -305,24 +304,10 @@ public class SalaryService {
             if (y <= 20) return ExperienceLevel.DIRECTOR;
             return ExperienceLevel.VP;
         }
-        if (resolvedLevel != null) {
-            return deriveFromRank(resolvedLevel.getHierarchyRank());
+        if (resolvedLevel != null && resolvedLevel.getExperienceLevel() != null) {
+            return resolvedLevel.getExperienceLevel();
         }
         return ExperienceLevel.MID; // safe default
-    }
-
-    /**
-     * Maps a standardized_levels.hierarchy_rank to an ExperienceLevel.
-     * Rank ranges correspond to the seeds in V27 (10-step gaps, 10–100).
-     */
-    private ExperienceLevel deriveFromRank(int rank) {
-        if (rank <= 10)  return ExperienceLevel.ENTRY;    // SDE 1
-        if (rank <= 20)  return ExperienceLevel.MID;      // SDE 2
-        if (rank <= 30)  return ExperienceLevel.SENIOR;   // SDE 3
-        if (rank <= 55)  return ExperienceLevel.LEAD;     // Staff / Principal / Architect
-        if (rank <= 70)  return ExperienceLevel.MANAGER;  // EM / Sr EM
-        if (rank <= 90)  return ExperienceLevel.DIRECTOR; // Director / Sr. Director
-        return ExperienceLevel.VP;
     }
 
     @Transactional

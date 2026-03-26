@@ -1,5 +1,6 @@
 package com.salaryinsights.dto.response;
 
+import com.salaryinsights.enums.ExperienceLevel;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -10,5 +11,7 @@ public class StandardizedLevelResponse {
     private UUID id;
     private String name;
     private Integer hierarchyRank;
+    private String description;
+    private ExperienceLevel experienceLevel;
     private LocalDateTime createdAt;
 }
