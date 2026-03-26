@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../services/api';
+import { useAppData } from '../../context/AppDataContext';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 import TopProgressBar from '../../components/shared/TopProgressBar';
 
@@ -13,6 +14,14 @@ function Tag({ label, color = 'var(--teal)', bg = 'var(--teal-dim)', border = 'r
       fontFamily: "'JetBrains Mono',monospace",
     }}>{label}</span>
   );
+}
+
+const FN_COLOURS = ['#3b82f6','#8b5cf6','#06b6d4','#f59e0b','#10b981','#ef4444','#ec4899'];
+function fnCategoryStyle(name) {
+  if (!name) return { background: 'var(--bg-2)', color: 'var(--text-3)', border: '1px solid var(--border)' };
+  const idx = Math.abs([...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 0)) % FN_COLOURS.length;
+  const hex = FN_COLOURS[idx];
+  return { background: hex + '18', color: hex, border: `1px solid ${hex}40` };
 }
 
 function AdminHeader({ label, title, action }) {
@@ -170,6 +179,7 @@ function StandardLevelsTab() {
    Company picker → shows that company's internal titles + their mapped level
 ═══════════════════════════════════════════════════════════════════════════ */
 function CompanyLevelsTab({ standardLevels }) {
+  const { functions: jobFunctions } = useAppData();
   // Company autocomplete
   const [query,       setQuery]       = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -186,7 +196,7 @@ function CompanyLevelsTab({ standardLevels }) {
   const [mapModal,  setMapModal]  = useState(null); // company level obj
   const [newTitle,  setNewTitle]  = useState('');
   const [newDesc,   setNewDesc]   = useState('');
-  const [newFn,     setNewFn]     = useState('Engineering');
+  const [newFn,     setNewFn]     = useState('');
   // overlap mapping state: [{stdId, pct}]
   const [entries,   setEntries]   = useState([]);
   const [saving,    setSaving]    = useState(false);
@@ -241,7 +251,7 @@ function CompanyLevelsTab({ standardLevels }) {
         description: newDesc.trim() || null,
         functionCategory: newFn,
       });
-      setAddModal(false); setNewTitle(''); setNewDesc(''); setNewFn('Engineering');
+      setAddModal(false); setNewTitle(''); setNewDesc(''); setNewFn(jobFunctions[0]?.displayName ?? '');
       loadLevels(selCompany.id);
     } catch (e) { setError(e.response?.data?.message ?? 'Add failed'); }
     finally { setSaving(false); TopProgressBar.done(); }
@@ -367,12 +377,10 @@ function CompanyLevelsTab({ standardLevels }) {
                       <td style={{ fontWeight: 600, color: 'var(--text-1)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>{l.title}</td>
                       <td>
                         <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99,
-                          background: l.functionCategory === 'Product' ? '#8b5cf618' : l.functionCategory === 'Program' ? '#06b6d418' : '#3b82f618',
-                          color:      l.functionCategory === 'Product' ? '#8b5cf6'   : l.functionCategory === 'Program' ? '#06b6d4'   : '#3b82f6',
-                          border:     `1px solid ${l.functionCategory === 'Product' ? '#8b5cf640' : l.functionCategory === 'Program' ? '#06b6d440' : '#3b82f640'}`,
+                          ...fnCategoryStyle(l.functionCategory),
                           fontFamily: "'JetBrains Mono',monospace",
                         }}>
-                          {l.functionCategory || 'Engineering'}
+                          {l.functionCategory ?? '—'}
                         </span>
                       </td>
                       <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{l.description || '—'}</td>
@@ -421,14 +429,14 @@ function CompanyLevelsTab({ standardLevels }) {
             <div>
               <label className="form-label">Function Track *</label>
               <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                {['Engineering', 'Product', 'Program'].map(fn => (
-                  <button key={fn} type="button" onClick={() => setNewFn(fn)} style={{
+                {jobFunctions.map(fn => (
+                  <button key={fn.id} type="button" onClick={() => setNewFn(fn.displayName)} style={{
                     flex: 1, padding: '7px 0', borderRadius: 7, fontSize: 12, fontWeight: 600,
                     cursor: 'pointer', transition: 'all 0.12s',
-                    background: newFn === fn ? '#3b82f6' : 'var(--bg-2)',
-                    color: newFn === fn ? '#fff' : 'var(--text-3)',
-                    border: newFn === fn ? '1px solid #3b82f6' : '1px solid var(--border)',
-                  }}>{fn}</button>
+                    background: newFn === fn.displayName ? '#3b82f6' : 'var(--bg-2)',
+                    color: newFn === fn.displayName ? '#fff' : 'var(--text-3)',
+                    border: newFn === fn.displayName ? '1px solid #3b82f6' : '1px solid var(--border)',
+                  }}>{fn.displayName}</button>
                 ))}
               </div>
             </div>

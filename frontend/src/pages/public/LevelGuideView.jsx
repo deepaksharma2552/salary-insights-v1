@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../../services/api';
+import { useAppData } from '../../context/AppDataContext';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 import TopProgressBar from '../../components/shared/TopProgressBar';
 
@@ -505,12 +506,17 @@ function CompanyCombo({ selected, onChange }) {
 /* ─── Main View ───────────────────────────────────────────────────────────── */
 export default function LevelGuideView() {
   const [selected,         setSelected]         = useState([]);
-  const [functionCategory, setFunctionCategory] = useState('Engineering');
+  const { functions: jobFunctions } = useAppData();
+  const [functionCategory, setFunctionCategory] = useState('');
+  useEffect(() => {
+    if (!functionCategory && jobFunctions.length > 0) {
+      setFunctionCategory(jobFunctions[0].displayName);
+    }
+  }, [jobFunctions, functionCategory]);
   const [gridData,         setGridData]         = useState(null);
   const [loading,          setLoading]          = useState(false);
   const [error,            setError]            = useState(null);
   const debounceRef = useRef(null);
-  const FUNCTIONS = ['Engineering', 'Product', 'Program'];
 
   const fetchGrid = useCallback((companies) => {
     if (companies.length === 0) { setGridData(null); return; }
@@ -560,17 +566,17 @@ export default function LevelGuideView() {
         {/* Function filter */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 500, marginRight: 4 }}>Function:</span>
-          {FUNCTIONS.map(fn => (
-            <button key={fn}
-              onClick={() => { TopProgressBar.start(); setFunctionCategory(fn); }}
+          {jobFunctions.map(fn => (
+            <button key={fn.id}
+              onClick={() => { TopProgressBar.start(); setFunctionCategory(fn.displayName); }}
               style={{
                 padding: '4px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', transition: 'all 0.15s',
-                background: functionCategory === fn ? '#3b82f6' : 'var(--bg-3)',
-                color:      functionCategory === fn ? '#fff'    : 'var(--text-3)',
-                border:     functionCategory === fn ? '1px solid #3b82f6' : '1px solid var(--border)',
+                background: functionCategory === fn.displayName ? '#3b82f6' : 'var(--bg-3)',
+                color:      functionCategory === fn.displayName ? '#fff'    : 'var(--text-3)',
+                border:     functionCategory === fn.displayName ? '1px solid #3b82f6' : '1px solid var(--border)',
               }}
-            >{fn}</button>
+            >{fn.displayName}</button>
           ))}
         </div>
       </div>
