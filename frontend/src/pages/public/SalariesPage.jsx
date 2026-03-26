@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import SalaryTable from '../../components/shared/SalaryTable';
 import api from '../../services/api';
@@ -8,14 +8,7 @@ import ScrollableSelect from '../../components/shared/ScrollableSelect';
 import { useLocations } from '../../hooks/useLocations';
 import { mapSalary } from '../../utils/salaryMapper';
 import SalaryBenchmarkTool from '../../components/shared/SalaryBenchmarkTool';
-
-const LEVEL_OPTIONS = [
-  { value: '', label: 'All Levels' },
-  { value: 'junior', label: 'Junior' },
-  { value: 'mid', label: 'Mid' },
-  { value: 'senior', label: 'Senior' },
-  { value: 'lead', label: 'Lead' },
-];
+import { useAppData } from '../../context/AppDataContext';
 
 const EMP_TYPE_OPTIONS = [
   { value: '', label: 'Employment Type' },
@@ -31,9 +24,6 @@ const DEFAULT_SIZE      = 10;
 const SEARCH_MIN_CHARS  = 3;   // minimum chars before auto-search triggers
 const SEARCH_DEBOUNCE   = 600; // ms idle after last keystroke before auto-search
 
-// ── Viz palette — consistent with DashboardPage ──
-const LEVEL_MAP = { junior: 'ENTRY', mid: 'MID', senior: 'SENIOR', lead: 'LEAD' };
-
 function getPageRange(current, total) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i);
   if (current < 4) return [0,1,2,3,4,'...',total-1];
@@ -43,6 +33,7 @@ function getPageRange(current, total) {
 
 export default function SalariesPage() {
   const { locations } = useLocations();
+  const { functions, getLevelsForFunction } = useAppData();
   const locationOptions = [{ value: '', label: 'All Locations' }, ...locations];
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -61,9 +52,25 @@ export default function SalariesPage() {
   const debounceRef  = useRef(null);
 
   // Filters — seeded from URL
-  const [level,    setLevel]    = useState(() => searchParams.get('level')    ?? '');
-  const [location, setLocation] = useState(() => searchParams.get('location') ?? '');
-  const [empType,  setEmpType]  = useState(() => searchParams.get('empType')  ?? '');
+  const [jobFunctionId,  setJobFunctionId]  = useState(() => searchParams.get('function')      ?? '');
+  const [functionLevelId, setFunctionLevelId] = useState(() => searchParams.get('fnLevel')     ?? '');
+  const [location,       setLocation]       = useState(() => searchParams.get('location')      ?? '');
+  const [empType,        setEmpType]        = useState(() => searchParams.get('empType')        ?? '');
+
+  // Derived: function and level dropdown options
+  const functionOptions = useMemo(() => [
+    { value: '', label: 'All Functions' },
+    ...functions.map(f => ({ value: f.id, label: f.displayName || f.name })),
+  ], [functions]);
+
+  const levelOptions = useMemo(() => {
+    if (!jobFunctionId) return [{ value: '', label: 'All Levels' }];
+    const levels = getLevelsForFunction(jobFunctionId);
+    return [
+      { value: '', label: 'All Levels' },
+      ...levels.map(l => ({ value: l.id, label: l.name })),
+    ];
+  }, [jobFunctionId, getLevelsForFunction]);
 
   // Pagination — seeded from URL
   const [page,          setPage]          = useState(() => Number(searchParams.get('page') ?? 0));
@@ -74,21 +81,22 @@ export default function SalariesPage() {
   // Deep-link entry id — opening a specific drawer from URL
   const [openEntryId, setOpenEntryId] = useState(() => searchParams.get('entry') ?? null);
 
-  const isFiltering   = search || level || location || empType;
+  const isFiltering   = search || jobFunctionId || functionLevelId || location || empType;
   const isDirty       = inputValue !== search;
   const showHint      = inputValue.length > 0 && inputValue.length < SEARCH_MIN_CHARS;
 
   // ── Sync filters → URL (replace so back-button works naturally) ──
   useEffect(() => {
     const params = {};
-    if (search)   params.q        = search;
-    if (level)    params.level    = level;
-    if (location) params.location = location;
-    if (empType)  params.empType  = empType;
-    if (page > 0) params.page     = String(page);
-    if (openEntryId) params.entry = openEntryId;
+    if (search)          params.q        = search;
+    if (jobFunctionId)   params.function = jobFunctionId;
+    if (functionLevelId) params.fnLevel  = functionLevelId;
+    if (location)        params.location = location;
+    if (empType)         params.empType  = empType;
+    if (page > 0)        params.page     = String(page);
+    if (openEntryId)     params.entry    = openEntryId;
     setSearchParams(params, { replace: true });
-  }, [search, level, location, empType, page, openEntryId]); // eslint-disable-line
+  }, [search, jobFunctionId, functionLevelId, location, empType, page, openEntryId]); // eslint-disable-line
 
   // ── Commit the current inputValue as the search query ──
   function commitSearch(value) {
@@ -118,7 +126,8 @@ export default function SalariesPage() {
   function clearFilters() {
     clearTimeout(debounceRef.current);
     setInputValue(''); setSearch('');
-    setLevel(''); setLocation(''); setEmpType('');
+    setJobFunctionId(''); setFunctionLevelId('');
+    setLocation(''); setEmpType('');
     setPage(0);
   }
 
@@ -131,10 +140,11 @@ export default function SalariesPage() {
       page,
       size: pageSize,
       sort: 'createdAt,desc',
-      ...(location && { location }),
-      ...(level    && { experienceLevel: LEVEL_MAP[level] }),
-      ...(search   && { companyName: search, jobTitle: search }),
-      ...(empType  && { employmentType: empType }),
+      ...(location        && { location }),
+      ...(jobFunctionId   && { jobFunctionId }),
+      ...(functionLevelId && { functionLevelId }),
+      ...(search          && { companyName: search, jobTitle: search }),
+      ...(empType         && { employmentType: empType }),
     };
     api.get('/public/salaries', { params })
       .then(res => {
@@ -148,7 +158,7 @@ export default function SalariesPage() {
         setError(`Failed to load salaries (${err.response?.status ?? 'network error'})`);
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, search, level, location, empType]);
+  }, [page, pageSize, search, jobFunctionId, functionLevelId, location, empType]);
 
   useEffect(() => { fetchSalaries(); }, [fetchSalaries]);
 
@@ -241,10 +251,18 @@ export default function SalariesPage() {
         </div>
 
         <ScrollableSelect
-          value={level}
-          onChange={v => { setLevel(v); setPage(0); }}
-          options={LEVEL_OPTIONS}
+          value={jobFunctionId}
+          onChange={v => { setJobFunctionId(v); setFunctionLevelId(''); setPage(0); }}
+          options={functionOptions}
+          placeholder="All Functions"
+        />
+
+        <ScrollableSelect
+          value={functionLevelId}
+          onChange={v => { setFunctionLevelId(v); setPage(0); }}
+          options={levelOptions}
           placeholder="All Levels"
+          disabled={!jobFunctionId}
         />
 
         <ScrollableSelect

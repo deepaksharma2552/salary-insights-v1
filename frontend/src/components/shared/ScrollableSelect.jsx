@@ -9,8 +9,9 @@ import { useState, useRef, useEffect } from 'react';
  *   onChange     {fn}       — called with new value string
  *   options      {Array}    — [{ value, label }]
  *   placeholder  {string}   — label shown when nothing selected
+ *   disabled     {bool}     — when true, disables interaction and dims the button
  */
-export default function ScrollableSelect({ value, onChange, options, placeholder = 'Select…' }) {
+export default function ScrollableSelect({ value, onChange, options, placeholder = 'Select…', disabled = false }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -32,7 +33,7 @@ export default function ScrollableSelect({ value, onChange, options, placeholder
       {/* Trigger button — matches .select-field visually */}
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { if (!disabled) setOpen(o => !o); }}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -40,17 +41,18 @@ export default function ScrollableSelect({ value, onChange, options, placeholder
           padding: '6px 28px 6px 10px',
           fontSize: 13,
           fontWeight: 500,
-          color: isActive ? 'var(--text-1)' : 'var(--text-2)',
-          background: isActive ? 'var(--bg-3)' : 'var(--bg-2)',
+          color: disabled ? 'var(--text-3)' : isActive ? 'var(--text-1)' : 'var(--text-2)',
+          background: disabled ? 'var(--bg-1)' : isActive ? 'var(--bg-3)' : 'var(--bg-2)',
           border: `1px solid ${open ? 'var(--blue)' : isActive ? 'var(--border-2)' : 'var(--border)'}`,
           borderRadius: 'var(--radius)',
-          cursor: 'pointer',
+          cursor: disabled ? 'not-allowed' : 'pointer',
           outline: 'none',
           fontFamily: "'Inter', sans-serif",
           whiteSpace: 'nowrap',
           position: 'relative',
           transition: 'border-color 0.15s, background 0.15s',
           minWidth: 120,
+          opacity: disabled ? 0.5 : 1,
         }}
       >
         <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
