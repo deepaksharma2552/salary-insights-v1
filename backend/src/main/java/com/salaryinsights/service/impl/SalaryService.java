@@ -61,7 +61,7 @@ public class SalaryService {
             UUID companyId, String companyName, String jobTitle,
             List<String> locations, List<String> experienceLevelStrs,
             Pageable pageable) {
-        return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, null, null, pageable);
+        return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, null, null, null, null, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -70,7 +70,7 @@ public class SalaryService {
             List<String> locations, List<String> experienceLevelStrs,
             List<String> internalLevelStrs,
             Pageable pageable) {
-        return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, internalLevelStrs, null, pageable);
+        return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, internalLevelStrs, null, null, null, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -79,7 +79,18 @@ public class SalaryService {
             List<String> locations, List<String> experienceLevelStrs,
             String employmentTypeStr,
             Pageable pageable) {
-        return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, null, employmentTypeStr, pageable);
+        return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs, null, employmentTypeStr, null, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<SalaryResponse> getApprovedSalaries(
+            UUID companyId, String companyName, String jobTitle,
+            List<String> locations, List<String> experienceLevelStrs,
+            String employmentTypeStr,
+            UUID jobFunctionId, UUID functionLevelId,
+            Pageable pageable) {
+        return getApprovedSalaries(companyId, companyName, jobTitle, locations, experienceLevelStrs,
+                null, employmentTypeStr, jobFunctionId, functionLevelId, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -88,6 +99,7 @@ public class SalaryService {
             List<String> locations, List<String> experienceLevelStrs,
             List<String> internalLevelStrs,
             String employmentTypeStr,
+            UUID jobFunctionId, UUID functionLevelId,
             Pageable pageable) {
 
         final String companyNameFilter = (companyName != null && !companyName.isBlank()) ? companyName.toLowerCase() : null;
@@ -169,6 +181,12 @@ public class SalaryService {
                 }
                 if (employmentTypeFilter != null) {
                     predicates.add(cb.equal(root.get("employmentType"), employmentTypeFilter));
+                }
+                if (jobFunctionId != null) {
+                    predicates.add(cb.equal(root.get("jobFunction").get("id"), jobFunctionId));
+                }
+                if (functionLevelId != null) {
+                    predicates.add(cb.equal(root.get("functionLevel").get("id"), functionLevelId));
                 }
 
                 return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));

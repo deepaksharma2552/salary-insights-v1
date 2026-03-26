@@ -31,12 +31,14 @@ public class PublicSalaryController {
             @RequestParam(required = false) List<String> location,
             @RequestParam(required = false) List<String> experienceLevel,
             @RequestParam(required = false) String employmentType,
+            @RequestParam(required = false) UUID jobFunctionId,
+            @RequestParam(required = false) UUID functionLevelId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         PagedResponse<SalaryResponse> data = salaryService.getApprovedSalaries(
-                companyId, companyName, jobTitle, location, experienceLevel, employmentType, pageable);
+                companyId, companyName, jobTitle, location, experienceLevel, employmentType, jobFunctionId, functionLevelId, pageable);
         return ResponseEntity.ok(ApiResponse.success(data));
     }
 
