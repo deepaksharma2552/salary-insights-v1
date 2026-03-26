@@ -74,13 +74,6 @@ function JourneyCard({ emoji, title, desc, stats, actions, highlights, accentCol
       </div>
 
       <div style={{ flex: 1 }} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
-        {actions.map((a, i) => (
-          <Link key={i} to={a.to} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 34, borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', background: a.bg, color: a.color, ...(a.border ? { border: a.border } : {}) }}>
-            {a.label}
-          </Link>
-        ))}
-      </div>
     </div>
   );
 }
@@ -188,19 +181,7 @@ function MobileJourneyCarousel({ cards }) {
                 ))}
               </div>
 
-              {/* Action buttons */}
-              <div style={{ display: 'flex', gap: 6 }}>
-                {card.actions.map((a, ai) => (
-                  <Link key={ai} to={a.to} style={{
-                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    height: 34, borderRadius: 8, fontSize: 11, fontWeight: 700,
-                    textDecoration: 'none', background: a.bg, color: a.color,
-                    ...(a.border ? { border: a.border } : {}),
-                  }}>
-                    {a.label}
-                  </Link>
-                ))}
-              </div>
+
             </div>
           ))}
         </div>
