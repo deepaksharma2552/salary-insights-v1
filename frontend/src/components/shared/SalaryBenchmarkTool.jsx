@@ -160,7 +160,27 @@ function GapChip({ offerVal, medianVal, label }) {
 }
 
 // ── Offer input ───────────────────────────────────────────────────────────────
+function fmtInrShort(lakhs) {
+  // lakhs is the raw user input (e.g. "22" meaning 22L)
+  if (!lakhs) return null;
+  const n = parseFloat(String(lakhs).replace(/[^0-9.]/g, ''));
+  if (isNaN(n) || n === 0) return null;
+  const rupees = n * 100_000;
+  if (rupees >= 10_000_000) return `₹${(rupees / 10_000_000).toFixed(1).replace(/\.0$/, '')}Cr`;
+  return `₹${n.toFixed(1).replace(/\.0$/, '')}L`;
+}
+
+function fmtInrFull(lakhs) {
+  if (!lakhs) return null;
+  const n = parseFloat(String(lakhs).replace(/[^0-9.]/g, ''));
+  if (isNaN(n) || n === 0) return null;
+  const rupees = n * 100_000;
+  return rupees.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+}
+
 function OfferInput({ label, value, onChange, placeholder = '0' }) {
+  const short = fmtInrShort(value);
+  const full  = fmtInrFull(value);
   return (
     <div>
       <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-3)', marginBottom: 5 }}>
@@ -184,7 +204,7 @@ function OfferInput({ label, value, onChange, placeholder = '0' }) {
           }}
           style={{
             width: '100%', height: 38,
-            padding: '0 28px 0 22px',
+            padding: `0 ${short ? '52px' : '28px'} 0 22px`,
             borderRadius: 8,
             border: '1px solid var(--border)',
             background: 'var(--panel)',
@@ -195,14 +215,33 @@ function OfferInput({ label, value, onChange, placeholder = '0' }) {
             MozAppearance: 'textfield',
           }}
         />
-        <span style={{
-          position: 'absolute', right: 8,
-          fontSize: 10, color: 'var(--text-4)',
-          pointerEvents: 'none',
-          fontFamily: "'IBM Plex Mono',monospace",
-          letterSpacing: '0.03em',
-        }}>L</span>
+        {/* Readable short form overlay — e.g. ₹22L */}
+        {short ? (
+          <span style={{
+            position: 'absolute', right: 8,
+            fontSize: 11, fontWeight: 700, color: '#059669',
+            pointerEvents: 'none', fontFamily: "'IBM Plex Mono',monospace",
+            whiteSpace: 'nowrap',
+          }}>{short}</span>
+        ) : (
+          <span style={{
+            position: 'absolute', right: 8,
+            fontSize: 10, color: 'var(--text-4)',
+            pointerEvents: 'none', fontFamily: "'IBM Plex Mono',monospace",
+            letterSpacing: '0.03em',
+          }}>L</span>
+        )}
       </div>
+      {/* Full Indian locale sub-label — e.g. ₹22,00,000 / yr */}
+      {full && (
+        <span style={{
+          fontSize: 10, color: 'var(--text-3)',
+          fontFamily: "'IBM Plex Mono',monospace",
+          marginTop: 3, display: 'block',
+        }}>
+          {full} / yr
+        </span>
+      )}
     </div>
   );
 }
@@ -230,7 +269,7 @@ export default function SalaryBenchmarkTool() {
   const [jobFunctionId,   setJobFunctionId]   = useState('');
   const [functionLevelId, setFunctionLevelId] = useState('');
   const [location,        setLocation]        = useState('');
-  const [offerTc,         setOfferTc]         = useState('');
+  const [offerBonus,      setOfferBonus]      = useState('');
   const [offerBase,       setOfferBase]       = useState('');
   const [offerEquity,     setOfferEquity]     = useState('');
 
@@ -276,14 +315,14 @@ export default function SalaryBenchmarkTool() {
     return isNaN(n) ? null : n * 100_000;
   };
 
-  const offerTcRaw     = parseInput(offerTc);
+  const offerBonusRaw  = parseInput(offerBonus);
   const offerBaseRaw   = parseInput(offerBase);
   const offerEquityRaw = parseInput(offerEquity);
 
-  // Auto-derive total comp from base + equity if TC not entered
-  const derivedTc = (!offerTcRaw && (offerBaseRaw || offerEquityRaw))
-    ? (offerBaseRaw ?? 0) + (offerEquityRaw ?? 0)
-    : offerTcRaw;
+  // Total comp = Base + Bonus + Equity (only include components that were entered)
+  const derivedTc = (offerBaseRaw || offerBonusRaw || offerEquityRaw)
+    ? (offerBaseRaw ?? 0) + (offerBonusRaw ?? 0) + (offerEquityRaw ?? 0)
+    : null;
 
   const verdict = verdictSummary(derivedTc, offerBaseRaw, result);
 
@@ -398,12 +437,12 @@ export default function SalaryBenchmarkTool() {
             {/* Three inputs stacked full-width */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <OfferInput label="Base Salary"  value={offerBase}   onChange={setOfferBase}   placeholder="e.g. 22" />
-              <OfferInput label="Bonus"        value={offerTc}     onChange={setOfferTc}     placeholder="e.g. 3" />
+              <OfferInput label="Bonus"        value={offerBonus}  onChange={setOfferBonus}  placeholder="e.g. 3" />
               <OfferInput label="Equity / RSU" value={offerEquity} onChange={setOfferEquity} placeholder="e.g. 2" />
             </div>
 
             {/* Auto total chip */}
-            {(offerBaseRaw || offerEquityRaw || offerTcRaw) && (
+            {(offerBaseRaw || offerEquityRaw || offerBonusRaw) && (
               <div style={{
                 marginTop: 12,
                 padding: '10px 12px',
@@ -418,7 +457,7 @@ export default function SalaryBenchmarkTool() {
                   fontFamily: "'IBM Plex Mono',monospace",
                   color: 'var(--viz-1)',
                 }}>
-                  {fmt(derivedTc ?? (offerTcRaw ?? 0))}
+                  {fmt(derivedTc)}
                 </span>
               </div>
             )}

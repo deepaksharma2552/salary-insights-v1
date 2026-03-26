@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 import ScrollableSelect from '../../components/shared/ScrollableSelect';
@@ -609,10 +610,15 @@ function CompanyCard({ c, onViewDetails, openRoles }) {
             {c.entries} entries
           </span>
           {openRoles > 0 && (
-            <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10, fontWeight:700, color:"#16a34a", background:"#dcfce7", border:"1px solid #bbf7d0", borderRadius:6, padding:"2px 7px", whiteSpace:"nowrap" }}>
+            <Link
+              to={`/opportunities?company=${encodeURIComponent(c.name)}`}
+              onClick={e => e.stopPropagation()}
+              style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10, fontWeight:700, color:"#16a34a", background:"#dcfce7", border:"1px solid #bbf7d0", borderRadius:6, padding:"2px 7px", whiteSpace:"nowrap", textDecoration:"none", cursor:"pointer" }}
+            >
               <svg width="6" height="6" viewBox="0 0 8 8" fill="#16a34a"><circle cx="4" cy="4" r="4"/></svg>
               {openRoles} open {openRoles === 1 ? "role" : "roles"}
-            </span>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </Link>
           )}
         </div>
       </div>
