@@ -13,6 +13,10 @@ public interface JobFunctionRepository extends JpaRepository<JobFunction, UUID> 
 
     boolean existsByName(String name);
 
+    boolean existsByDisplayName(String displayName);
+
+    List<com.salaryinsights.entity.JobFunction> findAllByOrderBySortOrderAsc();
+
     // Fetch all functions with their levels in one query — used by the public endpoint
     // that feeds the frontend dropdown. N+1 avoided via JOIN FETCH.
     @Query("SELECT jf FROM JobFunction jf LEFT JOIN FETCH jf.levels ORDER BY jf.sortOrder ASC")

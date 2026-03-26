@@ -21,6 +21,7 @@ public class GuideLevelService {
     private final GuideCompanyLevelRepository  companyLevelRepo;
     private final GuideMappingRepository       mappingRepo;
     private final CompanyRepository            companyRepo;
+    private final JobFunctionRepository        jobFunctionRepo;
 
     // ── Standard Levels ───────────────────────────────────────────────────────
 
@@ -79,7 +80,17 @@ public class GuideLevelService {
         }
         String fn = (req.getFunctionCategory() != null && !req.getFunctionCategory().isBlank())
                 ? req.getFunctionCategory().trim()
-                : "Engineering";
+                : null;
+        if (fn != null) {
+            boolean valid = jobFunctionRepo.existsByName(fn.toUpperCase())
+                         || jobFunctionRepo.existsByDisplayName(fn);
+            if (!valid) {
+                throw new BadRequestException("Unknown function category: " + fn
+                        + ". Must match a job function name.");
+            }
+        } else {
+            throw new BadRequestException("functionCategory is required.");
+        }
         GuideCompanyLevel cl = GuideCompanyLevel.builder()
                 .company(company)
                 .title(req.getTitle().trim())
@@ -201,7 +212,7 @@ public class GuideLevelService {
 
             GuideLevelGridResponse.GridCell cell = new GuideLevelGridResponse.GridCell();
             cell.setTitle(gcl.getTitle());
-            cell.setFunctionCategory(gcl.getFunctionCategory() != null ? gcl.getFunctionCategory() : "Engineering");
+            cell.setFunctionCategory(gcl.getFunctionCategory());
             cell.setOverlapPct(gm.getOverlapPct());
 
             grid.computeIfAbsent(stdId, k -> new LinkedHashMap<>())
@@ -242,7 +253,7 @@ public class GuideLevelService {
         r.setCompanyName(cl.getCompany().getName());
         r.setTitle(cl.getTitle());
         r.setDescription(cl.getDescription());
-        r.setFunctionCategory(cl.getFunctionCategory() != null ? cl.getFunctionCategory() : "Engineering");
+        r.setFunctionCategory(cl.getFunctionCategory());
 
         List<GuideCompanyLevelResponse.MappingEntry> entries = new ArrayList<>();
         if (cl.getGuideMappings() != null) {
