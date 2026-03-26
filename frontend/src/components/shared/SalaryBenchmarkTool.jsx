@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import api from '../../services/api';
 import { useLocations } from '../../hooks/useLocations';
 import { useAppData } from '../../context/AppDataContext';
@@ -265,7 +265,6 @@ export default function SalaryBenchmarkTool() {
   const { locations } = useLocations();
   const { functions, getLevelsForFunction, functionsReady } = useAppData();
 
-  const [jobTitle,        setJobTitle]        = useState('');
   const [jobFunctionId,   setJobFunctionId]   = useState('');
   const [functionLevelId, setFunctionLevelId] = useState('');
   const [location,        setLocation]        = useState('');
@@ -288,14 +287,13 @@ export default function SalaryBenchmarkTool() {
     setFunctionLevelId('');
   }
 
-  const canSubmit = jobTitle.trim().length >= 2 || !!jobFunctionId;
+  const canSubmit = !!jobFunctionId;
 
   const handleBenchmark = useCallback(async () => {
     if (!canSubmit) return;
     setLoading(true); setError(null); setResult(null); setAnimate(false);
     try {
       const params = {};
-      if (jobTitle.trim())   params.jobTitle        = jobTitle.trim();
       if (jobFunctionId)     params.jobFunctionId   = jobFunctionId;
       if (functionLevelId)   params.functionLevelId = functionLevelId;
       if (location)          params.location        = location;
@@ -307,7 +305,7 @@ export default function SalaryBenchmarkTool() {
     } finally {
       setLoading(false);
     }
-  }, [jobTitle, jobFunctionId, functionLevelId, location, canSubmit]);
+  }, [jobFunctionId, functionLevelId, location, canSubmit]);
 
   const parseInput = (v) => {
     if (!v) return null;
@@ -378,39 +376,29 @@ export default function SalaryBenchmarkTool() {
 
           {/* Role fields */}
           <div style={{ padding: '18px 18px 0' }}>
+
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Role / Job Title</label>
-              <input
-                className="input-field"
-                type="text"
-                placeholder="e.g. Software Engineer, PM…"
-                value={jobTitle}
-                onChange={e => setJobTitle(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && canSubmit && handleBenchmark()}
-                style={inputStyle}
-              />
+              <label style={labelStyle}>
+                Function
+                <span style={{ color: 'var(--rose)', marginLeft: 3 }}>*</span>
+              </label>
+              <select value={jobFunctionId} onChange={handleFunctionChange} style={selectStyle} disabled={!functionsReady}>
+                <option value="">{functionsReady ? 'Select a function…' : 'Loading…'}</option>
+                {functions.map(fn => <option key={fn.id} value={fn.id}>{fn.displayName}</option>)}
+              </select>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-              <div>
-                <label style={labelStyle}>Function</label>
-                <select value={jobFunctionId} onChange={handleFunctionChange} style={selectStyle} disabled={!functionsReady}>
-                  <option value="">{functionsReady ? 'Any' : 'Loading…'}</option>
-                  {functions.map(fn => <option key={fn.id} value={fn.id}>{fn.displayName}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Level</label>
-                <select
-                  value={functionLevelId}
-                  onChange={e => setFunctionLevelId(e.target.value)}
-                  style={{ ...selectStyle, opacity: jobFunctionId ? 1 : 0.5 }}
-                  disabled={!jobFunctionId}
-                >
-                  <option value="">{jobFunctionId ? 'Any' : '—'}</option>
-                  {availableLevels.map(lv => <option key={lv.id} value={lv.id}>{lv.name}</option>)}
-                </select>
-              </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Level</label>
+              <select
+                value={functionLevelId}
+                onChange={e => setFunctionLevelId(e.target.value)}
+                style={{ ...selectStyle, opacity: jobFunctionId ? 1 : 0.45 }}
+                disabled={!jobFunctionId}
+              >
+                <option value="">{jobFunctionId ? 'Any level' : '— select function first —'}</option>
+                {availableLevels.map(lv => <option key={lv.id} value={lv.id}>{lv.name}</option>)}
+              </select>
             </div>
 
             <div style={{ marginBottom: 18 }}>
@@ -500,7 +488,7 @@ export default function SalaryBenchmarkTool() {
             </button>
             {!canSubmit && (
               <p style={{ fontSize: 11, color: 'var(--text-3)', textAlign: 'center', marginTop: 8 }}>
-                Enter a job title or select a function
+                Select a function to benchmark
               </p>
             )}
           </div>
