@@ -101,6 +101,58 @@ function detectIcon(name) {
   return '✦';
 }
 
+// SVG icon components for benefits
+const BENEFIT_SVG_ICONS = {
+  financial: {
+    esop:        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+    meal:        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>,
+    relocation:  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>,
+    bonus:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+  },
+  health: {
+    health:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+    dental:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2a5 5 0 0 0-5 5c0 2 1 3.5 1 5s-.5 4-1 6h10c-.5-2-1-4.5-1-6s1-3 1-5a5 5 0 0 0-5-5z"/></svg>,
+    gym:         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>,
+    mental:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+  },
+  growth: {
+    learning:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
+    certification:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>,
+  },
+  lifestyle: {
+    remote:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>,
+    parental:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+    leave:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+    commute:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
+  },
+  default:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+};
+
+function getBenefitSvgIcon(name = '', cat = 'other') {
+  const lower = name.toLowerCase();
+  const catIcons = BENEFIT_SVG_ICONS[cat] ?? {};
+  for (const [key, icon] of Object.entries(catIcons)) {
+    if (lower.includes(key)) return icon;
+  }
+  // fallback: check all categories
+  for (const icons of Object.values(BENEFIT_SVG_ICONS)) {
+    if (!icons.viewBox) { // skip the default svg node
+      for (const [key, icon] of Object.entries(icons)) {
+        if (lower.includes(key)) return icon;
+      }
+    }
+  }
+  return BENEFIT_SVG_ICONS.default;
+}
+
+function getValueStyle(amount) {
+  if (!amount) return { color: 'var(--text-3)', fontStyle: 'italic', fontWeight: 400, fontSize: 12 };
+  const lower = String(amount).toLowerCase();
+  if (lower === 'offered' || lower === 'covered' || lower === 'free') return { color: '#16a34a', fontWeight: 700, fontSize: 13 };
+  if (lower === 'no') return { color: '#dc2626', fontWeight: 700, fontSize: 13 };
+  return { color: 'var(--text-1)', fontWeight: 700, fontSize: 13, fontFamily: "'IBM Plex Mono',monospace" };
+}
+
 function BenefitsGrid({ benefits }) {
   if (!benefits || benefits.length === 0) {
     return (
@@ -110,10 +162,9 @@ function BenefitsGrid({ benefits }) {
     );
   }
 
-  // Normalise + group
   const normalised = benefits.map(b => ({
     name:   typeof b === 'string' ? b : b.name,
-    amount: typeof b === 'string' ? null : b.amount,
+    amount: typeof b === 'string' ? null : (b.amount ?? b.value ?? null),
   }));
 
   const groups = {};
@@ -123,47 +174,88 @@ function BenefitsGrid({ benefits }) {
     groups[cat].push(b);
   });
 
-  // Render in fixed order: financial → health → growth → lifestyle → other
   const ORDER = ['financial', 'health', 'growth', 'lifestyle', 'other'];
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
-      {ORDER.filter(cat => groups[cat]).map(cat => {
-        const meta = CATEGORY_META[cat];
-        return (
-          <div key={cat}>
-            {/* Category header */}
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-              <div style={{ width:7, height:7, borderRadius:'50%', background:meta.dot, flexShrink:0 }} />
-              <span style={{ fontSize:10, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.07em', color:'var(--text-3)' }}>
-                {meta.label}
-              </span>
-              <div style={{ flex:1, height:'0.5px', background:'var(--border)' }} />
-            </div>
+    <>
+      <style>{`
+        .benefits-grid-2col {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+        @media (max-width: 768px) {
+          .benefits-grid-2col {
+            grid-template-columns: 1fr !important;
+            gap: 8px !important;
+          }
+        }
+        @media (max-width: 390px) {
+          .benefits-grid-2col {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        .benefit-tile {
+          background: var(--bg-2);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          padding: 12px 14px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .benefit-tile:hover {
+          border-color: var(--border);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+      `}</style>
+      <div style={{ display:'flex', flexDirection:'column', gap:22 }}>
+        {ORDER.filter(cat => groups[cat]).map(cat => {
+          const meta = CATEGORY_META[cat];
+          return (
+            <div key={cat}>
+              {/* Category header */}
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                <div style={{ width:7, height:7, borderRadius:'50%', background:meta.dot, flexShrink:0 }} />
+                <span style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-3)' }}>
+                  {meta.label}
+                </span>
+                <div style={{ flex:1, height:'0.5px', background:'var(--border)' }} />
+              </div>
 
-            {/* 3-col tile grid */}
-            <div className="grid-benefits-3">
-              {groups[cat].map((b, i) => (
-                <div key={i} style={{ background:'var(--bg-2)', borderRadius:8, padding:'10px 12px', display:'flex', alignItems:'center', gap:10 }}>
-                  <div style={{ width:32, height:32, borderRadius:8, background:meta.iconBg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0 }}>
-                    {detectIcon(b.name)}
-                  </div>
-                  <div style={{ minWidth:0 }}>
-                    <div style={{ fontSize:11, color:'var(--text-3)', marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                      {b.name}
+              {/* 2-col tile grid */}
+              <div className="benefits-grid-2col">
+                {groups[cat].map((b, i) => (
+                  <div key={i} className="benefit-tile">
+                    {/* Icon square */}
+                    <div style={{
+                      width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+                      background: meta.iconBg,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: meta.dot,
+                    }}>
+                      <div style={{ width: 18, height: 18 }}>
+                        {getBenefitSvgIcon(b.name, cat)}
+                      </div>
                     </div>
-                    {b.amount
-                      ? <div style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', fontFamily:"'IBM Plex Mono',monospace" }}>{b.amount}</div>
-                      : <div style={{ fontSize:11, color:'var(--text-3)', fontStyle:'italic' }}>not specified</div>
-                    }
+                    {/* Text */}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 500 }}>
+                        {b.name}
+                      </div>
+                      <div style={getValueStyle(b.amount)}>
+                        {b.amount ?? 'not specified'}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
