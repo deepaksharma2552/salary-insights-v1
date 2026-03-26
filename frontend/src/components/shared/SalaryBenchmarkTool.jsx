@@ -339,18 +339,18 @@ export default function SalaryBenchmarkTool() {
   };
 
   return (
-    <div style={{ maxWidth: 820 }}>
+    <div style={{ maxWidth: 1080 }}>
       <style>{`
         @keyframes bmFadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
         @keyframes bmSpin { to { transform: rotate(360deg); } }
         .bm-fadein { animation: bmFadeUp 0.28s ease both; }
         input[type=number]::-webkit-inner-spin-button,
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        @media (max-width: 680px) { .bm-shell { grid-template-columns: 1fr !important; } }
-        @media (max-width: 680px) { .bm-stat-pills { grid-template-columns: 1fr 1fr !important; } }
+        @media (max-width: 780px) { .bm-shell { grid-template-columns: 1fr !important; } }
+        @media (max-width: 780px) { .bm-stat-pills { grid-template-columns: 1fr 1fr !important; } }
       `}</style>
 
-      <div className="bm-shell" style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16, alignItems: 'start' }}>
+      <div className="bm-shell" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
 
         {/* ── LEFT: Form card ── */}
         <div style={{
@@ -513,23 +513,23 @@ export default function SalaryBenchmarkTool() {
           {!result && !loading && !error && (
             <div style={{
               background: 'var(--panel)', border: '1px solid var(--border)',
-              borderRadius: 14, padding: '52px 32px', textAlign: 'center',
+              borderRadius: 14, padding: '64px 40px', textAlign: 'center',
               boxShadow: 'var(--shadow-sm)',
             }}>
               <div style={{
-                width: 52, height: 52, borderRadius: 14,
+                width: 56, height: 56, borderRadius: 16,
                 background: 'var(--viz-1-dim)', border: '1px solid var(--blue-mid)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px',
               }}>
-                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                <svg width="24" height="24" viewBox="0 0 22 22" fill="none">
                   <rect x="1"  y="13" width="4" height="8"  rx="1.2" fill="var(--viz-1)" opacity="0.5"/>
                   <rect x="9"  y="8"  width="4" height="13" rx="1.2" fill="var(--viz-1)" opacity="0.75"/>
                   <rect x="17" y="3"  width="4" height="18" rx="1.2" fill="var(--viz-1)"/>
                 </svg>
               </div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', marginBottom: 7 }}>Ready to benchmark</div>
-              <div style={{ fontSize: 13, color: 'var(--text-3)', lineHeight: 1.6 }}>
-                Fill in the role details on the left<br/>and click <strong style={{ color: 'var(--text-2)' }}>Benchmark this role</strong>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', marginBottom: 8 }}>Ready to benchmark</div>
+              <div style={{ fontSize: 13, color: 'var(--text-3)', lineHeight: 1.7, maxWidth: 240, margin: '0 auto' }}>
+                Select a <strong style={{ color: 'var(--text-2)' }}>Function</strong> and optionally a <strong style={{ color: 'var(--text-2)' }}>Level</strong> on the left, then click <strong style={{ color: 'var(--text-2)' }}>Benchmark this role</strong>
               </div>
             </div>
           )}
@@ -559,22 +559,24 @@ export default function SalaryBenchmarkTool() {
           {verdict && (
             <div className="bm-fadein" style={{
               background: verdict.bg, border: `1px solid ${verdict.border}`,
-              borderRadius: 12, padding: '14px 18px', marginBottom: 12,
-              display: 'flex', alignItems: 'center', gap: 14,
+              borderRadius: 14, padding: '20px 22px', marginBottom: 14,
+              display: 'flex', alignItems: 'center', gap: 16,
+              boxShadow: 'var(--shadow-sm)',
             }}>
               <div style={{
-                width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                background: 'var(--panel)', border: `1.5px solid ${verdict.border}`,
+                width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+                background: 'var(--panel)', border: `2px solid ${verdict.border}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: `0 0 0 4px ${verdict.bg}`,
               }}>
                 {verdict.isPositive
-                  ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5 6.5-7" stroke="var(--green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  : <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 4.5v5M8 11.5v.5" stroke="var(--orange)" strokeWidth="2" strokeLinecap="round"/></svg>
+                  ? <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5 6.5-7" stroke="var(--green)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  : <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 4.5v5M8 11.5v.5" stroke="var(--orange)" strokeWidth="2.2" strokeLinecap="round"/></svg>
                 }
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{verdict.title}</div>
-                <div style={{ fontSize: 12, color: verdict.color, marginTop: 2 }}>{verdict.sub}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', marginBottom: 3 }}>{verdict.title}</div>
+                <div style={{ fontSize: 12, color: verdict.color, fontWeight: 500 }}>{verdict.sub}</div>
               </div>
             </div>
           )}
@@ -587,21 +589,34 @@ export default function SalaryBenchmarkTool() {
             }}>
               {/* Result header */}
               <div style={{
-                padding: '15px 22px', borderBottom: '1px solid var(--border)',
+                padding: '16px 22px', borderBottom: '1px solid var(--border)',
                 background: 'var(--bg-2)',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
               }}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    {result.role ?? 'All roles'}
+                <div style={{ minWidth: 0 }}>
+                  {/* Function + Level pills */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
                     {result.jobFunction && (
-                      <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-3)' }}>
-                        · {result.jobFunction}{result.level && ` / ${result.level}`}
-                      </span>
+                      <span style={{
+                        fontSize: 11, fontWeight: 600, color: 'var(--viz-1)',
+                        background: 'var(--viz-1-dim)', border: '1px solid var(--blue-mid)',
+                        borderRadius: 6, padding: '2px 8px',
+                      }}>{result.jobFunction}</span>
+                    )}
+                    {result.level && (
+                      <span style={{
+                        fontSize: 11, fontWeight: 600, color: 'var(--viz-2)',
+                        background: 'var(--viz-2-dim, rgba(99,102,241,0.08))', border: '1px solid rgba(99,102,241,0.2)',
+                        borderRadius: 6, padding: '2px 8px',
+                      }}>{result.level}</span>
                     )}
                   </div>
+                  {/* Role name */}
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
+                    {result.role ?? 'All roles'}
+                  </div>
                   {result.location && (
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
                       <svg width="9" height="11" viewBox="0 0 9 11" fill="none">
                         <path d="M4.5 0C2.29 0 .5 1.79.5 4c0 3 4 7 4 7s4-4 4-7c0-2.21-1.79-4-4-4zm0 5.5c-.83 0-1.5-.67-1.5-1.5S3.67 2.5 4.5 2.5 6 3.17 6 4s-.67 1.5-1.5 1.5z" fill="var(--text-3)"/>
                       </svg>
@@ -609,11 +624,15 @@ export default function SalaryBenchmarkTool() {
                     </div>
                   )}
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--text-1)', lineHeight: 1 }}>
+                <div style={{
+                  textAlign: 'center', flexShrink: 0,
+                  background: 'var(--panel)', border: '1px solid var(--border)',
+                  borderRadius: 10, padding: '8px 14px',
+                }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--text-1)', lineHeight: 1 }}>
                     {result.sampleSize}
                   </div>
-                  <div style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 3 }}>
                     {result.sampleSize === 1 ? 'entry' : 'entries'}
                   </div>
                 </div>
