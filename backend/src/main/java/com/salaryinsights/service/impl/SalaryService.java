@@ -610,6 +610,16 @@ public class SalaryService {
     }
 
     @Transactional(readOnly = true)
+    public long getSubmissionsLastMonth() {
+        LocalDateTime startThisMonth = LocalDateTime.now()
+                .withDayOfMonth(1)
+                .withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime startLastMonth = startThisMonth.minusMonths(1);
+        return salaryEntryRepository.countByCreatedAtBetweenAndReviewStatus(
+                startLastMonth, startThisMonth, ReviewStatus.APPROVED);
+    }
+
+    @Transactional(readOnly = true)
     public PagedResponse<SalaryResponse> getApprovedSalariesAdmin(
             UUID companyId, String companyName, String jobTitle,
             List<String> locations, List<String> experienceLevelStrs,
