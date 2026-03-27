@@ -10,9 +10,16 @@ export default function AdminPendingSalaries() {
   const [reason,   setReason]   = useState('');
 
   const [fetchError, setFetchError] = useState(null);
-  const [actioning,  setActioning]  = useState(null); // id of the row currently being actioned
+  const [actioning,  setActioning]  = useState(null);
 
-  // Load without setLoading(true) when called after an action — keeps table visible
+  // ── AI Enrichment state ────────────────────────────────────────────────────
+  const [enrichCompany,  setEnrichCompany]  = useState('');
+  const [enrichLoading,  setEnrichLoading]  = useState(false);
+  const [enrichResult,   setEnrichResult]   = useState(null);  // { inserted, companyName }
+  const [enrichError,    setEnrichError]    = useState(null);
+
+  // ── Salary list ────────────────────────────────────────────────────────────
+
   const loadSilent = useCallback(() => {
     setFetchError(null);
     api.get('/admin/salaries/pending', { params: { page, size: 10 } })
@@ -32,12 +39,10 @@ export default function AdminPendingSalaries() {
     api.get('/admin/salaries/pending', { params: { page, size: 10 } })
       .then(r => {
         const paged = r.data?.data;
-        console.log('Pending salaries response:', r.data);
         setEntries(paged?.content ?? []);
         setTotal(paged?.totalElements ?? 0);
       })
       .catch(err => {
-        console.error('Pending salaries error:', err.response?.status, err.response?.data);
         setFetchError(`Error ${err.response?.status ?? 'network'}: ${err.response?.data?.error ?? err.message}`);
       })
       .finally(() => setLoading(false));
@@ -65,7 +70,34 @@ export default function AdminPendingSalaries() {
     finally { setActioning(null); }
   }
 
-  const fmt = (val) => val ? `₹${(val/100000).toFixed(1)}L` : '—';
+  // ── AI Enrichment ──────────────────────────────────────────────────────────
+
+  async function handleEnrich() {
+    if (!enrichCompany.trim()) return;
+    setEnrichLoading(true);
+    setEnrichResult(null);
+    setEnrichError(null);
+
+    try {
+      const res = await api.post('/admin/salaries/enrich', { companyName: enrichCompany.trim() });
+      const data = res.data?.data;
+      setEnrichResult(data);
+      // Refresh the pending list so new entries appear immediately
+      loadSilent();
+    } catch (err) {
+      const status = err.response?.status;
+      const msg    = err.response?.data?.error ?? err.message;
+      if (status === 429) {
+        setEnrichError(`Rate limited: ${msg}`);
+      } else {
+        setEnrichError(`Enrichment failed (${status ?? 'network'}): ${msg}`);
+      }
+    } finally {
+      setEnrichLoading(false);
+    }
+  }
+
+  const fmt = (val) => val ? `₹${(val / 100000).toFixed(1)}L` : '—';
 
   return (
     <div className="admin-page-content">
@@ -77,7 +109,13 @@ export default function AdminPendingSalaries() {
           70%  { width: 82%; }
           100% { width: 90%; }
         }
+        @keyframes enrichPulse {
+          0%, 100% { opacity: 1; }
+          50%      { opacity: 0.55; }
+        }
       `}</style>
+
+      {/* ── Page header ─────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
         <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin</span>
         <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, color: 'var(--text-1)', marginTop: 8, letterSpacing: '-0.02em' }}>
@@ -85,7 +123,124 @@ export default function AdminPendingSalaries() {
         </h2>
       </div>
 
-      {/* Notice: approvals drive all public data */}
+      {/* ── AI Enrichment panel ──────────────────────────────────────────── */}
+      <div style={{
+        marginBottom: 28,
+        padding: '20px 24px',
+        borderRadius: 14,
+        background: 'rgba(139,92,246,0.06)',
+        border: '0.5px solid rgba(139,92,246,0.25)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <span style={{ fontSize: 18 }}>✦</span>
+          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'rgba(139,92,246,0.9)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>AI Enrichment</span>
+        </div>
+
+        <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 16, lineHeight: 1.6 }}>
+          Enter a company name and Claude will search the web for real salary data, then queue up to 20 entries for your review.
+        </p>
+
+        <div style={{ display: 'flex', gap: 10, alignItems: 'stretch', flexWrap: 'wrap' }}>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="e.g. Google, Flipkart, Zepto…"
+            value={enrichCompany}
+            onChange={e => { setEnrichCompany(e.target.value); setEnrichResult(null); setEnrichError(null); }}
+            onKeyDown={e => { if (e.key === 'Enter' && !enrichLoading) handleEnrich(); }}
+            disabled={enrichLoading}
+            style={{
+              flex: '1 1 260px',
+              minWidth: 0,
+              opacity: enrichLoading ? 0.6 : 1,
+            }}
+          />
+          <button
+            onClick={handleEnrich}
+            disabled={enrichLoading || !enrichCompany.trim()}
+            style={{
+              padding: '9px 22px',
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: "'DM Sans',sans-serif",
+              background: enrichLoading ? 'rgba(139,92,246,0.12)' : 'rgba(139,92,246,0.18)',
+              color: 'rgba(167,139,250,1)',
+              border: '1px solid rgba(139,92,246,0.35)',
+              borderRadius: 9,
+              cursor: enrichLoading || !enrichCompany.trim() ? 'not-allowed' : 'pointer',
+              opacity: enrichLoading || !enrichCompany.trim() ? 0.7 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              whiteSpace: 'nowrap',
+              transition: 'opacity 0.2s ease, background 0.2s ease',
+            }}
+          >
+            {enrichLoading ? (
+              <>
+                <div style={{
+                  width: 13, height: 13,
+                  borderRadius: '50%',
+                  border: '2px solid rgba(139,92,246,0.25)',
+                  borderTopColor: 'rgba(167,139,250,1)',
+                  animation: 'spin 0.8s linear infinite',
+                  flexShrink: 0,
+                }} />
+                Enriching…
+              </>
+            ) : (
+              <>✦ Enrich with AI</>
+            )}
+          </button>
+        </div>
+
+        {/* Progress hint while loading */}
+        {enrichLoading && (
+          <p style={{
+            marginTop: 12, fontSize: 12,
+            color: 'rgba(167,139,250,0.7)',
+            fontFamily: "'JetBrains Mono',monospace",
+            animation: 'enrichPulse 1.8s ease-in-out infinite',
+          }}>
+            Searching the web and structuring salary data… this takes 5–15 seconds.
+          </p>
+        )}
+
+        {/* Success toast */}
+        {enrichResult && (
+          <div style={{
+            marginTop: 14,
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 16px',
+            background: 'rgba(62,207,176,0.08)',
+            border: '0.5px solid rgba(62,207,176,0.3)',
+            borderRadius: 9,
+          }}>
+            <span style={{ fontSize: 16 }}>✓</span>
+            <span style={{ fontSize: 13, color: 'var(--teal)' }}>
+              <strong>{enrichResult.inserted}</strong> salary{enrichResult.inserted === 1 ? '' : ' entries'} queued for{' '}
+              <strong>{enrichResult.companyName}</strong> — review them in the table below.
+            </span>
+          </div>
+        )}
+
+        {/* Error */}
+        {enrichError && (
+          <div style={{
+            marginTop: 14,
+            padding: '10px 16px',
+            background: 'var(--rose-dim)',
+            border: '0.5px solid rgba(224,92,122,0.25)',
+            borderRadius: 9,
+            fontSize: 13,
+            color: 'var(--rose)',
+          }}>
+            {enrichError}
+          </div>
+        )}
+      </div>
+
+      {/* ── Data freshness warning ───────────────────────────────────────── */}
       {total > 0 && (
         <div style={{
           marginBottom: 28, padding: '12px 18px', borderRadius: 10, fontSize: 13,
@@ -101,6 +256,7 @@ export default function AdminPendingSalaries() {
         </div>
       )}
 
+      {/* ── Pending salary table ─────────────────────────────────────────── */}
       {loading ? (
         <div style={{ color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>Loading…</div>
       ) : fetchError ? (
@@ -184,7 +340,6 @@ export default function AdminPendingSalaries() {
                             ✕ Reject
                           </button>
                         </div>
-                        {/* Progress bar — visible only while this row is being approved */}
                         {actioning === e.id && (
                           <div style={{ width: '100%', height: 3, background: 'rgba(62,207,176,0.15)', borderRadius: 99, overflow: 'hidden' }}>
                             <div style={{
@@ -203,7 +358,6 @@ export default function AdminPendingSalaries() {
             </table>
           </div>
 
-          {/* Pagination */}
           {total > 10 && (
             <div className="pagination">
               <span className="page-info">Showing {page * 10 + 1}–{Math.min((page + 1) * 10, total)} of {total}</span>
@@ -216,12 +370,16 @@ export default function AdminPendingSalaries() {
         </>
       )}
 
-      {/* Reject modal */}
+      {/* ── Reject modal ─────────────────────────────────────────────────── */}
       {rejectId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => setRejectId(null)}>
-          <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 20, padding: 36, width: 440, maxWidth: '90vw' }}
-            onClick={e => e.stopPropagation()}>
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setRejectId(null)}
+        >
+          <div
+            style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 20, padding: 36, width: 440, maxWidth: '90vw' }}
+            onClick={e => e.stopPropagation()}
+          >
             <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: 'var(--text-1)', marginBottom: 8 }}>Reject Entry</h3>
             <p style={{ color: 'var(--text-3)', fontSize: 14, marginBottom: 20 }}>Provide a reason (optional — will be logged in audit trail).</p>
             <textarea

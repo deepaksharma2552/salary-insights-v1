@@ -3,6 +3,7 @@ package com.salaryinsights.controller;
 import com.salaryinsights.dto.request.AdminSalaryUpdateRequest;
 import com.salaryinsights.dto.response.*;
 import com.salaryinsights.enums.ReviewStatus;
+import com.salaryinsights.service.ai.AiSalaryEnrichmentService;
 import com.salaryinsights.service.impl.SalaryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,10 +24,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AdminSalaryController {
 
-    private final SalaryService salaryService;
+    private final SalaryService              salaryService;
+    private final AiSalaryEnrichmentService  aiSalaryEnrichmentService;
 
     // ──────────────────────────────────────────
-    // Existing: pending queue
+    // Pending queue
     // ──────────────────────────────────────────
 
     @GetMapping("/pending")
@@ -60,7 +63,58 @@ public class AdminSalaryController {
     }
 
     // ──────────────────────────────────────────
-    // NEW: approved salaries — browse, edit, delete
+    // AI salary enrichment
+    // ──────────────────────────────────────────
+
+    /**
+     * POST /admin/salaries/enrich
+     *
+     * Triggers AI-powered salary enrichment for a given company.
+     * Claude (claude-sonnet-4-20250514) searches the web for real salary data,
+     * structures the results, and inserts them as PENDING for admin review.
+     * Nothing bypasses the review queue.
+     *
+     * Body:    { "companyName": "Google" }
+     * Returns: { "inserted": 12, "companyName": "Google" }
+     *
+     * HTTP 429 — rate limited (1 enrichment per company per hour)
+     * HTTP 400 — missing companyName
+     *
+     * This call typically takes 5–15 seconds due to web search + LLM inference.
+     */
+    @PostMapping("/enrich")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> enrich(
+            @RequestBody Map<String, String> body) {
+
+        String companyName = body != null ? body.get("companyName") : null;
+        if (companyName == null || companyName.isBlank()) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("companyName is required"));
+        }
+
+        try {
+            int inserted = aiSalaryEnrichmentService.enrich(companyName.trim());
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("inserted", inserted);
+            result.put("companyName", companyName.trim());
+
+            return ResponseEntity.ok(ApiResponse.success(
+                inserted + " salary entr" + (inserted == 1 ? "y" : "ies") + " queued for review",
+                result));
+
+        } catch (IllegalStateException e) {
+            // Rate-limit hit — surface as 429
+            return ResponseEntity.status(429)
+                .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                .body(ApiResponse.error("Enrichment failed: " + e.getMessage()));
+        }
+    }
+
+    // ──────────────────────────────────────────
+    // Approved salaries — browse, edit, delete
     // ──────────────────────────────────────────
 
     /**
@@ -94,13 +148,11 @@ public class AdminSalaryController {
             @RequestParam(defaultValue = "createdAt")  String sort,
             @RequestParam(defaultValue = "DESC")       String direction) {
 
-        // Hard cap — prevents runaway scans at scale
         int safeSize = Math.min(size, 100);
 
         Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
                 ? Sort.Direction.ASC : Sort.Direction.DESC;
 
-        // Only allow sorting by safe column names to prevent injection
         String safeSort = switch (sort) {
             case "baseSalary", "totalCompensation", "yearsOfExperience",
                  "experienceLevel", "createdAt", "updatedAt" -> sort;
@@ -121,7 +173,6 @@ public class AdminSalaryController {
      *
      * Partial update of an approved salary entry.
      * Only non-null fields in the request body are applied.
-     * Evicts analytics and company-list caches automatically (handled in service).
      */
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<SalaryResponse>> updateApproved(
@@ -136,7 +187,6 @@ public class AdminSalaryController {
      * DELETE /admin/salaries/{id}
      *
      * Hard-deletes an approved salary entry.
-     * Evicts analytics and company-list caches automatically (handled in service).
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteApproved(@PathVariable UUID id) {

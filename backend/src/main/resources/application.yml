@@ -84,3 +84,9 @@ app:
     archive-batch-size: ${AUDIT_ARCHIVE_BATCH_SIZE:1000}
     # Set false via env var to pause archival without redeploying (e.g. during audits).
     archive-enabled: ${AUDIT_ARCHIVE_ENABLED:true}
+
+anthropic:
+  api:
+    # Set ANTHROPIC_API_KEY in your environment / Railway variables.
+    # Get your key at: https://console.anthropic.com/settings/keys
+    key: ${ANTHROPIC_API_KEY:}
