@@ -1,4 +1,4 @@
-# 💼 Salary Insights Portal
+# 💼 Salary Insights Portal - V1
 
 A full-stack salary management and analytics platform built with **Spring Boot 3.2**, **React 18**, **PostgreSQL**, and **JWT authentication**.
 
