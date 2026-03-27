@@ -58,14 +58,19 @@ function ExpandedDetails({ e, onApprove, onReject, actioning }) {
   const isAI  = !e.submittedByEmail;
   const source = resolveSource(e);
 
-  // Equity display: show per-year value + total grant if both available
-  const equityPerYear   = e.equity != null ? fmt(e.equity) : null;
+  // Equity display: derive per-year and total grant values separately
+  const equityPerYear    = e.equity           != null ? fmt(e.equity)           : null;
   const equityTotalGrant = e.equityTotalGrant != null ? fmt(e.equityTotalGrant) : null;
-  const equityDisplay   = equityPerYear
-    ? equityTotalGrant && equityTotalGrant !== equityPerYear
-      ? `${equityPerYear}/yr  (${equityTotalGrant} total grant)`
-      : `${equityPerYear}/yr`
-    : null;
+
+  // Vesting period label — infer from ratio if both values exist
+  const vestingLabel = (() => {
+    if (!equityPerYear || !equityTotalGrant || equityTotalGrant === equityPerYear) return null;
+    const perYr = e.equity;
+    const total = e.equityTotalGrant;
+    if (!perYr || !total || perYr === 0) return null;
+    const yrs = Math.round(total / perYr);
+    return yrs >= 2 && yrs <= 6 ? `${yrs}-yr vesting` : null;
+  })();
 
   return (
     <tr>
@@ -87,7 +92,14 @@ function ExpandedDetails({ e, onApprove, onReject, actioning }) {
           }}>
             <DetailRow label="Base Salary"      value={fmt(e.baseSalary)}        highlight mono />
             <DetailRow label="Bonus"             value={fmt(e.bonus)}             mono />
-            <DetailRow label="Equity / yr"       value={equityDisplay}            mono />
+            <DetailRow
+              label={vestingLabel ? `Equity / yr  ·  ${vestingLabel}` : 'Equity / yr'}
+              value={equityPerYear}
+              mono
+            />
+            {equityTotalGrant && equityTotalGrant !== equityPerYear && (
+              <DetailRow label="Total RSU Grant"   value={equityTotalGrant}         mono />
+            )}
             <DetailRow label="Total Comp"        value={fmt(e.totalCompensation)} highlight mono />
             <DetailRow label="Department"        value={e.department} />
             <DetailRow label="Experience Level"  value={e.experienceLevel} />
