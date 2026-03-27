@@ -1,5 +1,9 @@
 package com.salaryinsights.service.ai;
 
+import com.salaryinsights.entity.FunctionLevel;
+import com.salaryinsights.entity.JobFunction;
+import com.salaryinsights.repository.FunctionLevelRepository;
+import com.salaryinsights.repository.JobFunctionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.salaryinsights.dto.request.SalaryRequest;
 import com.salaryinsights.dto.response.AiSalaryData;
@@ -134,10 +138,12 @@ public class AiSalaryEnrichmentService {
         jobs.entrySet().removeIf(e -> e.getValue().getCreatedAt() < cutoff);
     }
 
-    private final RestTemplate    restTemplate;
-    private final ObjectMapper    objectMapper;
-    private final SalaryService   salaryService;
-    private final AuditLogService auditLogService;
+    private final RestTemplate             restTemplate;
+    private final ObjectMapper             objectMapper;
+    private final SalaryService            salaryService;
+    private final AuditLogService          auditLogService;
+    private final JobFunctionRepository    jobFunctionRepository;
+    private final FunctionLevelRepository  functionLevelRepository;
 
     @Value("${anthropic.api.key}")
     private String anthropicApiKey;
@@ -467,7 +473,29 @@ public class AiSalaryEnrichmentService {
         }
         req.setEmploymentType(empType);
 
-        // Audit log — captures internalLevel, dataSource, and equity normalisation
+        // Resolve job function + level from the AI-returned department/jobTitle
+        // This maps e.g. "Product Designer" → Design function → Designer (Senior) level
+        try {
+            JobFunction fn = resolveJobFunction(aiEntry.getDepartment(), aiEntry.getJobTitle());
+            if (fn != null) {
+                req.setJobFunctionId(fn.getId());
+                FunctionLevel fl = resolveFunctionLevel(fn, aiEntry.getJobTitle(), req.getExperienceLevel());
+                if (fl != null) {
+                    req.setFunctionLevelId(fl.getId());
+                    log.debug("[AI Enrich] Resolved '{}' → function='{}' level='{}'",
+                        aiEntry.getJobTitle(), fn.getDisplayName(), fl.getName());
+                } else {
+                    log.debug("[AI Enrich] Function '{}' found but no level match for '{}'",
+                        fn.getDisplayName(), aiEntry.getJobTitle());
+                }
+            }
+        } catch (Exception e) {
+            // Non-fatal — entry saves without function mapping, admin can set it manually
+            log.warn("[AI Enrich] Function/level resolution failed for '{}': {}",
+                aiEntry.getJobTitle(), e.getMessage());
+        }
+
+        // Audit log — captures internalLevel, dataSource, equity normalisation, and function resolution
         int vestingYears = aiEntry.getEquity() != null ? vestingYearsFor(companyName) : 0;
         String auditDetails = String.format(
             "[AI:%s] %s | internalLevel=%s | experienceLevel=%s | base=%.0f INR | equity=%s (/%dyr vesting)",
@@ -521,6 +549,141 @@ public class AiSalaryEnrichmentService {
 
         log.debug("[AI Enrich] Could not resolve location '{}', defaulting to BENGALURU", locationStr);
         return Location.BENGALURU;
+    }
+
+    // ── Job function / level resolution ────────────────────────────────────────
+
+    /**
+     * Department → function keyword map.
+     * Keys are lowercased substrings to match against the AI-returned department string.
+     * Values are the canonical job_functions.name values in the DB.
+     */
+    private static final Map<String, String> DEPT_TO_FUNCTION = Map.ofEntries(
+        Map.entry("engineer",  "ENGINEERING"),
+        Map.entry("software",  "ENGINEERING"),
+        Map.entry("backend",   "ENGINEERING"),
+        Map.entry("frontend",  "ENGINEERING"),
+        Map.entry("fullstack", "ENGINEERING"),
+        Map.entry("sre",       "ENGINEERING"),
+        Map.entry("devops",    "ENGINEERING"),
+        Map.entry("data",      "ENGINEERING"),
+        Map.entry("ml",        "ENGINEERING"),
+        Map.entry("ai",        "ENGINEERING"),
+        Map.entry("product",   "PRODUCT"),
+        Map.entry("pm ",       "PRODUCT"),
+        Map.entry("program",   "PROGRAM"),
+        Map.entry("design",    "DESIGN"),
+        Map.entry("ux",        "DESIGN"),
+        Map.entry("ui",        "DESIGN"),
+        Map.entry("research",  "DESIGN"),
+        Map.entry("analytics", "ANALYTICS"),
+        Map.entry("analyst",   "ANALYTICS"),
+        Map.entry("finance",   "FINANCE"),
+        Map.entry("legal",     "LEGAL"),
+        Map.entry("hr",        "HR"),
+        Map.entry("people",    "HR"),
+        Map.entry("recruit",   "HR"),
+        Map.entry("sales",     "SALES"),
+        Map.entry("marketing", "MARKETING"),
+        Map.entry("growth",    "MARKETING"),
+        Map.entry("content",   "MARKETING"),
+        Map.entry("ops",       "OPERATIONS"),
+        Map.entry("operation", "OPERATIONS"),
+        Map.entry("support",   "SUPPORT"),
+        Map.entry("customer",  "SUPPORT")
+    );
+
+    /**
+     * Resolves a department string to a JobFunction from the DB using fuzzy keyword matching.
+     * Returns null if no match — entry still saves, just without a function mapping.
+     */
+    private JobFunction resolveJobFunction(String department, String jobTitle) {
+        // Load all functions once (small table, cached by JPA first-level cache)
+        List<JobFunction> allFunctions = jobFunctionRepository.findAllWithLevels();
+        if (allFunctions.isEmpty()) return null;
+
+        // Build a search string from both department and job title
+        String search = ((department != null ? department : "") + " " +
+                         (jobTitle   != null ? jobTitle   : "")).toLowerCase();
+
+        // Find the best-matching function name via keyword lookup
+        String targetFunctionName = null;
+        for (Map.Entry<String, String> entry : DEPT_TO_FUNCTION.entrySet()) {
+            if (search.contains(entry.getKey())) {
+                targetFunctionName = entry.getValue();
+                break;
+            }
+        }
+
+        if (targetFunctionName == null) {
+            log.debug("[AI Enrich] No function match for dept='{}' title='{}'", department, jobTitle);
+            return null;
+        }
+
+        final String fnName = targetFunctionName;
+        return allFunctions.stream()
+            .filter(f -> f.getName().equalsIgnoreCase(fnName))
+            .findFirst()
+            .orElseGet(() -> {
+                log.debug("[AI Enrich] Function '{}' matched keyword but not found in DB — skipping", fnName);
+                return null;
+            });
+    }
+
+    /**
+     * Resolves the best-fit FunctionLevel within a JobFunction for a given job title
+     * and experience level. Uses a scoring approach: prefers levels whose name contains
+     * keywords from the job title, with a secondary sort by experience level proximity.
+     *
+     * Returns null if no reasonable match is found.
+     */
+    private FunctionLevel resolveFunctionLevel(JobFunction function, String jobTitle,
+                                                ExperienceLevel experienceLevel) {
+        List<FunctionLevel> levels = function.getLevels();
+        if (levels == null || levels.isEmpty()) return null;
+
+        String titleLower = jobTitle != null ? jobTitle.toLowerCase() : "";
+
+        // Score each level: +2 for title keyword match, +1 for seniority keyword match
+        record Scored(FunctionLevel level, int score) {}
+
+        List<Scored> scored = levels.stream().map(fl -> {
+            String lvlLower = fl.getName().toLowerCase();
+            int score = 0;
+
+            // Title keyword match (e.g. "Product Designer" → prefers level named "Designer")
+            String[] titleWords = titleLower.split("\\s+");
+            for (String word : titleWords) {
+                if (word.length() > 3 && lvlLower.contains(word)) score += 2;
+            }
+
+            // Seniority match — map ExperienceLevel to seniority keywords
+            if (experienceLevel != null) {
+                List<String> seniorityKeywords = switch (experienceLevel) {
+                    case INTERN   -> List.of("intern", "trainee");
+                    case ENTRY    -> List.of("junior", "associate", "1", "i");
+                    case MID      -> List.of("mid", "2", "ii");
+                    case SENIOR   -> List.of("senior", "sr.", "sr ", "3", "iii", "staff");
+                    case LEAD     -> List.of("lead", "principal", "staff");
+                    case MANAGER  -> List.of("manager", "mgr");
+                    case DIRECTOR -> List.of("director");
+                    case VP       -> List.of("vp", "vice president");
+                    case C_LEVEL  -> List.of("chief", "cto", "cpo", "ceo");
+                };
+                for (String kw : seniorityKeywords) {
+                    if (lvlLower.contains(kw)) { score += 1; break; }
+                }
+            }
+
+            return new Scored(fl, score);
+        }).toList();
+
+        // Pick the highest-scoring level; minimum score of 1 to avoid wild guesses
+        return scored.stream()
+            .filter(s -> s.score() > 0)
+            .max(Comparator.comparingInt(Scored::score))
+            .map(Scored::level)
+            .orElse(null);
     }
 
     /**
