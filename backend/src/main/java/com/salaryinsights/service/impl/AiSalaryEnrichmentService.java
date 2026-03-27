@@ -349,6 +349,15 @@ public class AiSalaryEnrichmentService {
         }
         req.setEquity(annualEquity);
 
+        // Set data source — use what Claude reported (e.g. "levels.fyi, glassdoor"), fall back to "AI"
+        String source = (dataSource != null && !dataSource.isBlank()) ? dataSource : "AI";
+        req.setDataSource(source);
+
+        // Preserve the raw total grant so admin UI can display both values
+        if (aiEntry.getEquity() != null) {
+            req.setEquityTotalGrant(aiEntry.getEquity());
+        }
+
         // Employment type
         EmploymentType empType = EmploymentType.FULL_TIME;
         if (aiEntry.getEmploymentType() != null) {

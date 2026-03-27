@@ -58,6 +58,14 @@ public class SalaryEntry extends BaseEntity {
     @Column(name = "equity", precision = 15, scale = 2)
     private BigDecimal equity;
 
+    /** The raw total RSU grant value before vesting normalisation (e.g. ₹40L over 4 years → equity=10L, equityTotalGrant=40L) */
+    @Column(name = "equity_total_grant", precision = 15, scale = 2)
+    private BigDecimal equityTotalGrant;
+
+    /** Where the data came from: e.g. "levels.fyi", "glassdoor", "reddit", "User", "AI" */
+    @Column(name = "data_source", length = 255)
+    private String dataSource;
+
     @Column(name = "total_compensation", precision = 15, scale = 2)
     private BigDecimal totalCompensation;
 

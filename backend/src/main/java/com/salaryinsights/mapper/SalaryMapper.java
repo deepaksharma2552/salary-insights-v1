@@ -18,6 +18,8 @@ public interface SalaryMapper {
     @Mapping(target = "jobFunctionName",    source = "jobFunction.displayName")
     @Mapping(target = "functionLevelId",    source = "functionLevel.id")
     @Mapping(target = "functionLevelName",  source = "functionLevel.name")
+    @Mapping(target = "equityTotalGrant",   source = "equityTotalGrant")
+    @Mapping(target = "dataSource",         source = "dataSource")
     SalaryResponse toResponse(SalaryEntry entry);
 
     @Mapping(target = "id",               ignore = true)
@@ -31,5 +33,7 @@ public interface SalaryMapper {
     @Mapping(target = "totalCompensation", ignore = true)
     @Mapping(target = "jobFunction",      ignore = true)
     @Mapping(target = "functionLevel",    ignore = true)
+    @Mapping(target = "equityTotalGrant", ignore = true)
+    @Mapping(target = "dataSource",       ignore = true)
     SalaryEntry toEntity(SalaryRequest request);
 }

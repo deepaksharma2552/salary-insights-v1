@@ -5,19 +5,36 @@ import api from '../../services/api';
 const fmt     = (val) => val != null ? `₹${(val / 100000).toFixed(1)}L` : '—';
 const fmtDate = (d)   => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
+// Derive the display label for data source
+function resolveSource(e) {
+  if (e.dataSource && e.dataSource !== 'User') return e.dataSource; // e.g. "levels.fyi, glassdoor"
+  if (e.submittedByEmail) return 'User';
+  return 'AI'; // fallback for old AI entries without dataSource
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
-function SourceBadge({ email }) {
-  const isAI = !email;
+function SourceBadge({ entry }) {
+  const source = resolveSource(entry);
+  const isAI   = !entry.submittedByEmail;
+
+  // Split multi-source strings (e.g. "levels.fyi, glassdoor") and show the first
+  const displayLabel = isAI
+    ? (source === 'AI' ? '✦ AI' : `✦ ${source.split(',')[0].trim()}`)
+    : '👤 User';
+
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-      fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.04em',
-      background: isAI ? 'rgba(139,92,246,0.12)' : 'rgba(62,207,176,0.10)',
-      color:      isAI ? 'rgba(167,139,250,1)'   : 'var(--teal)',
-      border:     `1px solid ${isAI ? 'rgba(139,92,246,0.3)' : 'rgba(62,207,176,0.25)'}`,
-    }}>
-      {isAI ? '✦ AI' : '👤 User'}
+    <span
+      title={source}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 600,
+        fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.04em',
+        background: isAI ? 'rgba(139,92,246,0.12)' : 'rgba(62,207,176,0.10)',
+        color:      isAI ? 'rgba(167,139,250,1)'   : 'var(--teal)',
+        border:     `1px solid ${isAI ? 'rgba(139,92,246,0.3)' : 'rgba(62,207,176,0.25)'}`,
+        maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
+      {displayLabel}
     </span>
   );
 }
@@ -38,7 +55,18 @@ function DetailRow({ label, value, mono = false, highlight = false }) {
 }
 
 function ExpandedDetails({ e, onApprove, onReject, actioning }) {
-  const isAI = !e.submittedByEmail;
+  const isAI  = !e.submittedByEmail;
+  const source = resolveSource(e);
+
+  // Equity display: show per-year value + total grant if both available
+  const equityPerYear   = e.equity != null ? fmt(e.equity) : null;
+  const equityTotalGrant = e.equityTotalGrant != null ? fmt(e.equityTotalGrant) : null;
+  const equityDisplay   = equityPerYear
+    ? equityTotalGrant && equityTotalGrant !== equityPerYear
+      ? `${equityPerYear}/yr  (${equityTotalGrant} total grant)`
+      : `${equityPerYear}/yr`
+    : null;
+
   return (
     <tr>
       <td colSpan={10} style={{ padding: 0, background: 'transparent' }}>
@@ -59,16 +87,16 @@ function ExpandedDetails({ e, onApprove, onReject, actioning }) {
           }}>
             <DetailRow label="Base Salary"      value={fmt(e.baseSalary)}        highlight mono />
             <DetailRow label="Bonus"             value={fmt(e.bonus)}             mono />
-            <DetailRow label="Equity / ESOP"    value={fmt(e.equity)}            mono />
-            <DetailRow label="Total Comp"       value={fmt(e.totalCompensation)} highlight mono />
-            <DetailRow label="Department"       value={e.department} />
-            <DetailRow label="Experience Level" value={e.experienceLevel} />
-            <DetailRow label="Years of Exp"     value={e.yearsOfExperience != null ? `${e.yearsOfExperience} yrs` : null} />
-            <DetailRow label="Employment Type"  value={e.employmentType} />
-            <DetailRow label="Level"            value={e.standardizedLevelName ?? e.functionLevelName} />
-            <DetailRow label="Job Function"     value={e.jobFunctionName} />
-            <DetailRow label="Submitted"        value={fmtDate(e.createdAt)}     mono />
-            <DetailRow label="Source"           value={e.submittedByEmail ?? 'AI Enrichment'} />
+            <DetailRow label="Equity / yr"       value={equityDisplay}            mono />
+            <DetailRow label="Total Comp"        value={fmt(e.totalCompensation)} highlight mono />
+            <DetailRow label="Department"        value={e.department} />
+            <DetailRow label="Experience Level"  value={e.experienceLevel} />
+            <DetailRow label="Years of Exp"      value={e.yearsOfExperience != null ? `${e.yearsOfExperience} yrs` : null} />
+            <DetailRow label="Employment Type"   value={e.employmentType} />
+            <DetailRow label="Level"             value={e.standardizedLevelName ?? e.functionLevelName} />
+            <DetailRow label="Job Function"      value={e.jobFunctionName} />
+            <DetailRow label="Submitted"         value={fmtDate(e.createdAt)}     mono />
+            <DetailRow label="Source"            value={e.submittedByEmail ?? source} />
           </div>
 
           {/* Action row */}
@@ -471,7 +499,7 @@ export default function AdminPendingSalaries() {
                         <td style={{ color: e.bonus ? 'var(--text-1)' : 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>{fmt(e.bonus)}</td>
                         <td style={{ color: e.equity ? 'var(--text-1)' : 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>{fmt(e.equity)}</td>
                         <td><div className="salary-amount" style={{ fontSize: 15 }}>{fmt(e.totalCompensation)}</div></td>
-                        <td><SourceBadge email={e.submittedByEmail} /></td>
+                        <td><SourceBadge entry={e} /></td>
                         <td style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: 'var(--text-3)' }}>{fmtDate(e.createdAt)}</td>
                       </tr>
                       {isOpen && (

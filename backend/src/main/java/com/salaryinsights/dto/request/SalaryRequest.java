@@ -40,6 +40,13 @@ public class SalaryRequest {
     @DecimalMin("0.0")
     private BigDecimal equity;
 
+    /** Raw total RSU grant before vesting normalisation — set by AI enrichment only */
+    private BigDecimal equityTotalGrant;
+
+    /** Data source: "levels.fyi", "glassdoor", "reddit", "User", "AI", etc. */
+    @Size(max = 255)
+    private String dataSource;
+
     // Job function + level (DB-driven, optional — existing entries have Engineering inferred)
     private UUID jobFunctionId;
     private UUID functionLevelId;

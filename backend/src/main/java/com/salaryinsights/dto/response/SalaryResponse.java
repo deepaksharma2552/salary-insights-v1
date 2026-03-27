@@ -23,6 +23,10 @@ public class SalaryResponse {
     private BigDecimal baseSalary;
     private BigDecimal bonus;
     private BigDecimal equity;
+    /** Raw total RSU grant value before vesting normalisation (for display in admin) */
+    private BigDecimal equityTotalGrant;
+    /** Where this data came from: e.g. "levels.fyi, glassdoor", "User", "AI" */
+    private String dataSource;
     private BigDecimal totalCompensation;
     private EmploymentType employmentType;
     private ReviewStatus reviewStatus;

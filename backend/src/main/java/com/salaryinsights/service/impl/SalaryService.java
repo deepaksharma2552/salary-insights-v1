@@ -297,6 +297,17 @@ public class SalaryService {
 
         entry.setReviewStatus(ReviewStatus.PENDING);
 
+        // Persist source metadata set by AI enrichment (or User for manual submissions)
+        if (request.getDataSource() != null && !request.getDataSource().isBlank()) {
+            entry.setDataSource(request.getDataSource());
+        } else if (submitter != null) {
+            // Manual user submission — record actual email domain or "User"
+            entry.setDataSource("User");
+        }
+        if (request.getEquityTotalGrant() != null) {
+            entry.setEquityTotalGrant(request.getEquityTotalGrant());
+        }
+
         entry = salaryEntryRepository.save(entry);
         log.info("Salary SAVED — id={}, reviewStatus={}, company={}, submittedBy={}",
                 entry.getId(), entry.getReviewStatus(), company.getName(), currentUserEmail);
