@@ -4,20 +4,20 @@
 
 -- ── Design ───────────────────────────────────────────────────────────────────
 INSERT INTO job_functions (id, name, display_name, sort_order, created_at)
-VALUES ('f0000004-0000-0000-0000-000000000004', 'DESIGN', 'Design', 4, NOW())
+VALUES ('97fbf68d-139b-406d-8f1f-615c26fe51ee', 'DESIGN', 'Design', 4, NOW())
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO function_levels (id, job_function_id, name, sort_order, created_at) VALUES
-    (gen_random_uuid(), 'f0000004-0000-0000-0000-000000000004', 'Junior Designer',          1, NOW()),
-    (gen_random_uuid(), 'f0000004-0000-0000-0000-000000000004', 'Designer',                  2, NOW()),
-    (gen_random_uuid(), 'f0000004-0000-0000-0000-000000000004', 'Senior Designer',            3, NOW()),
-    (gen_random_uuid(), 'f0000004-0000-0000-0000-000000000004', 'Staff Designer',             4, NOW()),
-    (gen_random_uuid(), 'f0000004-0000-0000-0000-000000000004', 'Lead Designer',              5, NOW()),
-    (gen_random_uuid(), 'f0000004-0000-0000-0000-000000000004', 'Principal Designer',         6, NOW()),
-    (gen_random_uuid(), 'f0000004-0000-0000-0000-000000000004', 'Design Manager',             7, NOW()),
-    (gen_random_uuid(), 'f0000004-0000-0000-0000-000000000004', 'Sr. Design Manager',         8, NOW()),
-    (gen_random_uuid(), 'f0000004-0000-0000-0000-000000000004', 'Director of Design',         9, NOW()),
-    (gen_random_uuid(), 'f0000004-0000-0000-0000-000000000004', 'VP Design',                 10, NOW())
+    (gen_random_uuid(), '97fbf68d-139b-406d-8f1f-615c26fe51ee', 'Junior Designer',          1, NOW()),
+    (gen_random_uuid(), '97fbf68d-139b-406d-8f1f-615c26fe51ee', 'Designer',                  2, NOW()),
+    (gen_random_uuid(), '97fbf68d-139b-406d-8f1f-615c26fe51ee', 'Senior Designer',            3, NOW()),
+    (gen_random_uuid(), '97fbf68d-139b-406d-8f1f-615c26fe51ee', 'Staff Designer',             4, NOW()),
+    (gen_random_uuid(), '97fbf68d-139b-406d-8f1f-615c26fe51ee', 'Lead Designer',              5, NOW()),
+    (gen_random_uuid(), '97fbf68d-139b-406d-8f1f-615c26fe51ee', 'Principal Designer',         6, NOW()),
+    (gen_random_uuid(), '97fbf68d-139b-406d-8f1f-615c26fe51ee', 'Design Manager',             7, NOW()),
+    (gen_random_uuid(), '97fbf68d-139b-406d-8f1f-615c26fe51ee', 'Sr. Design Manager',         8, NOW()),
+    (gen_random_uuid(), '97fbf68d-139b-406d-8f1f-615c26fe51ee', 'Director of Design',         9, NOW()),
+    (gen_random_uuid(), '97fbf68d-139b-406d-8f1f-615c26fe51ee', 'VP Design',                 10, NOW())
 ON CONFLICT (job_function_id, name) DO NOTHING;
 
 -- ── Analytics / Data Science ──────────────────────────────────────────────────
