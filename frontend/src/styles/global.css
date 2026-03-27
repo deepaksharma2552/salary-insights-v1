@@ -113,8 +113,130 @@ body {
 .fade-up { animation: fadeUp 0.3s ease both; }
 
 /* ── NAVBAR ── */
-/* Navbar styles are self-contained in Navbar.jsx */
-/* Legacy aliases kept for any external references */
+.navbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 54px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  flex-shrink: 0;
+  padding-right: 16px;
+  border-right: 1px solid var(--border);
+  margin-right: 4px;
+}
+.logo-mark {
+  width: 30px; height: 30px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 500;
+  font-size: 9px;
+  color: white;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+.logo-text {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  line-height: 1;
+}
+.logo-text .w-salary {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-1);
+  letter-spacing: -0.02em;
+}
+.logo-text .w-insights {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-2);
+  letter-spacing: -0.01em;
+}
+.logo-text .brand-360 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: white;
+  background: var(--blue);
+  padding: 2px 5px;
+  border-radius: 4px;
+  margin-left: 6px;
+  letter-spacing: 0.02em;
+  font-style: normal;
+  align-self: center;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+}
+.nav-links a, .nav-links button {
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-3);
+  padding: 5px 11px;
+  border-radius: 6px;
+  transition: color 0.12s, background 0.12s;
+  white-space: nowrap;
+  position: relative;
+}
+.nav-links a:hover  { color: var(--text-1); background: var(--bg-3); }
+.nav-links a.active {
+  color: var(--text-1);
+  background: transparent;
+  font-weight: 600;
+}
+.nav-links a.active::after {
+  content: '';
+  position: absolute;
+  bottom: -17px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 2px;
+  border-radius: 1px;
+  background: #3b82f6;
+}
+
+.nav-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; padding-left: 12px; border-left: 1px solid var(--border); }
+
+.theme-toggle {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.theme-toggle:hover { background: var(--bg-3); color: var(--text-1); }
+
 .nav-welcome {
   font-size: 13px; font-weight: 500;
   color: var(--text-2);
@@ -714,7 +836,104 @@ body {
 /* ── SALARIES SECTION ── */
 .salaries-section { background: var(--bg-2); }
 
-/* ── HAMBURGER / MOBILE NAV — now in Navbar.jsx ── */
+/* ── HAMBURGER / MOBILE NAV ── */
+.nav-hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px; height: 36px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.nav-hamburger:hover { background: var(--bg-3); color: var(--text-1); }
+
+.mobile-nav-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.5);
+  backdrop-filter: blur(4px);
+  z-index: 150;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.mobile-nav-overlay.open { opacity: 1; pointer-events: all; }
+
+.mobile-nav-drawer {
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: 280px;
+  max-width: 85vw;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  z-index: 151;
+  transform: translateX(-100%);
+  transition: transform 0.25s cubic-bezier(0.16,1,0.3,1);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  padding: 0 0 24px;
+}
+.mobile-nav-drawer.open { transform: translateX(0); }
+
+.mobile-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.mobile-nav-close {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.15s;
+}
+.mobile-nav-close:hover { background: var(--bg-3); color: var(--text-1); }
+
+.mobile-nav-links {
+  list-style: none;
+  padding: 12px 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mobile-nav-links a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-2);
+  text-decoration: none;
+  border-radius: var(--radius);
+  transition: all 0.15s;
+}
+.mobile-nav-links a:hover { background: var(--bg-3); color: var(--text-1); }
+.mobile-nav-links a.active { background: #f0f9ff; color: #3b82f6; }
+
+.mobile-nav-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 12px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+}
 
 /* Admin mobile toggle */
 .admin-mobile-toggle {
@@ -743,7 +962,13 @@ body {
 
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {
-  /* Navbar — handled in Navbar.jsx */
+  /* Navbar */
+  .navbar { padding: 0 16px; }
+  .nav-links { display: none; }
+  .nav-hamburger { display: flex; }
+  .mobile-nav-overlay { display: block; }
+  /* Hide desktop CTAs in navbar on mobile (they're in the drawer) */
+  .nav-cta-desktop { display: none !important; }
 
   /* Layout */
   .section { padding: 64px 16px 40px; }
