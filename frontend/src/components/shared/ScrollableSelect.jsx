@@ -78,7 +78,7 @@ export default function ScrollableSelect({ value, onChange, options, placeholder
           position: 'absolute',
           top: 'calc(100% + 4px)',
           left: 0,
-          zIndex: 1000,
+          zIndex: 9999,
           minWidth: '100%',
           background: 'var(--panel)',
           border: '1px solid var(--border)',

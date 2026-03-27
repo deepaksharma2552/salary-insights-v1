@@ -447,6 +447,7 @@ export default function Navbar() {
           .nb-desktop-only { display: none !important; }
           .nb-pill         { padding: 0 16px; }
           .nb-mobile-user-pill { display: flex !important; }
+          .nb-mobile-signin { display: inline-flex !important; align-items: center; }
         }
         @media (max-width: 560px) {
           .nb-pill { padding: 0 12px; }
@@ -607,6 +608,25 @@ export default function Navbar() {
               <div className="nb-user-avatar" style={{ width: 28, height: 28 }}>{userInitial}</div>
               <span className="nb-mobile-user-name">{firstName}</span>
             </div>
+          )}
+
+          {/* Mobile Sign In button — shown on mobile only when NOT logged in */}
+          {!user && (
+            <Link
+              to="/login"
+              className="nb-mobile-signin"
+              style={{
+                display: 'none',
+                fontSize: 13, fontWeight: 600,
+                padding: '6px 14px', borderRadius: 8,
+                border: 'none', color: '#fff',
+                background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)',
+                textDecoration: 'none', whiteSpace: 'nowrap',
+                marginRight: 4,
+              }}
+            >
+              Sign in
+            </Link>
           )}
 
           {/* Hamburger */}
