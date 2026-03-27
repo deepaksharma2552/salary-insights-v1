@@ -446,9 +446,27 @@ export default function Navbar() {
           .nb-overlay      { display: block; }
           .nb-desktop-only { display: none !important; }
           .nb-pill         { padding: 0 16px; }
+          .nb-mobile-user-pill { display: flex !important; }
         }
         @media (max-width: 560px) {
           .nb-pill { padding: 0 12px; }
+        }
+
+        /* Mobile user pill — hidden on desktop */
+        .nb-mobile-user-pill {
+          display: none;
+          align-items: center; gap: 6px;
+          padding: 3px 10px 3px 4px;
+          border-radius: 8px;
+          border: 1px solid var(--border);
+          background: transparent;
+          margin-right: 4px;
+        }
+        .nb-mobile-user-name {
+          font-size: 13px; font-weight: 500;
+          color: var(--text-1);
+          max-width: 80px;
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
       `}</style>
 
@@ -476,7 +494,7 @@ export default function Navbar() {
           >
             <button
               className={`nb-dropdown-trigger${salariesActive ? ' active' : ''}`}
-              onClick={() => setSalariesOpen(o => !o)}
+              onClick={() => { navigate('/salaries'); setSalariesOpen(o => !o); }}
             >
               <span className="nb-nav-icon">{Icon.salaries(salariesActive ? '#2563eb' : 'currentColor')}</span>
               Salaries
@@ -583,6 +601,14 @@ export default function Navbar() {
             </div>
           )}
 
+          {/* Mobile user avatar (shown on mobile only, next to hamburger) */}
+          {user && (
+            <div className="nb-mobile-user-pill">
+              <div className="nb-user-avatar" style={{ width: 28, height: 28 }}>{userInitial}</div>
+              <span className="nb-mobile-user-name">{firstName}</span>
+            </div>
+          )}
+
           {/* Hamburger */}
           <button className="nb-hamburger" onClick={() => setMobileOpen(o => !o)} aria-label="Open menu">
             {mobileOpen ? <Icon.close /> : <Icon.menu />}
@@ -616,20 +642,13 @@ export default function Navbar() {
           </div>
         )}
 
-        <div className="nb-drawer-theme-row">
-          <span className="nb-drawer-theme-label">{theme === 'dark' ? '🌙 Dark mode' : '☀️ Light mode'}</span>
-          <button className="nb-theme-btn" onClick={toggleTheme} aria-label="Toggle theme">
-            {theme === 'dark' ? <Icon.sun /> : <Icon.moon />}
-          </button>
-        </div>
-
         <div className="nb-drawer-section">Navigate</div>
         <ul className="nb-drawer-links">
           {navItems.map(item => (
             <li key={item.to}>
               <Link to={item.to} className={isActive(item.to) ? 'active' : ''} onClick={() => setMobileOpen(false)}>
                 <span className="nb-drawer-icon" style={{ background: isActive(item.to) ? 'rgba(59,130,246,0.1)' : 'var(--bg-3)' }}>
-                  <item.icon color={isActive(item.to) ? '#2563eb' : 'var(--text-2)'} />
+                  {item.icon(isActive(item.to) ? '#2563eb' : 'var(--text-2)')}
                 </span>
                 {item.label}
               </Link>
@@ -639,7 +658,7 @@ export default function Navbar() {
             <li>
               <Link to="/admin" className={isActive('/admin') ? 'active' : ''} onClick={() => setMobileOpen(false)}>
                 <span className="nb-drawer-icon" style={{ background: isActive('/admin') ? 'rgba(59,130,246,0.1)' : 'var(--bg-3)' }}>
-                  <Icon.admin color={isActive('/admin') ? '#2563eb' : 'var(--text-2)'} />
+                  {Icon.admin(isActive('/admin') ? '#2563eb' : 'var(--text-2)')}
                 </span>
                 Admin
               </Link>
