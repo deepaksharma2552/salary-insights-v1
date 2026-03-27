@@ -325,7 +325,7 @@ function DeleteModal({ entry, onClose, onDeleted }) {
   return (
     <div style={styles.overlay} onClick={onClose}>
       <div style={{ ...styles.drawer, maxWidth:440, padding:36 }} onClick={e => e.stopPropagation()}>
-        <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:22, color:'var(--text-1)', marginBottom:10 }}>
+        <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-1)', marginBottom: 10 }}>
           Delete Entry?
         </h3>
         <p style={{ color:'var(--text-2)', fontSize:14, marginBottom:6 }}>
@@ -341,7 +341,7 @@ function DeleteModal({ entry, onClose, onDeleted }) {
           <button
             onClick={handleDelete}
             disabled={deleting}
-            style={{ padding:'9px 22px', fontSize:13, fontWeight:600, background:'var(--rose-dim)', color:'var(--rose)', border:'1px solid rgba(224,92,122,0.3)', borderRadius:8, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.65 : 1, fontFamily:"'DM Sans',sans-serif" }}
+            style={{ padding:'9px 22px', fontSize:13, fontWeight:600, background:'var(--rose-dim)', color:'var(--rose)', border:'1px solid rgba(224,92,122,0.3)', borderRadius:8, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.65 : 1, fontFamily:"Inter,sans-serif" }}
           >
             {deleting ? 'Deleting…' : 'Confirm Delete'}
           </button>
@@ -432,7 +432,7 @@ function FilterBar({ filters, onChange, totalElements, loading }) {
           <button style={styles.clearBtn} onClick={clearAll}>✕ Clear</button>
         )}
       </div>
-      <div style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'JetBrains Mono',monospace", marginTop:8 }}>
+      <div style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", marginTop:8 }}>
         {loading ? 'Loading…' : `${totalElements.toLocaleString()} approved entr${totalElements === 1 ? 'y' : 'ies'}`}
         {hasFilters && ' (filtered)'}
       </div>
@@ -503,8 +503,8 @@ export default function AdminApprovedSalaries() {
 
       {/* Page header */}
       <div style={{ marginBottom:24 }}>
-        <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:11, color:'var(--gold)', letterSpacing:'0.1em', textTransform:'uppercase' }}>Admin</span>
-        <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:32, color:'var(--text-1)', marginTop:8, letterSpacing:'-0.02em' }}>
+        <span className="section-tag">Admin</span>
+        <h2 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-1)', marginTop: 4, letterSpacing: '-0.02em' }}>
           Approved Salaries
           {!loading && <span style={{ fontSize:18, color:'var(--text-3)', marginLeft:10 }}>({total.toLocaleString()})</span>}
         </h2>
@@ -531,8 +531,8 @@ export default function AdminApprovedSalaries() {
 
       {/* Loading spinner */}
       {loading && (
-        <div style={{ display:'flex', alignItems:'center', gap:10, color:'var(--text-3)', fontFamily:"'JetBrains Mono',monospace", fontSize:13, padding:'24px 0' }}>
-          <div style={{ width:14, height:14, borderRadius:'50%', border:'2px solid var(--border)', borderTopColor:'var(--gold)', animation:'spin 0.7s linear infinite' }} />
+        <div style={{ display:'flex', alignItems:'center', gap:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", fontSize:13, padding:'24px 0' }}>
+          <div style={{ width:14, height:14, borderRadius:'50%', border:'2px solid var(--border)', borderTopColor:'var(--blue)', animation:'spin 0.7s linear infinite' }} />
           Loading…
         </div>
       )}
@@ -586,7 +586,7 @@ export default function AdminApprovedSalaries() {
                     <td style={{ fontSize:13, maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{e.jobTitle}</td>
                     <td>
                       {e.experienceLevel && (
-                        <span style={{ fontSize:11, padding:'2px 7px', borderRadius:99, background:'var(--bg-3)', color:'var(--text-2)', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.04em' }}>
+                        <span style={{ fontSize:11, padding:'2px 7px', borderRadius:99, background:'var(--bg-3)', color:'var(--text-2)', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'0.04em' }}>
                           {e.experienceLevel}
                         </span>
                       )}
@@ -595,11 +595,11 @@ export default function AdminApprovedSalaries() {
                     <td><div className='salary-amount' style={{ fontSize:14 }}>{fmt(e.baseSalary)}</div></td>
                     <td style={{ fontSize:13, color:'var(--text-3)' }}>{fmt(e.bonus)}</td>
                     <td style={{ fontSize:13, color:'var(--text-3)' }}>{fmt(e.equity)}</td>
-                    <td><div className='salary-amount' style={{ fontSize:14, color:'var(--gold)' }}>{fmt(e.totalCompensation)}</div></td>
-                    <td style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'JetBrains Mono',monospace" }}>
+                    <td><div className='salary-amount' style={{ fontSize:14, color:'var(--text-1)' }}>{fmt(e.totalCompensation)}</div></td>
+                    <td style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>
                       {e.yearsOfExperience != null ? `${e.yearsOfExperience}y` : '—'}
                     </td>
-                    <td style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'JetBrains Mono',monospace" }}>
+                    <td style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>
                       {fmtDate(e.createdAt)}
                     </td>
                     <td>
@@ -610,9 +610,9 @@ export default function AdminApprovedSalaries() {
                           title='Edit'
                           style={{
                             padding: '5px 14px', fontSize: 12, fontWeight: 600,
-                            background: 'rgba(99,102,241,0.12)', color: '#818cf8',
-                            border: '1px solid rgba(99,102,241,0.2)', borderRadius: 7,
-                            cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
+                            background: 'rgba(59,130,246,0.1)', color: 'var(--blue)',
+                            border: '1px solid rgba(59,130,246,0.25)', borderRadius: 7,
+                            cursor: 'pointer', fontFamily: "Inter,sans-serif",
                             transition: 'opacity 0.2s ease',
                           }}
                         >
@@ -625,7 +625,7 @@ export default function AdminApprovedSalaries() {
                             padding: '5px 14px', fontSize: 12, fontWeight: 600,
                             background: 'var(--rose-dim)', color: 'var(--rose)',
                             border: '1px solid rgba(224,92,122,0.2)', borderRadius: 7,
-                            cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
+                            cursor: 'pointer', fontFamily: "Inter,sans-serif",
                             transition: 'opacity 0.2s ease',
                           }}
                         >
@@ -648,11 +648,11 @@ export default function AdminApprovedSalaries() {
             <div style={{ display:'flex', alignItems:'center', gap:16 }}>
               {/* Rows per page */}
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <span style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'JetBrains Mono',monospace", whiteSpace:'nowrap' }}>Rows per page</span>
+                <span style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", whiteSpace:'nowrap' }}>Rows per page</span>
                 <select
                   value={pageSize}
                   onChange={e => setFilters(f => ({ ...f, size: Number(e.target.value), page: 0 }))}
-                  style={{ padding:'4px 10px', fontSize:12, background:'var(--bg-2)', border:'1px solid var(--border)', borderRadius:7, color:'var(--text-1)', fontFamily:"'JetBrains Mono',monospace", cursor:'pointer', outline:'none' }}
+                  style={{ padding:'4px 10px', fontSize:12, background:'var(--bg-2)', border:'1px solid var(--border)', borderRadius:7, color:'var(--text-1)', fontFamily:"'IBM Plex Mono',monospace", cursor:'pointer', outline:'none' }}
                 >
                   {PAGE_SIZE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -662,7 +662,7 @@ export default function AdminApprovedSalaries() {
               {totalPages > 1 && (
                 <div className='page-btns'>
                   <button className='page-btn' disabled={currentPage === 0} onClick={() => setFilters(f => ({ ...f, page: f.page - 1 }))}>←</button>
-                  <span style={{ padding:'4px 12px', fontFamily:"'JetBrains Mono',monospace", fontSize:12, color:'var(--text-3)' }}>
+                  <span style={{ padding:'4px 12px', fontFamily:"'IBM Plex Mono',monospace", fontSize:12, color:'var(--text-3)' }}>
                     {currentPage + 1} / {totalPages}
                   </span>
                   <button className='page-btn' disabled={currentPage + 1 >= totalPages} onClick={() => setFilters(f => ({ ...f, page: f.page + 1 }))}>→</button>
@@ -717,7 +717,7 @@ const styles = {
     border: '1px solid var(--border)',
     borderRadius: 8,
     color: 'var(--text-1)',
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "Inter,sans-serif",
     outline: 'none',
   },
   filterSelect: {
@@ -727,7 +727,7 @@ const styles = {
     border: '1px solid var(--border)',
     borderRadius: 8,
     color: 'var(--text-1)',
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "Inter,sans-serif",
     cursor: 'pointer',
     flex: '1 1 160px',
     outline: 'none',
@@ -740,7 +740,7 @@ const styles = {
     borderRadius: 8,
     color: 'var(--text-3)',
     cursor: 'pointer',
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "Inter,sans-serif",
     whiteSpace: 'nowrap',
   },
   overlay: {
@@ -764,15 +764,15 @@ const styles = {
     overflowY: 'auto',
   },
   drawerEyebrow: {
-    fontFamily: "'JetBrains Mono',monospace",
+    fontFamily: "'IBM Plex Mono',monospace",
     fontSize: 11,
-    color: 'var(--gold)',
+    color: 'var(--blue)',
     letterSpacing: '0.1em',
     textTransform: 'uppercase',
     marginBottom: 4,
   },
   drawerTitle: {
-    fontFamily: "'Playfair Display',serif",
+    fontFamily: "'Inter',sans-serif",
     fontSize: 24,
     color: 'var(--text-1)',
     letterSpacing: '-0.02em',
@@ -799,7 +799,7 @@ const styles = {
     color: 'var(--text-3)',
     letterSpacing: '0.05em',
     textTransform: 'uppercase',
-    fontFamily: "'JetBrains Mono',monospace",
+    fontFamily: "'IBM Plex Mono',monospace",
   },
   fieldInput: {
     padding: '9px 14px',
@@ -808,7 +808,7 @@ const styles = {
     border: '1px solid var(--border)',
     borderRadius: 8,
     color: 'var(--text-1)',
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "Inter,sans-serif",
     outline: 'none',
     width: '100%',
     boxSizing: 'border-box',
@@ -821,18 +821,18 @@ const styles = {
     borderRadius: 8,
     color: 'var(--text-2)',
     cursor: 'pointer',
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "Inter,sans-serif",
   },
   btnPrimary: {
     padding: '9px 22px',
     fontSize: 13,
     fontWeight: 600,
-    background: 'var(--gold)',
-    color: '#0f172a',
+    background: 'var(--blue)',
+    color: '#ffffff',
     border: 'none',
     borderRadius: 8,
     cursor: 'pointer',
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: "Inter,sans-serif",
   },
   errorBox: {
     padding: '10px 16px',

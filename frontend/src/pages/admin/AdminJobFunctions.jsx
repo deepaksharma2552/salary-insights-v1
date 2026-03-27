@@ -9,7 +9,7 @@ function Modal({ title, onClose, children, width = 460 }) {
       onClick={onClose}>
       <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 20, padding: 36, width, maxWidth: '94vw' }}
         onClick={e => e.stopPropagation()}>
-        <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: 'var(--text-1)', marginBottom: 20 }}>{title}</h3>
+        <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-1)', marginBottom: 20 }}>{title}</h3>
         {children}
       </div>
     </div>
@@ -162,8 +162,8 @@ export default function AdminJobFunctions() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
         <div>
-          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin</span>
-          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, color: 'var(--text-1)', marginTop: 6, letterSpacing: '-0.02em' }}>Job Functions</h2>
+          <span className="section-tag">Admin</span>
+          <h2 style={{ fontFamily: "'Inter',sans-serif", fontSize: 26, color: 'var(--text-1)', marginTop: 4, letterSpacing: '-0.02em' }}>Job Functions</h2>
         </div>
         <button onClick={openCreateFn} style={{ padding: '9px 20px', borderRadius: 9, background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
           + Add Function
@@ -183,7 +183,7 @@ export default function AdminJobFunctions() {
       )}
 
       {loading ? (
-        <div style={{ color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>Loading…</div>
+        <div style={{ color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 13 }}>Loading…</div>
       ) : !loadError && functions.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-3)' }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>⚙️</div>
@@ -200,7 +200,7 @@ export default function AdminJobFunctions() {
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
                   <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>{fn.displayName}</span>
-                  <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace" }}>
+                  <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
                     {fn.levels?.length ?? 0} level{(fn.levels?.length ?? 0) !== 1 ? 's' : ''} · sort #{fn.sortOrder}
                   </span>
                 </div>
@@ -215,7 +215,7 @@ export default function AdminJobFunctions() {
               {expandedId === fn.id && (
                 <div style={{ borderTop: '1px solid var(--border)', padding: '16px 20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'JetBrains Mono',monospace" }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'IBM Plex Mono',monospace" }}>
                       Levels
                     </span>
                     <button onClick={() => openAddLevel(fn)} style={{ padding: '4px 12px', fontSize: 12, fontWeight: 600, background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 6, cursor: 'pointer' }}>
@@ -229,10 +229,10 @@ export default function AdminJobFunctions() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {[...fn.levels].sort((a, b) => a.sortOrder - b.sortOrder).map(lv => (
                         <div key={lv.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--bg-2)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                          <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono',monospace", color: '#3b82f6', fontWeight: 700, minWidth: 28 }}>#{lv.sortOrder}</span>
+                          <span style={{ fontSize: 11, fontFamily: "'IBM Plex Mono',monospace", color: '#3b82f6', fontWeight: 700, minWidth: 28 }}>#{lv.sortOrder}</span>
                           <span style={{ flex: 1, fontSize: 13, color: 'var(--text-1)', fontWeight: 500 }}>{lv.name}</span>
                           {lv.standardizedLevelName && (
-                            <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: '#3b82f6', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
+                            <span style={{ fontSize: 10, fontFamily: "'IBM Plex Mono',monospace", color: '#3b82f6', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
                               {lv.standardizedLevelName}
                             </span>
                           )}
@@ -260,7 +260,7 @@ export default function AdminJobFunctions() {
               <label className="form-label">Display Name *</label>
               <input className="form-input" value={fnForm.displayName} onChange={e => setFnForm(f => ({ ...f, displayName: e.target.value }))} placeholder="e.g. Engineering" autoFocus required />
               {fnModal === 'create' && fnForm.displayName && (
-                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontFamily: "'JetBrains Mono',monospace" }}>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontFamily: "'IBM Plex Mono',monospace" }}>
                   Internal name: {fnForm.displayName.trim().toUpperCase().replace(/\s+/g, '_')}
                 </div>
               )}
@@ -306,7 +306,7 @@ export default function AdminJobFunctions() {
                   <option key={sl.id} value={sl.id}>{sl.name}</option>
                 ))}
               </select>
-              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontFamily: "'JetBrains Mono',monospace" }}>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontFamily: "'IBM Plex Mono',monospace" }}>
                 Used to group salaries in analytics charts. Levels are managed under Admin → Levels.
               </div>
             </div>

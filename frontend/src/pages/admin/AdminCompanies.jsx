@@ -228,8 +228,8 @@ export default function AdminCompanies() {
     <div className="admin-page-content">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24 }}>
         <div>
-          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin</span>
-          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, color: 'var(--text-1)', marginTop: 8, letterSpacing: '-0.02em' }}>Companies</h2>
+          <span className="section-tag">Admin</span>
+          <h2 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-1)', marginTop: 4, letterSpacing: '-0.02em' }}>Companies</h2>
         </div>
         <button className="btn-primary" style={{ padding: '10px 22px' }} onClick={openCreate}>+ Add Company</button>
       </div>
@@ -241,7 +241,7 @@ export default function AdminCompanies() {
           </svg>
           <input className="input-field" value={inputValue} onChange={handleSearchChange} onKeyDown={handleSearchKey} placeholder="Search companies… (3+ chars)" autoComplete="off" />
           {showEnterHint && (
-            <span onClick={() => commitSearch(inputValue)} style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, color: '#3b82f6', cursor: 'pointer', fontFamily: "'JetBrains Mono',monospace", whiteSpace: 'nowrap', padding: '2px 7px', background: 'rgba(59,130,246,0.1)', borderRadius: 5 }}>↵ Search</span>
+            <span onClick={() => commitSearch(inputValue)} style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, color: '#3b82f6', cursor: 'pointer', fontFamily: "'IBM Plex Mono',monospace", whiteSpace: 'nowrap', padding: '2px 7px', background: 'rgba(59,130,246,0.1)', borderRadius: 5 }}>↵ Search</span>
           )}
           {inputValue && <span onClick={clearSearch} style={{ flexShrink: 0, cursor: 'pointer', color: 'var(--text-3)', fontSize: 16, lineHeight: 1, padding: '0 4px' }}>×</span>}
         </div>
@@ -253,7 +253,7 @@ export default function AdminCompanies() {
         </div>
       </div>
 
-      {showingHint && <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, marginLeft: 2, fontFamily: "'JetBrains Mono',monospace" }}>{showingHint}</div>}
+      {showingHint && <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, marginLeft: 2, fontFamily: "'IBM Plex Mono',monospace" }}>{showingHint}</div>}
 
       {loadError && (
         <div style={{ padding: '14px 18px', background: 'var(--rose-dim)', border: '1px solid rgba(224,92,122,0.2)', borderRadius: 12, color: 'var(--rose)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
@@ -333,7 +333,7 @@ export default function AdminCompanies() {
 
             {/* Modal header */}
             <div style={{ padding: '28px 32px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-              <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: 'var(--text-1)' }}>
+              <h3 style={{ fontFamily: "'Inter',sans-serif", fontSize: 22, color: 'var(--text-1)' }}>
                 {modal === 'create' ? 'Add Company' : `Edit — ${modal.name}`}
               </h3>
             </div>

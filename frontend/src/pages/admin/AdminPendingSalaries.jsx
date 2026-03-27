@@ -28,10 +28,10 @@ function SourceBadge({ entry }) {
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 5,
         padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-        fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.04em',
-        background: isAI ? 'rgba(139,92,246,0.12)' : 'rgba(62,207,176,0.10)',
-        color:      isAI ? 'rgba(167,139,250,1)'   : 'var(--teal)',
-        border:     `1px solid ${isAI ? 'rgba(139,92,246,0.3)' : 'rgba(62,207,176,0.25)'}`,
+        fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '0.04em',
+        background: isAI ? 'var(--blue-dim)' : 'var(--green-dim)',
+        color:      isAI ? 'var(--blue)'            : 'var(--green)',
+        border:     `1px solid ${isAI ? 'rgba(59,130,246,0.25)' : 'rgba(22,163,74,0.25)'}`,
         maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
       {displayLabel}
@@ -43,11 +43,11 @@ function DetailRow({ label, value, mono = false, highlight = false }) {
   if (value == null || value === '' || value === '—') return null;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
+      <span style={{ fontSize: 10, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
       <span style={{
         fontSize: 13,
-        fontFamily: mono ? "'JetBrains Mono',monospace" : "'DM Sans',sans-serif",
-        color:      highlight ? 'var(--gold)' : 'var(--text-1)',
+        fontFamily: mono ? "'IBM Plex Mono',monospace" : "Inter,sans-serif",
+        color:      highlight ? 'var(--blue)' : 'var(--text-1)',
         fontWeight: highlight ? 600 : 400,
       }}>{value}</span>
     </div>
@@ -78,9 +78,9 @@ function ExpandedDetails({ e, onApprove, onReject, actioning }) {
         <div style={{
           margin: '0 0 2px 0',
           padding: '20px 24px 20px 32px',
-          background: 'rgba(255,255,255,0.025)',
+          background: 'var(--bg-2)',
           borderBottom: '1px solid var(--border)',
-          borderLeft: `3px solid ${isAI ? 'rgba(139,92,246,0.5)' : 'rgba(62,207,176,0.4)'}`,
+          borderLeft: `3px solid ${isAI ? 'rgba(59,130,246,0.5)' : 'rgba(22,163,74,0.4)'}`,
           animation: 'expandIn 0.18s ease',
         }}>
           {/* Detail grid */}
@@ -118,18 +118,18 @@ function ExpandedDetails({ e, onApprove, onReject, actioning }) {
               disabled={actioning === e.id}
               style={{
                 padding: '6px 18px', fontSize: 12, fontWeight: 600,
-                background: 'var(--teal-dim)', color: 'var(--teal)',
-                border: '1px solid rgba(62,207,176,0.25)', borderRadius: 7,
+                background: 'var(--green-dim)', color: 'var(--green)',
+                border: '1px solid rgba(22,163,74,0.25)', borderRadius: 7,
                 cursor: actioning === e.id ? 'not-allowed' : 'pointer',
                 opacity: actioning === e.id ? 0.65 : 1,
-                fontFamily: "'DM Sans',sans-serif",
+                fontFamily: "Inter,sans-serif",
                 display: 'flex', alignItems: 'center', gap: 6,
                 transition: 'opacity 0.2s ease',
               }}
             >
               {actioning === e.id ? (
                 <>
-                  <div style={{ width: 11, height: 11, borderRadius: '50%', border: '1.5px solid rgba(62,207,176,0.3)', borderTopColor: 'var(--teal)', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+                  <div style={{ width: 11, height: 11, borderRadius: '50%', border: '1.5px solid rgba(22,163,74,0.25)', borderTopColor: 'var(--green)', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
                   Approving…
                 </>
               ) : '✓ Approve'}
@@ -143,7 +143,7 @@ function ExpandedDetails({ e, onApprove, onReject, actioning }) {
                 border: '1px solid rgba(224,92,122,0.2)', borderRadius: 7,
                 cursor: actioning ? 'not-allowed' : 'pointer',
                 opacity: actioning ? 0.5 : 1,
-                fontFamily: "'DM Sans',sans-serif",
+                fontFamily: "Inter,sans-serif",
                 transition: 'opacity 0.2s ease',
               }}
             >
@@ -151,8 +151,8 @@ function ExpandedDetails({ e, onApprove, onReject, actioning }) {
             </button>
 
             {actioning === e.id && (
-              <div style={{ flex: 1, height: 3, background: 'rgba(62,207,176,0.15)', borderRadius: 99, overflow: 'hidden', maxWidth: 160 }}>
-                <div style={{ height: '100%', background: 'linear-gradient(90deg, var(--teal), #0ea5e9)', borderRadius: 99, animation: 'progressCrawl 2s cubic-bezier(0.05,0.6,0.4,1) forwards' }} />
+              <div style={{ flex: 1, height: 3, background: 'rgba(22,163,74,0.12)', borderRadius: 99, overflow: 'hidden', maxWidth: 160 }}>
+                <div style={{ height: '100%', background: 'linear-gradient(90deg, var(--green), #16a34a)', borderRadius: 99, animation: 'progressCrawl 2s cubic-bezier(0.05,0.6,0.4,1) forwards' }} />
               </div>
             )}
           </div>
@@ -320,8 +320,8 @@ export default function AdminPendingSalaries() {
           cursor: pointer;
           transition: background 0.15s ease;
         }
-        .pending-row:hover { background: rgba(255,255,255,0.03) !important; }
-        .pending-row.is-expanded { background: rgba(255,255,255,0.04) !important; }
+        .pending-row:hover { background: var(--bg-2) !important; }
+        .pending-row.is-expanded { background: var(--bg-3) !important; }
         .expand-chevron {
           display: inline-block;
           transition: transform 0.2s ease;
@@ -333,8 +333,8 @@ export default function AdminPendingSalaries() {
 
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
-        <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin</span>
-        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, color: 'var(--text-1)', marginTop: 8, letterSpacing: '-0.02em' }}>
+        <span className="section-tag">Admin</span>
+        <h2 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-1)', marginTop: 4, letterSpacing: '-0.02em' }}>
           Pending Salaries <span style={{ fontSize: 18, color: 'var(--text-3)' }}>({total})</span>
         </h2>
       </div>
@@ -342,12 +342,12 @@ export default function AdminPendingSalaries() {
       {/* ── AI Enrichment panel ──────────────────────────────────────────── */}
       <div style={{
         marginBottom: 28, padding: '20px 24px', borderRadius: 14,
-        background: 'rgba(139,92,246,0.06)',
-        border: '0.5px solid rgba(139,92,246,0.25)',
+        background: 'var(--blue-dim)',
+        border: '1px solid var(--blue-mid)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <span style={{ fontSize: 16 }}>✦</span>
-          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'rgba(139,92,246,0.9)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>AI Enrichment</span>
+          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--blue)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>AI Enrichment</span>
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 16, lineHeight: 1.6 }}>
           Enter a company name and Claude will search the web for real salary data, then queue up to 20 entries for your review.
@@ -369,10 +369,10 @@ export default function AdminPendingSalaries() {
             disabled={isEnriching || !enrichCompany.trim()}
             style={{
               padding: '9px 22px', fontSize: 13, fontWeight: 600,
-              fontFamily: "'DM Sans',sans-serif",
-              background: isEnriching ? 'rgba(139,92,246,0.10)' : 'rgba(139,92,246,0.18)',
-              color: 'rgba(167,139,250,1)',
-              border: '1px solid rgba(139,92,246,0.35)',
+              fontFamily: "Inter,sans-serif",
+              background: isEnriching ? 'var(--blue-dim)' : 'rgba(59,130,246,0.12)',
+              color: 'var(--blue)',
+              border: '1px solid rgba(59,130,246,0.3)',
               borderRadius: 9,
               cursor: isEnriching || !enrichCompany.trim() ? 'not-allowed' : 'pointer',
               opacity: isEnriching || !enrichCompany.trim() ? 0.7 : 1,
@@ -385,8 +385,8 @@ export default function AdminPendingSalaries() {
               <>
                 <div style={{
                   width: 13, height: 13, borderRadius: '50%',
-                  border: '2px solid rgba(139,92,246,0.25)',
-                  borderTopColor: 'rgba(167,139,250,1)',
+                  border: '2px solid rgba(59,130,246,0.25)',
+                  borderTopColor: 'var(--blue)',
                   animation: 'spin 0.8s linear infinite', flexShrink: 0,
                 }} />
                 {enrichState === 'submitting' ? 'Starting…' : 'Enriching…'}
@@ -399,8 +399,8 @@ export default function AdminPendingSalaries() {
         {isEnriching && (
           <p style={{
             marginTop: 12, fontSize: 12,
-            color: 'rgba(167,139,250,0.7)',
-            fontFamily: "'JetBrains Mono',monospace",
+            color: 'rgba(59,130,246,0.7)',
+            fontFamily: "'IBM Plex Mono',monospace",
             animation: 'enrichPulse 1.8s ease-in-out infinite',
           }}>
             {enrichState === 'submitting'
@@ -414,12 +414,12 @@ export default function AdminPendingSalaries() {
           <div style={{
             marginTop: 14, display: 'flex', alignItems: 'center', gap: 10,
             padding: '10px 16px',
-            background: 'rgba(62,207,176,0.08)',
-            border: '0.5px solid rgba(62,207,176,0.3)',
+            background: 'var(--green-dim)',
+            border: '1px solid rgba(22,163,74,0.25)',
             borderRadius: 9,
           }}>
             <span style={{ fontSize: 16 }}>✓</span>
-            <span style={{ fontSize: 13, color: 'var(--teal)' }}>
+            <span style={{ fontSize: 13, color: 'var(--green)' }}>
               <strong>{enrichResult.inserted}</strong> {enrichResult.inserted === 1 ? 'entry' : 'entries'} queued for{' '}
               <strong>{enrichResult.companyName}</strong> — review them in the table below.
             </span>
@@ -456,13 +456,13 @@ export default function AdminPendingSalaries() {
 
       {/* ── Pending table ────────────────────────────────────────────────── */}
       {!loading && entries.length > 0 && (
-        <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, fontFamily: "'JetBrains Mono',monospace" }}>
+        <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, fontFamily: "'IBM Plex Mono',monospace" }}>
           ↓ Click any row to expand full details
         </p>
       )}
 
       {loading ? (
-        <div style={{ color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>Loading…</div>
+        <div style={{ color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 13 }}>Loading…</div>
       ) : fetchError ? (
         <div style={{ padding: '16px 20px', background: 'var(--rose-dim)', border: '1px solid rgba(224,92,122,0.2)', borderRadius: 12, color: 'var(--rose)', fontSize: 13, marginBottom: 20 }}>
           {fetchError}
@@ -508,11 +508,11 @@ export default function AdminPendingSalaries() {
                         <td>{e.jobTitle}</td>
                         <td>{e.location}</td>
                         <td><div className="salary-amount" style={{ fontSize: 15 }}>{fmt(e.baseSalary)}</div></td>
-                        <td style={{ color: e.bonus ? 'var(--text-1)' : 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>{fmt(e.bonus)}</td>
-                        <td style={{ color: e.equity ? 'var(--text-1)' : 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>{fmt(e.equity)}</td>
+                        <td style={{ color: e.bonus ? 'var(--text-1)' : 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 13 }}>{fmt(e.bonus)}</td>
+                        <td style={{ color: e.equity ? 'var(--text-1)' : 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 13 }}>{fmt(e.equity)}</td>
                         <td><div className="salary-amount" style={{ fontSize: 15 }}>{fmt(e.totalCompensation)}</div></td>
                         <td><SourceBadge entry={e} /></td>
-                        <td style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: 'var(--text-3)' }}>{fmtDate(e.createdAt)}</td>
+                        <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: 'var(--text-3)' }}>{fmtDate(e.createdAt)}</td>
                       </tr>
                       {isOpen && (
                         <ExpandedDetails
@@ -548,7 +548,7 @@ export default function AdminPendingSalaries() {
           onClick={() => setRejectId(null)}>
           <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 20, padding: 36, width: 440, maxWidth: '90vw' }}
             onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: 'var(--text-1)', marginBottom: 8 }}>Reject Entry</h3>
+            <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-1)', marginBottom: 8 }}>Reject Entry</h3>
             <p style={{ color: 'var(--text-3)', fontSize: 14, marginBottom: 20 }}>Provide a reason (optional — will be logged in audit trail).</p>
             <textarea
               className="form-input" rows={3}
@@ -558,7 +558,7 @@ export default function AdminPendingSalaries() {
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button className="btn-ghost" onClick={() => setRejectId(null)}>Cancel</button>
-              <button onClick={() => reject(rejectId)} style={{ padding: '9px 22px', fontSize: 13, fontWeight: 600, background: 'var(--rose-dim)', color: 'var(--rose)', border: '1px solid rgba(224,92,122,0.3)', borderRadius: 8, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
+              <button onClick={() => reject(rejectId)} style={{ padding: '9px 22px', fontSize: 13, fontWeight: 600, background: 'var(--rose-dim)', color: 'var(--rose)', border: '1px solid rgba(224,92,122,0.3)', borderRadius: 8, cursor: 'pointer', fontFamily: "Inter,sans-serif" }}>
                 Confirm Reject
               </button>
             </div>

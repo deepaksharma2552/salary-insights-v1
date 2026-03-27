@@ -5,13 +5,13 @@ import CompanyLogo from '../../components/shared/CompanyLogo';
 import TopProgressBar from '../../components/shared/TopProgressBar';
 
 /* ─── tiny helpers ───────────────────────────────────────────────────────── */
-function Tag({ label, color = 'var(--teal)', bg = 'var(--teal-dim)', border = 'rgba(62,207,176,0.2)' }) {
+function Tag({ label, color = 'var(--blue)', bg = 'var(--blue-dim)', border = 'rgba(59,130,246,0.2)' }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center',
       padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600,
       color, background: bg, border: `1px solid ${border}`,
-      fontFamily: "'JetBrains Mono',monospace",
+      fontFamily: "'IBM Plex Mono',monospace",
     }}>{label}</span>
   );
 }
@@ -28,8 +28,8 @@ function AdminHeader({ label, title, action }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 28 }}>
       <div>
-        <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</span>
-        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, color: 'var(--text-1)', marginTop: 6, letterSpacing: '-0.02em' }}>{title}</h2>
+        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--blue)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</span>
+        <h2 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-1)', marginTop: 4, letterSpacing: '-0.02em' }}>{title}</h2>
       </div>
       {action}
     </div>
@@ -42,7 +42,7 @@ function Modal({ title, onClose, children, width = 480 }) {
       onClick={onClose}>
       <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 20, padding: 36, width, maxWidth: '94vw', maxHeight: '90vh', overflowY: 'auto' }}
         onClick={e => e.stopPropagation()}>
-        <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: 'var(--text-1)', marginBottom: 20 }}>{title}</h3>
+        <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-1)', marginBottom: 20 }}>{title}</h3>
         {children}
       </div>
     </div>
@@ -105,7 +105,7 @@ function StandardLevelsTab() {
       </p>
 
       {loading ? (
-        <div style={{ color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>Loading…</div>
+        <div style={{ color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 13 }}>Loading…</div>
       ) : levels.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-3)' }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>📋</div>
@@ -126,7 +126,7 @@ function StandardLevelsTab() {
               {levels.map(l => (
                 <tr key={l.id}>
                   <td>
-                    <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 700, color: '#3b82f6' }}>
+                    <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 700, color: '#3b82f6' }}>
                       #{l.rank}
                     </span>
                   </td>
@@ -354,7 +354,7 @@ function CompanyLevelsTab({ standardLevels }) {
           </div>
 
           {loading ? (
-            <div style={{ color: 'var(--text-3)', fontSize: 13, fontFamily: "'JetBrains Mono',monospace" }}>Loading…</div>
+            <div style={{ color: 'var(--text-3)', fontSize: 13, fontFamily: "'IBM Plex Mono',monospace" }}>Loading…</div>
           ) : levels.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-3)', fontSize: 13 }}>
               No levels added yet for {selCompany.name}. Add the first one.
@@ -374,11 +374,11 @@ function CompanyLevelsTab({ standardLevels }) {
                 <tbody>
                   {levels.map(l => (
                     <tr key={l.id}>
-                      <td style={{ fontWeight: 600, color: 'var(--text-1)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>{l.title}</td>
+                      <td style={{ fontWeight: 600, color: 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 13 }}>{l.title}</td>
                       <td>
                         <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99,
                           ...fnCategoryStyle(l.functionCategory),
-                          fontFamily: "'JetBrains Mono',monospace",
+                          fontFamily: "'IBM Plex Mono',monospace",
                         }}>
                           {l.functionCategory ?? '—'}
                         </span>
@@ -388,7 +388,7 @@ function CompanyLevelsTab({ standardLevels }) {
                         {l.mappings && l.mappings.length > 0 ? (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
                             {l.mappings.map((m, mi) => (
-                              <span key={mi} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 99, fontSize: 10, fontWeight: 600, background: 'var(--teal-dim,rgba(2,132,199,.1))', color: 'var(--teal,#0284c7)', border: '1px solid rgba(2,132,199,.2)', fontFamily: "'JetBrains Mono',monospace" }}>
+                              <span key={mi} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 99, fontSize: 10, fontWeight: 600, background: 'var(--blue-dim)', color: 'var(--blue)', border: '1px solid rgba(59,130,246,0.2)', fontFamily: "'IBM Plex Mono',monospace" }}>
                                 {m.overlapPct < 100 && <span style={{ opacity: .7 }}>{m.overlapPct}%</span>}
                                 {m.standardLevelName}
                               </span>
@@ -508,7 +508,7 @@ function CompanyLevelsTab({ standardLevels }) {
                         onChange={e => updateEntry(idx, 'pct', Number(e.target.value))}
                         style={{ width: 88 }}
                       />
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', minWidth: 36, textAlign: 'right', fontFamily: "'JetBrains Mono',monospace" }}>{entry.pct}%</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', minWidth: 36, textAlign: 'right', fontFamily: "'IBM Plex Mono',monospace" }}>{entry.pct}%</span>
                     </div>
                     <button onClick={() => removeEntry(idx)} style={{ fontSize: 16, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
                   </div>

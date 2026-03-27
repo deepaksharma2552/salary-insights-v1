@@ -19,7 +19,7 @@ function StatusBadge({ status, active }) {
       display: 'inline-block', padding: '3px 10px', borderRadius: 99,
       fontSize: 11, fontWeight: 600,
       background: m.bg, color: m.color, border: `1px solid ${m.border}`,
-      fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.04em',
+      fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '0.04em',
     }}>
       {m.label}
     </span>
@@ -105,8 +105,8 @@ export default function AdminReferrals() {
 
       {/* Header */}
       <div style={{ marginBottom: 32 }}>
-        <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin</span>
-        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, color: 'var(--text-1)', marginTop: 8, letterSpacing: '-0.02em' }}>
+        <span className="section-tag">Admin</span>
+        <h2 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-1)', marginTop: 4, letterSpacing: '-0.02em' }}>
           Referral Board{' '}
           <span style={{ fontSize: 18, color: 'var(--text-3)' }}>
             ({total} total{pending > 0 ? `, ${pending} pending` : ''}{paused > 0 ? `, ${paused} paused` : ''})
@@ -130,9 +130,9 @@ export default function AdminReferrals() {
               onClick={() => setFilter(key)}
               style={{
                 padding: '6px 16px', borderRadius: 99, fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                border: `1px solid ${isActive ? '#0ea5e9' : 'var(--border)'}`,
-                background: isActive ? 'rgba(14,165,233,0.1)' : 'transparent',
-                color: isActive ? '#0ea5e9' : 'var(--text-2)',
+                border: `1px solid ${isActive ? 'var(--blue)' : 'var(--border)'}`,
+                background: isActive ? 'var(--blue-dim)' : 'transparent',
+                color: isActive ? 'var(--blue)' : 'var(--text-2)',
                 transition: 'all 0.15s',
               }}
             >
@@ -199,7 +199,7 @@ export default function AdminReferrals() {
                       <div style={{ fontWeight: 600, color: 'var(--text-1)', fontSize: 14 }}>
                         {r.referredByName || '—'}
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace", marginTop: 2 }}>
                         {r.referredByEmail || ''}
                       </div>
                     </td>
@@ -218,7 +218,7 @@ export default function AdminReferrals() {
                         <a
                           href={r.referralLink} target="_blank" rel="noopener noreferrer"
                           title={r.referralLink}
-                          style={{ color: '#0ea5e9', textDecoration: 'none', fontFamily: "'JetBrains Mono',monospace", fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                          style={{ color: 'var(--blue)', textDecoration: 'none', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                         >
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
@@ -227,12 +227,12 @@ export default function AdminReferrals() {
                           Open link
                         </a>
                       ) : (
-                        <span style={{ color: 'var(--text-4)', fontSize: 11, fontFamily: "'JetBrains Mono',monospace" }}>—</span>
+                        <span style={{ color: 'var(--text-4)', fontSize: 11, fontFamily: "'IBM Plex Mono',monospace" }}>—</span>
                       )}
                     </td>
 
                     {/* Created date */}
-                    <td style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--text-3)' }}>
+                    <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--text-3)' }}>
                       {r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-IN') : '—'}
                     </td>
 
@@ -245,12 +245,12 @@ export default function AdminReferrals() {
                         const urgent  = days > 0 && days <= 5;
                         return (
                           <div>
-                            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--text-3)' }}>
+                            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--text-3)' }}>
                               {new Date(r.expiresAt).toLocaleDateString('en-IN')}
                             </div>
                             <span style={{
                               display: 'inline-block', marginTop: 3, padding: '2px 7px', borderRadius: 99,
-                              fontSize: 10, fontWeight: 600, fontFamily: "'JetBrains Mono',monospace",
+                              fontSize: 10, fontWeight: 600, fontFamily: "'IBM Plex Mono',monospace",
                               background: expired ? 'rgba(107,114,128,0.1)' : urgent ? 'rgba(239,68,68,0.1)' : 'rgba(14,165,233,0.1)',
                               color: expired ? 'var(--text-3)' : urgent ? '#dc2626' : '#0284c7',
                               border: `1px solid ${expired ? 'rgba(107,114,128,0.2)' : urgent ? 'rgba(239,68,68,0.25)' : 'rgba(14,165,233,0.25)'}`,
@@ -332,7 +332,7 @@ export default function AdminReferrals() {
       {rejectTarget && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setRejectTarget(null)}>
           <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 32, width: '100%', maxWidth: 440, margin: '0 16px' }}>
-            <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: 'var(--text-1)', marginBottom: 6 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-1)', marginBottom: 6 }}>
               Reject referral
             </h3>
             <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>

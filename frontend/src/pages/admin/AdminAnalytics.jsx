@@ -66,18 +66,16 @@ export default function AdminAnalytics() {
   const maxPageViews = Math.max(...pageStats.map(p => Number(p.views)),  1);
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 1100 }}>
+    <div className="admin-page-content">
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: aggMsg ? 12 : 24 }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-3)', marginBottom: 4 }}>
-            Admin
-          </div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
+          <span className="section-tag">Admin</span>
+          <h2 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-1)', marginTop: 4, letterSpacing: '-0.02em' }}>
             Visitor Analytics
-          </h1>
+          </h2>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Manual aggregation trigger */}

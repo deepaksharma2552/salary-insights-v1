@@ -95,7 +95,7 @@ function SubmissionTrend({ monthlyData }) {
               {/* Count label above bar */}
               <span style={{
                 fontSize: 9, color: count > 0 ? 'var(--text-3)' : 'transparent',
-                fontFamily: "'JetBrains Mono',monospace", marginBottom: 3, userSelect: 'none',
+                fontFamily: "'IBM Plex Mono',monospace", marginBottom: 3, userSelect: 'none',
               }}>
                 {count > 0 ? count : ''}
               </span>
@@ -116,7 +116,7 @@ function SubmissionTrend({ monthlyData }) {
               {/* X-axis label */}
               <span style={{
                 fontSize: 9, color: 'var(--text-3)', marginTop: 5,
-                fontFamily: "'JetBrains Mono',monospace",
+                fontFamily: "'IBM Plex Mono',monospace",
                 whiteSpace: 'nowrap', overflow: 'hidden',
                 textOverflow: 'ellipsis', maxWidth: '100%', userSelect: 'none',
               }}>
@@ -186,7 +186,7 @@ function SubmissionTrend({ monthlyData }) {
                 disabled={!canGoPrev}
                 style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-2)', color: canGoPrev ? 'var(--text-2)' : 'var(--text-4)', cursor: canGoPrev ? 'pointer' : 'not-allowed', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >‹</button>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', minWidth: 64, textAlign: 'center', fontFamily: "'JetBrains Mono',monospace" }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', minWidth: 64, textAlign: 'center', fontFamily: "'IBM Plex Mono',monospace" }}>
                 {activeMonth?.label}
               </span>
               <button
@@ -265,7 +265,7 @@ function SubmissionTrend({ monthlyData }) {
               {weeklyData.map((w, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: 'var(--bg-2)', borderRadius: 7, border: '1px solid var(--border)' }}>
                   <div style={{ width: 8, height: 8, borderRadius: 2, background: '#8b5cf6', flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: 'var(--text-2)', fontFamily: "'JetBrains Mono',monospace" }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-2)', fontFamily: "'IBM Plex Mono',monospace" }}>
                     Week {w.weekNum}: <span style={{ fontWeight: 700, color: 'var(--text-1)' }}>{w.count}</span> submission{Number(w.count) !== 1 ? 's' : ''}
                   </span>
                   <span style={{ fontSize: 10, color: 'var(--text-3)', marginLeft: 2 }}>{w.weekLabel}</span>
@@ -329,8 +329,8 @@ export default function AdminDashboard() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
         <div>
-          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin</span>
-          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, color: 'var(--text-1)', marginTop: 8, letterSpacing: '-0.02em' }}>Dashboard</h2>
+          <span className="section-tag">Admin</span>
+          <h2 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-1)', marginTop: 4, letterSpacing: '-0.02em' }}>Dashboard</h2>
         </div>
         {!loading && (
           <button onClick={load} style={{ padding: '7px 16px', fontSize: 12, fontWeight: 600, background: 'var(--bg-2)', color: 'var(--text-2)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer' }}>
@@ -355,7 +355,7 @@ export default function AdminDashboard() {
           <span style={{ fontSize: 18 }}>⚠</span>
           <div>
             <div style={{ fontWeight: 600, marginBottom: 2 }}>Failed to load dashboard</div>
-            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, opacity: 0.85 }}>{error}</div>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, opacity: 0.85 }}>{error}</div>
           </div>
           <button onClick={load} style={{ marginLeft: 'auto', padding: '6px 14px', fontSize: 12, fontWeight: 600, background: 'rgba(224,92,122,0.15)', color: 'var(--rose)', border: '1px solid rgba(224,92,122,0.3)', borderRadius: 6, cursor: 'pointer' }}>
             Retry
