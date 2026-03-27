@@ -241,7 +241,23 @@ public class SalaryService {
     }
 
     @Transactional
+    /**
+     * Overload for background/system threads that have no HTTP security context.
+     * Callers (e.g. AiSalaryEnrichmentService) supply the submitter User directly.
+     */
+    public SalaryResponse submitSalary(SalaryRequest request, User submitter) {
+        return submitSalaryInternal(request, submitter);
+    }
+
     public SalaryResponse submitSalary(SalaryRequest request) {
+        String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User submitter = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return submitSalaryInternal(request, submitter);
+    }
+
+    @Transactional
+    private SalaryResponse submitSalaryInternal(SalaryRequest request, User submitter) {
         Company company;
         if (request.getCompanyId() != null) {
             company = companyRepository.findById(request.getCompanyId())
@@ -262,10 +278,6 @@ public class SalaryService {
         } else {
             throw new BadRequestException("Either companyId or companyName must be provided");
         }
-
-        String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-        User submitter = userRepository.findByEmail(currentUserEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         SalaryEntry entry = salaryMapper.toEntity(request);
         entry.setCompany(company);
@@ -310,7 +322,8 @@ public class SalaryService {
 
         entry = salaryEntryRepository.save(entry);
         log.info("Salary SAVED — id={}, reviewStatus={}, company={}, submittedBy={}",
-                entry.getId(), entry.getReviewStatus(), company.getName(), currentUserEmail);
+                entry.getId(), entry.getReviewStatus(), company.getName(),
+                submitter != null ? submitter.getEmail() : "system");
         auditLogService.log("SalaryEntry", entry.getId().toString(), "SUBMITTED",
                 "Submitted salary for " + company.getName());
 

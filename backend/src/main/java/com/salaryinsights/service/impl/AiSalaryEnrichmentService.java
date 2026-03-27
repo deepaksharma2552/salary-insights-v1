@@ -1,8 +1,10 @@
 package com.salaryinsights.service.ai;
 
 import com.salaryinsights.entity.FunctionLevel;
+import com.salaryinsights.entity.User;
 import com.salaryinsights.entity.JobFunction;
 import com.salaryinsights.repository.FunctionLevelRepository;
+import com.salaryinsights.repository.UserRepository;
 import com.salaryinsights.repository.JobFunctionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.salaryinsights.dto.request.SalaryRequest;
@@ -144,6 +146,7 @@ public class AiSalaryEnrichmentService {
     private final AuditLogService          auditLogService;
     private final JobFunctionRepository    jobFunctionRepository;
     private final FunctionLevelRepository  functionLevelRepository;
+    private final UserRepository           userRepository;
 
     @Value("${anthropic.api.key}")
     private String anthropicApiKey;
@@ -196,12 +199,16 @@ public class AiSalaryEnrichmentService {
         // Resolve the location reported at the top level of the AI response
         Location parentLocation = resolveLocationFromString(aiData.getLocation());
 
+        // Fetch an admin user to act as submitter — background threads have no security context
+        User systemUser = userRepository.findFirstByRole(com.salaryinsights.enums.Role.ADMIN)
+                .orElseThrow(() -> new RuntimeException("No admin user found for AI enrichment"));
+
         // Map and submit each entry
         int inserted = 0;
         for (AiSalaryEntry aiEntry : entries) {
             try {
                 SalaryRequest req = mapToSalaryRequest(aiEntry, companyName, aiData.getDataSource(), parentLocation);
-                salaryService.submitSalary(req);
+                salaryService.submitSalary(req, systemUser);
                 inserted++;
             } catch (Exception e) {
                 log.warn("[AI Enrich] Failed to insert entry '{}' for {}: {}",
