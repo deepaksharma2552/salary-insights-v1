@@ -29,6 +29,7 @@ public class AiSalaryData {
         private String department;
         private String internalLevel;       // e.g. "L4", "SDE-II", "Senior"
         private String experienceLevel;     // maps to ExperienceLevel enum
+        private Integer yearsOfExperience;  // typical YOE for this role/level
         private String employmentType;      // maps to EmploymentType enum
         private BigDecimal baseSalary;
         private BigDecimal bonus;

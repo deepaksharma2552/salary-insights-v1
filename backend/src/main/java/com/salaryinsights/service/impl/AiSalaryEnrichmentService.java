@@ -312,6 +312,7 @@ public class AiSalaryEnrichmentService {
                   "department": "<e.g. Engineering, Data Science, Product>",
                   "internalLevel": "<company-specific level e.g. L4, SDE-II, IC3, or null if unknown>",
                   "experienceLevel": "<MUST be exactly one of: INTERN, ENTRY, MID, SENIOR, LEAD, MANAGER, DIRECTOR, VP, C_LEVEL>",
+                  "yearsOfExperience": <typical years of experience as integer, e.g. 1 for ENTRY, 3 for MID, 6 for SENIOR, 9 for LEAD>,
                   "employmentType": "<MUST be exactly one of: FULL_TIME, PART_TIME, CONTRACT, INTERNSHIP, FREELANCE>",
                   "baseSalary": <annual base salary in INR as integer, e.g. 2500000>,
                   "bonus": <annual bonus in INR as integer, or null>,
@@ -437,6 +438,14 @@ public class AiSalaryEnrichmentService {
         }
         req.setEquity(annualEquity);
 
+        // Use YOE from AI response if provided, otherwise derive midpoint from experienceLevel
+        // so the drawer never shows '—' for AI entries
+        if (aiEntry.getYearsOfExperience() != null && aiEntry.getYearsOfExperience() >= 0) {
+            req.setYearsOfExperience(aiEntry.getYearsOfExperience());
+        } else if (req.getExperienceLevel() != null) {
+            req.setYearsOfExperience(deriveYoeFromLevel(req.getExperienceLevel()));
+        }
+
         // Set data source — use what Claude reported (e.g. "levels.fyi, glassdoor"), fall back to "AI"
         String source = (dataSource != null && !dataSource.isBlank()) ? dataSource : "AI";
         req.setDataSource(source);
@@ -512,5 +521,23 @@ public class AiSalaryEnrichmentService {
 
         log.debug("[AI Enrich] Could not resolve location '{}', defaulting to BENGALURU", locationStr);
         return Location.BENGALURU;
+    }
+
+    /**
+     * Returns a representative midpoint YOE for a given experience level.
+     * Used to populate yearsOfExperience for AI entries so the drawer doesn't show '—'.
+     */
+    private int deriveYoeFromLevel(ExperienceLevel level) {
+        return switch (level) {
+            case INTERN   -> 0;
+            case ENTRY    -> 1;
+            case MID      -> 3;
+            case SENIOR   -> 6;
+            case LEAD     -> 9;
+            case MANAGER  -> 8;
+            case DIRECTOR -> 12;
+            case VP       -> 15;
+            case C_LEVEL  -> 18;
+        };
     }
 }
