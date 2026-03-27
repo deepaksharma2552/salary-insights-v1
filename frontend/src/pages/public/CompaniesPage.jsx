@@ -658,175 +658,300 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
 
 // ── Company Card ──────────────────────────────────────────────────────────────
 function CompanyCard({ c, onViewDetails, openRoles }) {
-  const [expanded,   setExpanded]   = useState(false);
-  const [levels,     setLevels]     = useState(null);
-  const [loadingLvl, setLoadingLvl] = useState(false);
-
   const hasTcRange     = c.tcMin != null && c.tcMax != null;
+  const tcLabel        = hasTcRange ? 'TC RANGE' : 'MEDIAN TC';
   const tcRangeStr     = hasTcRange ? `${fmtSalary(c.tcMin)} – ${fmtSalary(c.tcMax)}` : c.avgTC !== '—' ? c.avgTC : '—';
   const previewBenefits= (c.benefits ?? []).slice(0, BENEFITS_PREVIEW);
   const extraBenefits  = (c.benefits ?? []).length - BENEFITS_PREVIEW;
 
-  function toggleExpand(e) {
-    e.stopPropagation();
-    if (expanded) { setExpanded(false); return; }
-    setExpanded(true);
-    if (levels !== null) return;
-    setLoadingLvl(true);
-    api.get(`/public/companies/${c.id}/salary-summary`)
-      .then(r => setLevels(r.data?.data?.levels ?? []))
-      .catch(() => setLevels([]))
-      .finally(() => setLoadingLvl(false));
-  }
-
-  const maxTC = levels ? Math.max(...levels.map(l => l.avgTC ?? 0), 1) : 1;
-
   return (
-    <div
-      className="company-card fade-up"
-      style={{ cursor:'default', display:'flex', flexDirection:'column', gap:12, transition:'transform 0.15s, box-shadow 0.15s' }}
-      onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 6px 24px rgba(0,0,0,0.18)'; }}
-      onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=''; }}
-    >
-      {/* Header */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-        <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
-          <CompanyLogo companyId={c.id} companyName={c.name} logoUrl={c.logoUrl} website={c.website} size={40} radius={10} style={{ border:'0.5px solid var(--border)', flexShrink:0 }} />
-          <div style={{ paddingTop:2 }}>
-            <div className="company-card-name" style={{ marginBottom:0 }}>{c.name}</div>
-            <div className="company-card-industry">{c.industry}</div>
-          </div>
-        </div>
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0, marginTop:2 }}>
-          <span className="entries-badge-mono" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:"var(--text-3)", background:"var(--bg-2)", padding:"2px 7px", borderRadius:6, border:"1px solid var(--border)", whiteSpace:"nowrap" }}>
-            {c.entries} entries
-          </span>
-        </div>
-      </div>
+    <>
+      <style>{`
+        .company-card-v2 {
+          background: var(--panel);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          overflow: visible;
+          display: flex;
+          flex-direction: column;
+          position: relative;
+          transition: box-shadow 0.18s, transform 0.18s;
+        }
+        .company-card-v2:hover {
+          box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+          transform: translateY(-2px);
+        }
 
-      <div style={{ height:'0.5px', background:'var(--border)' }} />
+        /* ── Top section: logo + name + entries badge ── */
+        .ccv2-header {
+          padding: 16px 16px 14px;
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          position: relative;
+        }
+        .ccv2-header-info {
+          flex: 1;
+          min-width: 0;
+        }
+        .ccv2-name {
+          font-size: 17px;
+          font-weight: 700;
+          color: var(--text-1);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          line-height: 1.2;
+        }
+        .ccv2-industry {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 12px;
+          color: var(--text-3);
+          margin-top: 3px;
+        }
+        .ccv2-industry-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #3b82f6;
+          flex-shrink: 0;
+        }
 
-      {/* Open roles ghost strip — before TC, only shown when roles exist */}
-      {openRoles > 0 && (
-        <>
+        /* Notched tab badge — open roles pill floats above top-right corner */
+        .ccv2-open-roles-tab {
+          position: absolute;
+          top: -1px;
+          right: 16px;
+          transform: translateY(-50%);
+          background: #16a34a;
+          color: #fff;
+          font-size: 11px;
+          font-weight: 600;
+          padding: 4px 10px;
+          border-radius: 20px;
+          white-space: nowrap;
+          text-decoration: none;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          box-shadow: 0 2px 8px rgba(22,163,74,0.3);
+          transition: background 0.15s, box-shadow 0.15s;
+          z-index: 2;
+        }
+        .ccv2-open-roles-tab:hover {
+          background: #15803d;
+          box-shadow: 0 4px 12px rgba(22,163,74,0.4);
+        }
+
+        /* Entries badge — small pill top-right of header (when no open roles) */
+        .ccv2-entries-badge {
+          flex-shrink: 0;
+          font-size: 11px;
+          color: var(--text-3);
+          background: var(--bg-2);
+          border: 1px solid var(--border);
+          border-radius: 20px;
+          padding: 3px 9px;
+          white-space: nowrap;
+          margin-top: 2px;
+          line-height: 1.4;
+        }
+
+        /* ── TC section ── */
+        .ccv2-divider {
+          height: 1px;
+          background: var(--border);
+          margin: 0;
+        }
+        .ccv2-tc-section {
+          padding: 12px 16px;
+          background: var(--bg-2);
+        }
+        .ccv2-tc-label {
+          font-size: 9px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: var(--text-3);
+          margin-bottom: 4px;
+        }
+        .ccv2-tc-value {
+          font-size: 18px;
+          font-weight: 700;
+          color: var(--text-1);
+          font-family: 'IBM Plex Mono', monospace;
+          line-height: 1.1;
+        }
+
+        /* ── Footer: benefits chips + CTA ── */
+        .ccv2-footer {
+          padding: 12px 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+        .ccv2-benefits-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+          flex: 1;
+          min-width: 0;
+        }
+        .ccv2-benefit-chip {
+          font-size: 10px;
+          font-weight: 500;
+          color: var(--text-2);
+          background: var(--bg-2);
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          padding: 3px 8px;
+          white-space: nowrap;
+        }
+        .ccv2-more-btn {
+          font-size: 10px;
+          color: #3b82f6;
+          font-weight: 600;
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 3px 0;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .ccv2-not-added {
+          font-size: 11px;
+          color: var(--text-3);
+          font-style: italic;
+        }
+        .ccv2-view-btn {
+          flex-shrink: 0;
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--text-1);
+          background: var(--panel);
+          border: 1.5px solid var(--border);
+          border-radius: 10px;
+          padding: 8px 14px;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: border-color 0.15s, background 0.15s;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .ccv2-view-btn:hover {
+          border-color: #3b82f6;
+          background: rgba(59,130,246,0.06);
+        }
+
+        /* Ripple animation */
+        @keyframes ccv2Ripple {
+          0%  { transform:scale(1);  opacity:0.4 }
+          100%{ transform:scale(2.5);opacity:0   }
+        }
+
+        /* Mobile */
+        @media (max-width: 480px) {
+          .ccv2-name       { font-size: 15px; }
+          .ccv2-tc-value   { font-size: 15px; }
+          .ccv2-footer     { flex-wrap: wrap; }
+          .ccv2-view-btn   { width: 100%; justify-content: center; }
+          .ccv2-benefits-row { max-width: 100%; }
+        }
+      `}</style>
+
+      <div className="company-card-v2 company-card fade-up">
+
+        {/* Open roles notched tab — floats above card top edge */}
+        {openRoles > 0 && (
           <Link
             to={`/opportunities?company=${encodeURIComponent(c.name)}`}
             onClick={e => e.stopPropagation()}
-            style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 10px', borderLeft:'2.5px solid #22c55e', borderRadius:'0 8px 8px 0', textDecoration:'none' }}
+            className="ccv2-open-roles-tab"
           >
-            <div style={{ position:'relative', width:10, height:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <div style={{ position:'absolute', width:10, height:10, borderRadius:'50%', background:'#22c55e', opacity:0.2, animation:'roleRipple 1.8s ease-out infinite' }} />
-              <div style={{ position:'absolute', width:10, height:10, borderRadius:'50%', background:'#22c55e', opacity:0.12, animation:'roleRipple 1.8s 0.6s ease-out infinite' }} />
-              <div style={{ width:6, height:6, borderRadius:'50%', background:'#16a34a', position:'relative', zIndex:1 }} />
-            </div>
-            <span style={{ fontSize:13, fontWeight:500, color:'#15803d', flex:1 }}>
-              {openRoles} open {openRoles === 1 ? 'role' : 'roles'}
+            <span style={{ position:'relative', width:7, height:7, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+              <span style={{ position:'absolute', inset:0, borderRadius:'50%', background:'#fff', opacity:0.35, animation:'ccv2Ripple 1.8s ease-out infinite' }} />
+              <span style={{ width:5, height:5, borderRadius:'50%', background:'#fff', position:'relative' }} />
             </span>
-            <span style={{ fontSize:11, fontWeight:500, color:'#15803d', background:'#dcfce7', border:'0.5px solid #86efac', borderRadius:20, padding:'3px 10px', whiteSpace:'nowrap' }}>
-              Browse →
-            </span>
+            {openRoles} open {openRoles === 1 ? 'role' : 'roles'}
           </Link>
-          <style>{`@keyframes roleRipple { 0%{transform:scale(1);opacity:0.3} 100%{transform:scale(2.6);opacity:0} }`}</style>
-          <div style={{ height:'0.5px', background:'var(--border)' }} />
-        </>
-      )}
+        )}
 
-      {/* TC range pill — entire block clickable, two-row layout */}
-      <button
-        onClick={toggleExpand}
-        style={{
-          display:'flex', flexDirection:'column', gap:5,
-          width:'100%', background:'var(--bg-2)', border:'0.5px solid var(--border)',
-          borderRadius:10, padding:'10px 14px', cursor:'pointer', textAlign:'left',
-          transition:'border-color 0.15s',
-        }}
-        onMouseEnter={e => e.currentTarget.style.borderColor = '#3b82f6'}
-        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-      >
-        {/* Top row: label */}
-        <span style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.07em', color:'var(--text-3)' }}>
-          {hasTcRange ? 'TC range' : 'Median TC'}
-        </span>
-        {/* Bottom row: value left, breakdown right — each on own line if narrow */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, flexWrap:'wrap' }}>
-          <span className="tc-range-value" style={{ fontSize:13, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', whiteSpace:'nowrap', minWidth:0 }}>
-            {tcRangeStr}
-          </span>
-          <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:11, fontWeight:500, color:'#3b82f6', whiteSpace:'nowrap', flexShrink:0 }}>
-            View breakdown
-            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"
-              style={{ transition:'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-              <polyline points="6 9 12 15 18 9"/>
-            </svg>
-          </span>
-        </div>
-      </button>
-
-      {/* Loading shimmer */}
-      {loadingLvl && (
-        <div style={{ height:3, background:'rgba(59,130,246,0.12)', borderRadius:99, overflow:'hidden', margin:'-4px 0' }}>
-          <div style={{ height:'100%', background:'#3b82f6', borderRadius:99, animation:'companyCrawl 1.2s ease-in-out infinite' }} />
-        </div>
-      )}
-
-      {/* Level breakdown panel */}
-      {expanded && levels && levels.length > 0 && (
-        <div style={{ display:'flex', flexDirection:'column', gap:6, animation:'companyFadeIn 0.2s ease', background:'var(--bg-2)', borderRadius:8, padding:'10px 12px' }}>
-          {levels.map(l => (
-            <div key={l.internalLevel} style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:11, color:'var(--text-2)', width:110, flexShrink:0 }}>{l.internalLevel}</span>
-              <div style={{ flex:1, height:4, background:'var(--bg-3)', borderRadius:99, overflow:'hidden' }}>
-                <div style={{ height:'100%', borderRadius:99, background:'#3b82f6', width:`${Math.round(((l.avgTC ?? 0) / maxTC) * 100)}%` }} />
-              </div>
-              <span style={{ fontSize:11, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', minWidth:52, textAlign:'right' }}>
-                {fmtSalary(l.avgTC)}
-              </span>
+        {/* ── Header ── */}
+        <div className="ccv2-header">
+          <CompanyLogo
+            companyId={c.id}
+            companyName={c.name}
+            logoUrl={c.logoUrl}
+            website={c.website}
+            size={42}
+            radius={10}
+            style={{ border:'1px solid var(--border)', flexShrink:0 }}
+          />
+          <div className="ccv2-header-info">
+            <div className="ccv2-name">{c.name}</div>
+            <div className="ccv2-industry">
+              <span className="ccv2-industry-dot" />
+              {c.industry}
             </div>
-          ))}
+          </div>
+          {/* Entries badge — right-aligned in header */}
+          <span className="ccv2-entries-badge">
+            {c.entries} {c.entries === 1 ? 'entry' : 'entries'}
+          </span>
         </div>
-      )}
-      {expanded && levels && levels.length === 0 && !loadingLvl && (
-        <div style={{ fontSize:11, color:'var(--text-3)', fontStyle:'italic' }}>No level breakdown available yet.</div>
-      )}
 
-      <div style={{ height:'0.5px', background:'var(--border)' }} />
+        <div className="ccv2-divider" />
 
-      {/* Benefits preview */}
-      <div>
-        <div style={{ fontSize:10, fontWeight:500, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:6 }}>Benefits</div>
-        {previewBenefits.length > 0 ? (
-          <div className="benefits-row" style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
-            {previewBenefits.map((b, i) => {
-              const name = typeof b === 'string' ? b : b.name;
-              return (
-                <span key={i} style={{ fontSize:10, color:'var(--text-2)', background:'var(--bg-2)', border:'0.5px solid var(--border)', borderRadius:6, padding:'3px 8px', display:'flex', alignItems:'center', gap:4 }}>
-                  <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="#3b82f6" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                  {name}
-                </span>
-              );
-            })}
-            {extraBenefits > 0 && (
-              <button onClick={e => { e.stopPropagation(); onViewDetails('benefits'); }} style={{ fontSize:10, color:'#3b82f6', fontWeight:500, background:'none', border:'none', cursor:'pointer', padding:0 }}>
-                +{extraBenefits} more
-              </button>
+        {/* ── TC section ── */}
+        <div className="ccv2-tc-section">
+          <div className="ccv2-tc-label">{tcLabel}</div>
+          <div className="ccv2-tc-value">{tcRangeStr}</div>
+        </div>
+
+        <div className="ccv2-divider" />
+
+        {/* ── Footer: benefits + view details ── */}
+        <div className="ccv2-footer">
+          {/* Benefits preview chips */}
+          <div className="ccv2-benefits-row">
+            {previewBenefits.length > 0 ? (
+              <>
+                {previewBenefits.map((b, i) => {
+                  const name = typeof b === 'string' ? b : b.name;
+                  return <span key={i} className="ccv2-benefit-chip">{name}</span>;
+                })}
+                {extraBenefits > 0 && (
+                  <button
+                    className="ccv2-more-btn"
+                    onClick={e => { e.stopPropagation(); onViewDetails('benefits'); }}
+                  >
+                    +{extraBenefits}
+                  </button>
+                )}
+              </>
+            ) : (
+              <span className="ccv2-not-added">Not added yet</span>
             )}
           </div>
-        ) : (
-          <div style={{ fontSize:11, color:'var(--text-3)', fontStyle:'italic' }}>Not added yet</div>
-        )}
-      </div>
 
-      {/* Footer */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'auto' }}>
-        <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:'var(--text-3)' }}>Updated {c.updatedLabel}</span>
-        <button
-          onClick={e => { e.stopPropagation(); onViewDetails('levels'); }}
-          style={{ fontSize:11, fontWeight:500, color:'#3b82f6', background:'rgba(59,130,246,0.08)', border:'none', borderRadius:6, padding:'5px 12px', cursor:'pointer' }}
-        >
-          View details →
-        </button>
+          {/* View details CTA */}
+          <button
+            className="ccv2-view-btn"
+            onClick={e => { e.stopPropagation(); onViewDetails('levels'); }}
+          >
+            View details
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path d="M5 12h14M13 6l6 6-6 6"/>
+            </svg>
+          </button>
+        </div>
+
       </div>
-    </div>
+    </>
   );
 }
 
@@ -910,32 +1035,16 @@ export default function CompaniesPage() {
         @keyframes companyCrawl  { 0%{transform:translateX(-100%)} 100%{transform:translateX(250%)} }
         @keyframes companyFadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
 
-        /* ── Mobile-only card fixes (≤768px) ── */
+        /* ── Grid: allow overflow:visible so notched tabs aren't clipped ── */
+        .companies-grid {
+          overflow: visible !important;
+        }
+
+        /* ── Mobile layout ── */
         @media (max-width: 768px) {
-          /* Full-width single column instead of clipped 2-col grid */
           .companies-grid {
             grid-template-columns: 1fr !important;
-            gap: 12px !important;
-          }
-          /* Prevent company name + entries badge from overflowing */
-          .company-card-name {
-            font-size: 14px !important;
-            white-space: normal !important;
-            word-break: break-word !important;
-          }
-          /* Entries badge: don't let it get clipped */
-          .company-card .entries-badge-mono {
-            font-size: 10px !important;
-            white-space: nowrap !important;
-          }
-          /* TC range value: allow wrap on very small screens */
-          .company-card .tc-range-value {
-            font-size: 12px !important;
-            white-space: normal !important;
-          }
-          /* Benefits chips: wrap naturally */
-          .company-card .benefits-row {
-            flex-wrap: wrap !important;
+            gap: 20px !important;
           }
           /* Modal: full screen on mobile */
           .company-modal-root {
@@ -1017,7 +1126,7 @@ export default function CompaniesPage() {
 
       {!loading && !error && items.length > 0 && (
         <>
-          <div className="companies-grid">
+          <div className="companies-grid" style={{ paddingTop: 16 }}>
             {items.map(c => (
               <CompanyCard key={c.id} c={c} onViewDetails={(initialTab) => setSelected({ company: c, initialTab })} openRoles={hiringMap.get(String(c.id)) ?? 0} />
             ))}
