@@ -1,6 +1,128 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../services/api';
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const fmt     = (val) => val != null ? `₹${(val / 100000).toFixed(1)}L` : '—';
+const fmtDate = (d)   => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+function SourceBadge({ email }) {
+  const isAI = !email;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 600,
+      fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.04em',
+      background: isAI ? 'rgba(139,92,246,0.12)' : 'rgba(62,207,176,0.10)',
+      color:      isAI ? 'rgba(167,139,250,1)'   : 'var(--teal)',
+      border:     `1px solid ${isAI ? 'rgba(139,92,246,0.3)' : 'rgba(62,207,176,0.25)'}`,
+    }}>
+      {isAI ? '✦ AI' : '👤 User'}
+    </span>
+  );
+}
+
+function DetailRow({ label, value, mono = false, highlight = false }) {
+  if (value == null || value === '' || value === '—') return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
+      <span style={{
+        fontSize: 13,
+        fontFamily: mono ? "'JetBrains Mono',monospace" : "'DM Sans',sans-serif",
+        color:      highlight ? 'var(--gold)' : 'var(--text-1)',
+        fontWeight: highlight ? 600 : 400,
+      }}>{value}</span>
+    </div>
+  );
+}
+
+function ExpandedDetails({ e, onApprove, onReject, actioning }) {
+  const isAI = !e.submittedByEmail;
+  return (
+    <tr>
+      <td colSpan={10} style={{ padding: 0, background: 'transparent' }}>
+        <div style={{
+          margin: '0 0 2px 0',
+          padding: '20px 24px 20px 32px',
+          background: 'rgba(255,255,255,0.025)',
+          borderBottom: '1px solid var(--border)',
+          borderLeft: `3px solid ${isAI ? 'rgba(139,92,246,0.5)' : 'rgba(62,207,176,0.4)'}`,
+          animation: 'expandIn 0.18s ease',
+        }}>
+          {/* Detail grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+            gap: '16px 24px',
+            marginBottom: 20,
+          }}>
+            <DetailRow label="Base Salary"      value={fmt(e.baseSalary)}        highlight mono />
+            <DetailRow label="Bonus"             value={fmt(e.bonus)}             mono />
+            <DetailRow label="Equity / ESOP"    value={fmt(e.equity)}            mono />
+            <DetailRow label="Total Comp"       value={fmt(e.totalCompensation)} highlight mono />
+            <DetailRow label="Department"       value={e.department} />
+            <DetailRow label="Experience Level" value={e.experienceLevel} />
+            <DetailRow label="Years of Exp"     value={e.yearsOfExperience != null ? `${e.yearsOfExperience} yrs` : null} />
+            <DetailRow label="Employment Type"  value={e.employmentType} />
+            <DetailRow label="Level"            value={e.standardizedLevelName ?? e.functionLevelName} />
+            <DetailRow label="Job Function"     value={e.jobFunctionName} />
+            <DetailRow label="Submitted"        value={fmtDate(e.createdAt)}     mono />
+            <DetailRow label="Source"           value={e.submittedByEmail ?? 'AI Enrichment'} />
+          </div>
+
+          {/* Action row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={() => onApprove(e.id)}
+              disabled={actioning === e.id}
+              style={{
+                padding: '6px 18px', fontSize: 12, fontWeight: 600,
+                background: 'var(--teal-dim)', color: 'var(--teal)',
+                border: '1px solid rgba(62,207,176,0.25)', borderRadius: 7,
+                cursor: actioning === e.id ? 'not-allowed' : 'pointer',
+                opacity: actioning === e.id ? 0.65 : 1,
+                fontFamily: "'DM Sans',sans-serif",
+                display: 'flex', alignItems: 'center', gap: 6,
+                transition: 'opacity 0.2s ease',
+              }}
+            >
+              {actioning === e.id ? (
+                <>
+                  <div style={{ width: 11, height: 11, borderRadius: '50%', border: '1.5px solid rgba(62,207,176,0.3)', borderTopColor: 'var(--teal)', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+                  Approving…
+                </>
+              ) : '✓ Approve'}
+            </button>
+            <button
+              onClick={() => onReject(e.id)}
+              disabled={!!actioning}
+              style={{
+                padding: '6px 18px', fontSize: 12, fontWeight: 600,
+                background: 'var(--rose-dim)', color: 'var(--rose)',
+                border: '1px solid rgba(224,92,122,0.2)', borderRadius: 7,
+                cursor: actioning ? 'not-allowed' : 'pointer',
+                opacity: actioning ? 0.5 : 1,
+                fontFamily: "'DM Sans',sans-serif",
+                transition: 'opacity 0.2s ease',
+              }}
+            >
+              ✕ Reject
+            </button>
+
+            {actioning === e.id && (
+              <div style={{ flex: 1, height: 3, background: 'rgba(62,207,176,0.15)', borderRadius: 99, overflow: 'hidden', maxWidth: 160 }}>
+                <div style={{ height: '100%', background: 'linear-gradient(90deg, var(--teal), #0ea5e9)', borderRadius: 99, animation: 'progressCrawl 2s cubic-bezier(0.05,0.6,0.4,1) forwards' }} />
+              </div>
+            )}
+          </div>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export default function AdminPendingSalaries() {
   const [entries,  setEntries]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -8,29 +130,29 @@ export default function AdminPendingSalaries() {
   const [total,    setTotal]    = useState(0);
   const [rejectId, setRejectId] = useState(null);
   const [reason,   setReason]   = useState('');
-
   const [fetchError, setFetchError] = useState(null);
   const [actioning,  setActioning]  = useState(null);
+  const [expanded,   setExpanded]   = useState(null); // id of currently expanded row
 
   // ── AI Enrichment state ────────────────────────────────────────────────────
-  const [enrichCompany,  setEnrichCompany]  = useState('');
-  const [enrichLoading,  setEnrichLoading]  = useState(false);
-  const [enrichResult,   setEnrichResult]   = useState(null);  // { inserted, companyName }
-  const [enrichError,    setEnrichError]    = useState(null);
+  const [enrichCompany, setEnrichCompany] = useState('');
+  const [enrichState,   setEnrichState]   = useState('idle'); // idle | submitting | polling | done | failed
+  const [enrichResult,  setEnrichResult]  = useState(null);   // { inserted, companyName }
+  const [enrichError,   setEnrichError]   = useState(null);
+  const pollRef = useRef(null); // holds the setInterval id
+
+  // Clean up polling on unmount
+  useEffect(() => () => clearInterval(pollRef.current), []);
 
   // ── Salary list ────────────────────────────────────────────────────────────
-
   const loadSilent = useCallback(() => {
-    setFetchError(null);
     api.get('/admin/salaries/pending', { params: { page, size: 10 } })
       .then(r => {
         const paged = r.data?.data;
         setEntries(paged?.content ?? []);
         setTotal(paged?.totalElements ?? 0);
       })
-      .catch(err => {
-        setFetchError(`Error ${err.response?.status ?? 'network'}: ${err.response?.data?.error ?? err.message}`);
-      });
+      .catch(() => {});
   }, [page]);
 
   const load = useCallback(() => {
@@ -50,13 +172,16 @@ export default function AdminPendingSalaries() {
 
   useEffect(() => { load(); }, [load]);
 
+  // ── Actions ────────────────────────────────────────────────────────────────
   async function approve(id) {
     setActioning(id);
     try {
       await api.patch(`/admin/salaries/${id}/approve`);
+      setExpanded(null);
       loadSilent();
-    } catch (e) { console.error(e); }
-    finally { setActioning(null); }
+    }
+    catch (e) { console.error(e); }
+    finally   { setActioning(null); }
   }
 
   async function reject(id) {
@@ -65,54 +190,105 @@ export default function AdminPendingSalaries() {
       await api.patch(`/admin/salaries/${id}/reject`, { reason });
       setRejectId(null);
       setReason('');
+      setExpanded(null);
       loadSilent();
-    } catch (e) { console.error(e); }
-    finally { setActioning(null); }
+    }
+    catch (e) { console.error(e); }
+    finally   { setActioning(null); }
+  }
+
+  function toggleExpand(id) {
+    setExpanded(prev => prev === id ? null : id);
   }
 
   // ── AI Enrichment ──────────────────────────────────────────────────────────
+  function stopPolling() {
+    clearInterval(pollRef.current);
+    pollRef.current = null;
+  }
+
+  async function startPolling(jobId) {
+    setEnrichState('polling');
+
+    pollRef.current = setInterval(async () => {
+      try {
+        const res  = await api.get(`/admin/salaries/enrich/${jobId}`);
+        const data = res.data?.data;
+
+        if (data?.status === 'DONE') {
+          stopPolling();
+          setEnrichResult({ inserted: data.inserted, companyName: data.companyName });
+          setEnrichState('done');
+          loadSilent();
+        } else if (data?.status === 'FAILED') {
+          stopPolling();
+          setEnrichError(data.error ?? 'Enrichment failed — check backend logs.');
+          setEnrichState('failed');
+        }
+        // status === 'RUNNING' → keep polling
+      } catch (err) {
+        stopPolling();
+        setEnrichError(`Polling error: ${err.response?.data?.error ?? err.message}`);
+        setEnrichState('failed');
+      }
+    }, 2000);
+  }
 
   async function handleEnrich() {
-    if (!enrichCompany.trim()) return;
-    setEnrichLoading(true);
+    if (!enrichCompany.trim() || enrichState === 'submitting' || enrichState === 'polling') return;
+
+    stopPolling();
+    setEnrichState('submitting');
     setEnrichResult(null);
     setEnrichError(null);
 
     try {
-      const res = await api.post('/admin/salaries/enrich', { companyName: enrichCompany.trim() });
-      const data = res.data?.data;
-      setEnrichResult(data);
-      // Refresh the pending list so new entries appear immediately
-      loadSilent();
+      const res   = await api.post('/admin/salaries/enrich', { companyName: enrichCompany.trim() });
+      const jobId = res.data?.data?.jobId;
+      if (!jobId) throw new Error('No jobId in response');
+      await startPolling(jobId);
     } catch (err) {
       const status = err.response?.status;
       const msg    = err.response?.data?.error ?? err.message;
-      if (status === 429) {
-        setEnrichError(`Rate limited: ${msg}`);
-      } else {
-        setEnrichError(`Enrichment failed (${status ?? 'network'}): ${msg}`);
-      }
-    } finally {
-      setEnrichLoading(false);
+      setEnrichError(status === 429 ? `Rate limited: ${msg}` : `Failed to start enrichment: ${msg}`);
+      setEnrichState('failed');
     }
   }
 
-  const fmt = (val) => val ? `₹${(val / 100000).toFixed(1)}L` : '—';
+  const isEnriching = enrichState === 'submitting' || enrichState === 'polling';
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="admin-page-content">
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes progressCrawl {
-          0%   { width: 0%;  }
+          0%   { width: 0%; }
           40%  { width: 65%; }
           70%  { width: 82%; }
           100% { width: 90%; }
         }
         @keyframes enrichPulse {
           0%, 100% { opacity: 1; }
-          50%      { opacity: 0.55; }
+          50%      { opacity: 0.5; }
         }
+        @keyframes expandIn {
+          from { opacity: 0; transform: translateY(-6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .pending-row {
+          cursor: pointer;
+          transition: background 0.15s ease;
+        }
+        .pending-row:hover { background: rgba(255,255,255,0.03) !important; }
+        .pending-row.is-expanded { background: rgba(255,255,255,0.04) !important; }
+        .expand-chevron {
+          display: inline-block;
+          transition: transform 0.2s ease;
+          color: var(--text-3);
+          font-size: 10px;
+        }
+        .expand-chevron.open { transform: rotate(90deg); }
       `}</style>
 
       {/* ── Page header ─────────────────────────────────────────────────── */}
@@ -125,92 +301,78 @@ export default function AdminPendingSalaries() {
 
       {/* ── AI Enrichment panel ──────────────────────────────────────────── */}
       <div style={{
-        marginBottom: 28,
-        padding: '20px 24px',
-        borderRadius: 14,
+        marginBottom: 28, padding: '20px 24px', borderRadius: 14,
         background: 'rgba(139,92,246,0.06)',
         border: '0.5px solid rgba(139,92,246,0.25)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-          <span style={{ fontSize: 18 }}>✦</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <span style={{ fontSize: 16 }}>✦</span>
           <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'rgba(139,92,246,0.9)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>AI Enrichment</span>
         </div>
-
         <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 16, lineHeight: 1.6 }}>
           Enter a company name and Claude will search the web for real salary data, then queue up to 20 entries for your review.
         </p>
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'stretch', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <input
             type="text"
             className="form-input"
             placeholder="e.g. Google, Flipkart, Zepto…"
             value={enrichCompany}
-            onChange={e => { setEnrichCompany(e.target.value); setEnrichResult(null); setEnrichError(null); }}
-            onKeyDown={e => { if (e.key === 'Enter' && !enrichLoading) handleEnrich(); }}
-            disabled={enrichLoading}
-            style={{
-              flex: '1 1 260px',
-              minWidth: 0,
-              opacity: enrichLoading ? 0.6 : 1,
-            }}
+            onChange={e => { setEnrichCompany(e.target.value); setEnrichResult(null); setEnrichError(null); if (enrichState !== 'idle') setEnrichState('idle'); }}
+            onKeyDown={e => { if (e.key === 'Enter' && !isEnriching) handleEnrich(); }}
+            disabled={isEnriching}
+            style={{ flex: '1 1 260px', minWidth: 0, opacity: isEnriching ? 0.6 : 1 }}
           />
           <button
             onClick={handleEnrich}
-            disabled={enrichLoading || !enrichCompany.trim()}
+            disabled={isEnriching || !enrichCompany.trim()}
             style={{
-              padding: '9px 22px',
-              fontSize: 13,
-              fontWeight: 600,
+              padding: '9px 22px', fontSize: 13, fontWeight: 600,
               fontFamily: "'DM Sans',sans-serif",
-              background: enrichLoading ? 'rgba(139,92,246,0.12)' : 'rgba(139,92,246,0.18)',
+              background: isEnriching ? 'rgba(139,92,246,0.10)' : 'rgba(139,92,246,0.18)',
               color: 'rgba(167,139,250,1)',
               border: '1px solid rgba(139,92,246,0.35)',
               borderRadius: 9,
-              cursor: enrichLoading || !enrichCompany.trim() ? 'not-allowed' : 'pointer',
-              opacity: enrichLoading || !enrichCompany.trim() ? 0.7 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
+              cursor: isEnriching || !enrichCompany.trim() ? 'not-allowed' : 'pointer',
+              opacity: isEnriching || !enrichCompany.trim() ? 0.7 : 1,
+              display: 'flex', alignItems: 'center', gap: 8,
               whiteSpace: 'nowrap',
-              transition: 'opacity 0.2s ease, background 0.2s ease',
+              transition: 'opacity 0.2s ease',
             }}
           >
-            {enrichLoading ? (
+            {isEnriching ? (
               <>
                 <div style={{
-                  width: 13, height: 13,
-                  borderRadius: '50%',
+                  width: 13, height: 13, borderRadius: '50%',
                   border: '2px solid rgba(139,92,246,0.25)',
                   borderTopColor: 'rgba(167,139,250,1)',
-                  animation: 'spin 0.8s linear infinite',
-                  flexShrink: 0,
+                  animation: 'spin 0.8s linear infinite', flexShrink: 0,
                 }} />
-                Enriching…
+                {enrichState === 'submitting' ? 'Starting…' : 'Enriching…'}
               </>
-            ) : (
-              <>✦ Enrich with AI</>
-            )}
+            ) : '✦ Enrich with AI'}
           </button>
         </div>
 
-        {/* Progress hint while loading */}
-        {enrichLoading && (
+        {/* Progress hint */}
+        {isEnriching && (
           <p style={{
             marginTop: 12, fontSize: 12,
             color: 'rgba(167,139,250,0.7)',
             fontFamily: "'JetBrains Mono',monospace",
             animation: 'enrichPulse 1.8s ease-in-out infinite',
           }}>
-            Searching the web and structuring salary data… this takes 5–15 seconds.
+            {enrichState === 'submitting'
+              ? 'Queuing enrichment job…'
+              : 'Claude is searching the web and structuring salary data… this takes 15–45 seconds.'}
           </p>
         )}
 
-        {/* Success toast */}
-        {enrichResult && (
+        {/* Success */}
+        {enrichState === 'done' && enrichResult && (
           <div style={{
-            marginTop: 14,
-            display: 'flex', alignItems: 'center', gap: 10,
+            marginTop: 14, display: 'flex', alignItems: 'center', gap: 10,
             padding: '10px 16px',
             background: 'rgba(62,207,176,0.08)',
             border: '0.5px solid rgba(62,207,176,0.3)',
@@ -218,29 +380,26 @@ export default function AdminPendingSalaries() {
           }}>
             <span style={{ fontSize: 16 }}>✓</span>
             <span style={{ fontSize: 13, color: 'var(--teal)' }}>
-              <strong>{enrichResult.inserted}</strong> salary{enrichResult.inserted === 1 ? '' : ' entries'} queued for{' '}
+              <strong>{enrichResult.inserted}</strong> {enrichResult.inserted === 1 ? 'entry' : 'entries'} queued for{' '}
               <strong>{enrichResult.companyName}</strong> — review them in the table below.
             </span>
           </div>
         )}
 
         {/* Error */}
-        {enrichError && (
+        {enrichState === 'failed' && enrichError && (
           <div style={{
-            marginTop: 14,
-            padding: '10px 16px',
+            marginTop: 14, padding: '10px 16px',
             background: 'var(--rose-dim)',
             border: '0.5px solid rgba(224,92,122,0.25)',
-            borderRadius: 9,
-            fontSize: 13,
-            color: 'var(--rose)',
+            borderRadius: 9, fontSize: 13, color: 'var(--rose)',
           }}>
             {enrichError}
           </div>
         )}
       </div>
 
-      {/* ── Data freshness warning ───────────────────────────────────────── */}
+      {/* ── Warning banner ───────────────────────────────────────────────── */}
       {total > 0 && (
         <div style={{
           marginBottom: 28, padding: '12px 18px', borderRadius: 10, fontSize: 13,
@@ -251,12 +410,17 @@ export default function AdminPendingSalaries() {
           <span>
             <strong style={{ color: 'var(--text-1)' }}>Dashboard, Companies, and Salaries pages show no data until entries are approved.</strong>
             {' '}All public salary charts and company stats are built exclusively from approved entries.
-            Approve entries below to make them visible.
           </span>
         </div>
       )}
 
-      {/* ── Pending salary table ─────────────────────────────────────────── */}
+      {/* ── Pending table ────────────────────────────────────────────────── */}
+      {!loading && entries.length > 0 && (
+        <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, fontFamily: "'JetBrains Mono',monospace" }}>
+          ↓ Click any row to expand full details
+        </p>
+      )}
+
       {loading ? (
         <div style={{ color: 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>Loading…</div>
       ) : fetchError ? (
@@ -275,85 +439,53 @@ export default function AdminPendingSalaries() {
             <table className="salary-table">
               <thead>
                 <tr>
+                  <th style={{ width: 24 }}></th>
                   <th>Company</th>
                   <th>Role</th>
                   <th>Location</th>
                   <th>Base</th>
+                  <th>Bonus</th>
+                  <th>Equity</th>
                   <th>Total Comp</th>
+                  <th>Source</th>
                   <th>Submitted</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {entries.map(e => (
-                  <tr key={e.id}>
-                    <td><div className="company-name">{e.companyName ?? e.company?.name}</div></td>
-                    <td>{e.jobTitle}</td>
-                    <td>{e.location}</td>
-                    <td><div className="salary-amount" style={{ fontSize: 15 }}>{fmt(e.baseSalary)}</div></td>
-                    <td><div className="salary-amount" style={{ fontSize: 15 }}>{fmt(e.totalCompensation)}</div></td>
-                    <td style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: 'var(--text-3)' }}>
-                      {e.createdAt ? new Date(e.createdAt).toLocaleDateString('en-IN') : '—'}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button
-                            onClick={() => approve(e.id)}
-                            disabled={actioning === e.id}
-                            style={{
-                              padding: '5px 14px', fontSize: 12, fontWeight: 600,
-                              background: 'var(--teal-dim)', color: 'var(--teal)',
-                              border: '1px solid rgba(62,207,176,0.2)', borderRadius: 7,
-                              cursor: actioning === e.id ? 'not-allowed' : 'pointer',
-                              opacity: actioning === e.id ? 0.65 : 1,
-                              fontFamily: "'DM Sans',sans-serif",
-                              display: 'flex', alignItems: 'center', gap: 6,
-                              transition: 'opacity 0.2s ease',
-                            }}
-                          >
-                            {actioning === e.id ? (
-                              <>
-                                <div style={{
-                                  width: 11, height: 11, borderRadius: '50%',
-                                  border: '1.5px solid rgba(62,207,176,0.3)',
-                                  borderTopColor: 'var(--teal)',
-                                  animation: 'spin 0.7s linear infinite', flexShrink: 0,
-                                }} />
-                                Approving…
-                              </>
-                            ) : '✓ Approve'}
-                          </button>
-                          <button
-                            onClick={() => setRejectId(e.id)}
-                            disabled={!!actioning}
-                            style={{
-                              padding: '5px 14px', fontSize: 12, fontWeight: 600,
-                              background: 'var(--rose-dim)', color: 'var(--rose)',
-                              border: '1px solid rgba(224,92,122,0.2)', borderRadius: 7,
-                              cursor: actioning ? 'not-allowed' : 'pointer',
-                              opacity: actioning ? 0.5 : 1,
-                              fontFamily: "'DM Sans',sans-serif",
-                              transition: 'opacity 0.2s ease',
-                            }}
-                          >
-                            ✕ Reject
-                          </button>
-                        </div>
-                        {actioning === e.id && (
-                          <div style={{ width: '100%', height: 3, background: 'rgba(62,207,176,0.15)', borderRadius: 99, overflow: 'hidden' }}>
-                            <div style={{
-                              height: '100%',
-                              background: 'linear-gradient(90deg, var(--teal), #0ea5e9)',
-                              borderRadius: 99,
-                              animation: 'progressCrawl 2s cubic-bezier(0.05,0.6,0.4,1) forwards',
-                            }} />
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {entries.map(e => {
+                  const isOpen = expanded === e.id;
+                  return (
+                    <>
+                      <tr
+                        key={e.id}
+                        className={`pending-row${isOpen ? ' is-expanded' : ''}`}
+                        onClick={() => toggleExpand(e.id)}
+                      >
+                        <td style={{ textAlign: 'center', paddingRight: 0 }}>
+                          <span className={`expand-chevron${isOpen ? ' open' : ''}`}>▶</span>
+                        </td>
+                        <td><div className="company-name">{e.companyName ?? e.company?.name}</div></td>
+                        <td>{e.jobTitle}</td>
+                        <td>{e.location}</td>
+                        <td><div className="salary-amount" style={{ fontSize: 15 }}>{fmt(e.baseSalary)}</div></td>
+                        <td style={{ color: e.bonus ? 'var(--text-1)' : 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>{fmt(e.bonus)}</td>
+                        <td style={{ color: e.equity ? 'var(--text-1)' : 'var(--text-3)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>{fmt(e.equity)}</td>
+                        <td><div className="salary-amount" style={{ fontSize: 15 }}>{fmt(e.totalCompensation)}</div></td>
+                        <td><SourceBadge email={e.submittedByEmail} /></td>
+                        <td style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: 'var(--text-3)' }}>{fmtDate(e.createdAt)}</td>
+                      </tr>
+                      {isOpen && (
+                        <ExpandedDetails
+                          key={`${e.id}-detail`}
+                          e={e}
+                          onApprove={approve}
+                          onReject={(id) => setRejectId(id)}
+                          actioning={actioning}
+                        />
+                      )}
+                    </>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -372,30 +504,21 @@ export default function AdminPendingSalaries() {
 
       {/* ── Reject modal ─────────────────────────────────────────────────── */}
       {rejectId && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => setRejectId(null)}
-        >
-          <div
-            style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 20, padding: 36, width: 440, maxWidth: '90vw' }}
-            onClick={e => e.stopPropagation()}
-          >
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setRejectId(null)}>
+          <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 20, padding: 36, width: 440, maxWidth: '90vw' }}
+            onClick={e => e.stopPropagation()}>
             <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: 'var(--text-1)', marginBottom: 8 }}>Reject Entry</h3>
             <p style={{ color: 'var(--text-3)', fontSize: 14, marginBottom: 20 }}>Provide a reason (optional — will be logged in audit trail).</p>
             <textarea
-              className="form-input"
-              rows={3}
+              className="form-input" rows={3}
               placeholder="Reason for rejection…"
-              value={reason}
-              onChange={e => setReason(e.target.value)}
+              value={reason} onChange={e => setReason(e.target.value)}
               style={{ resize: 'vertical', width: '100%', marginBottom: 20 }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button className="btn-ghost" onClick={() => setRejectId(null)}>Cancel</button>
-              <button
-                onClick={() => reject(rejectId)}
-                style={{ padding: '9px 22px', fontSize: 13, fontWeight: 600, background: 'var(--rose-dim)', color: 'var(--rose)', border: '1px solid rgba(224,92,122,0.3)', borderRadius: 8, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
-              >
+              <button onClick={() => reject(rejectId)} style={{ padding: '9px 22px', fontSize: 13, fontWeight: 600, background: 'var(--rose-dim)', color: 'var(--rose)', border: '1px solid rgba(224,92,122,0.3)', borderRadius: 8, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
                 Confirm Reject
               </button>
             </div>

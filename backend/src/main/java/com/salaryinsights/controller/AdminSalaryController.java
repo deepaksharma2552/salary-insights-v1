@@ -4,6 +4,7 @@ import com.salaryinsights.dto.request.AdminSalaryUpdateRequest;
 import com.salaryinsights.dto.response.*;
 import com.salaryinsights.enums.ReviewStatus;
 import com.salaryinsights.service.ai.AiSalaryEnrichmentService;
+import com.salaryinsights.service.ai.AiSalaryEnrichmentService.EnrichJob;
 import com.salaryinsights.service.impl.SalaryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,12 +25,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AdminSalaryController {
 
-    private final SalaryService              salaryService;
-    private final AiSalaryEnrichmentService  aiSalaryEnrichmentService;
+    private final SalaryService             salaryService;
+    private final AiSalaryEnrichmentService aiSalaryEnrichmentService;
 
-    // ──────────────────────────────────────────
-    // Pending queue
-    // ──────────────────────────────────────────
+    // ── Pending queue ──────────────────────────────────────────────────────────
 
     @GetMapping("/pending")
     public ResponseEntity<ApiResponse<PagedResponse<SalaryResponse>>> getPending(
@@ -62,25 +61,20 @@ public class AdminSalaryController {
         return ResponseEntity.ok(ApiResponse.success(salaryService.getAdminDashboard(year, month)));
     }
 
-    // ──────────────────────────────────────────
-    // AI salary enrichment
-    // ──────────────────────────────────────────
+    // ── AI salary enrichment ───────────────────────────────────────────────────
 
     /**
      * POST /admin/salaries/enrich
      *
-     * Triggers AI-powered salary enrichment for a given company.
-     * Claude (claude-sonnet-4-20250514) searches the web for real salary data,
-     * structures the results, and inserts them as PENDING for admin review.
-     * Nothing bypasses the review queue.
+     * Kicks off an async enrichment job and returns a jobId immediately (< 50 ms).
+     * The Claude + web_search work runs in the background on enrichExecutor.
+     * Poll GET /admin/salaries/enrich/{jobId} every 2 s until status != RUNNING.
      *
      * Body:    { "companyName": "Google" }
-     * Returns: { "inserted": 12, "companyName": "Google" }
+     * Returns: { "jobId": "uuid", "companyName": "Google", "status": "RUNNING" }
      *
-     * HTTP 429 — rate limited (1 enrichment per company per hour)
      * HTTP 400 — missing companyName
-     *
-     * This call typically takes 5–15 seconds due to web search + LLM inference.
+     * HTTP 429 — rate limited (1 enrichment per company per hour)
      */
     @PostMapping("/enrich")
     public ResponseEntity<ApiResponse<Map<String, Object>>> enrich(
@@ -93,48 +87,41 @@ public class AdminSalaryController {
         }
 
         try {
-            int inserted = aiSalaryEnrichmentService.enrich(companyName.trim());
-
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("inserted", inserted);
-            result.put("companyName", companyName.trim());
-
-            return ResponseEntity.ok(ApiResponse.success(
-                inserted + " salary entr" + (inserted == 1 ? "y" : "ies") + " queued for review",
-                result));
+            EnrichJob job = aiSalaryEnrichmentService.submitEnrichJob(companyName.trim());
+            return ResponseEntity.ok(ApiResponse.success("Enrichment job started", jobToMap(job)));
 
         } catch (IllegalStateException e) {
-            // Rate-limit hit — surface as 429
-            return ResponseEntity.status(429)
-                .body(ApiResponse.error(e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(500)
-                .body(ApiResponse.error("Enrichment failed: " + e.getMessage()));
+            return ResponseEntity.status(429).body(ApiResponse.error(e.getMessage()));
         }
     }
 
-    // ──────────────────────────────────────────
-    // Approved salaries — browse, edit, delete
-    // ──────────────────────────────────────────
-
     /**
-     * GET /admin/salaries/approved
+     * GET /admin/salaries/enrich/{jobId}
      *
-     * Returns paginated APPROVED entries with optional filters.
-     * Page size is capped at 100 to protect DB at 200k–500k scale.
+     * Poll this endpoint every 2 s after calling POST /enrich.
+     * Returns the current job status.
      *
-     * Query params:
-     *   page            int          (default 0)
-     *   size            int          (default 50, max 100)
-     *   companyId       UUID         filter by exact company
-     *   companyName     String       partial, case-insensitive
-     *   jobTitle        String       partial, case-insensitive
-     *   location        String[]     repeating param (display name or enum name)
-     *   experienceLevel String[]     repeating param (enum name e.g. MID, SENIOR)
-     *   employmentType  String       enum name e.g. FULL_TIME
-     *   sort            String       field name (default createdAt)
-     *   direction       String       ASC | DESC (default DESC)
+     * status = RUNNING → keep polling
+     * status = DONE    → { inserted: N, companyName: "..." }
+     * status = FAILED  → { error: "..." }
+     *
+     * HTTP 404 — jobId unknown or expired (jobs expire after 2 hours)
      */
+    @GetMapping("/enrich/{jobId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getEnrichJob(
+            @PathVariable String jobId) {
+
+        EnrichJob job = aiSalaryEnrichmentService.getJob(jobId);
+        if (job == null) {
+            return ResponseEntity.status(404)
+                .body(ApiResponse.error("Job not found or expired: " + jobId));
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(job.getStatus().name(), jobToMap(job)));
+    }
+
+    // ── Approved salaries — browse, edit, delete ───────────────────────────────
+
     @GetMapping("/approved")
     public ResponseEntity<ApiResponse<PagedResponse<SalaryResponse>>> getApproved(
             @RequestParam(defaultValue = "0")          int page,
@@ -149,10 +136,7 @@ public class AdminSalaryController {
             @RequestParam(defaultValue = "DESC")       String direction) {
 
         int safeSize = Math.min(size, 100);
-
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
-                ? Sort.Direction.ASC : Sort.Direction.DESC;
-
+        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
         String safeSort = switch (sort) {
             case "baseSalary", "totalCompensation", "yearsOfExperience",
                  "experienceLevel", "createdAt", "updatedAt" -> sort;
@@ -160,37 +144,35 @@ public class AdminSalaryController {
         };
 
         PageRequest pageable = PageRequest.of(page, safeSize, Sort.by(dir, safeSort));
-
         return ResponseEntity.ok(ApiResponse.success(
                 salaryService.getApprovedSalariesAdmin(
                         companyId, companyName, jobTitle,
-                        location, experienceLevel, employmentType,
-                        pageable)));
+                        location, experienceLevel, employmentType, pageable)));
     }
 
-    /**
-     * PATCH /admin/salaries/{id}
-     *
-     * Partial update of an approved salary entry.
-     * Only non-null fields in the request body are applied.
-     */
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<SalaryResponse>> updateApproved(
             @PathVariable UUID id,
             @Valid @RequestBody AdminSalaryUpdateRequest request) {
-
         return ResponseEntity.ok(ApiResponse.success("Updated",
                 salaryService.updateApprovedSalary(id, request)));
     }
 
-    /**
-     * DELETE /admin/salaries/{id}
-     *
-     * Hard-deletes an approved salary entry.
-     */
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteApproved(@PathVariable UUID id) {
         salaryService.deleteApprovedSalary(id);
         return ResponseEntity.ok(ApiResponse.success("Deleted", null));
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    private Map<String, Object> jobToMap(EnrichJob job) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("jobId",       job.getJobId());
+        m.put("companyName", job.getCompanyName());
+        m.put("status",      job.getStatus().name());
+        m.put("inserted",    job.getInserted());
+        if (job.getError() != null) m.put("error", job.getError());
+        return m;
     }
 }
