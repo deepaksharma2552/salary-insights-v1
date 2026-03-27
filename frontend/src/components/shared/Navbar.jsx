@@ -62,7 +62,7 @@ export default function Navbar() {
 
   useEffect(() => {
     setDropdownOpen(false); setSalariesOpen(false); setMobileOpen(false);
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? 'hidden' : '';

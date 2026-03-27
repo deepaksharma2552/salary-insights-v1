@@ -488,54 +488,7 @@ export default function HomePage() {
 
         </div>
 
-        {/* ── Benchmark banner — compact highlight strip ── */}
-        <style>{`
-          .benchmark-strip {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(16,185,129,0.06);
-            border: 1px solid rgba(16,185,129,0.22);
-            border-radius: 8px;
-            padding: 8px 12px;
-            margin-top: 16px;
-            text-decoration: none;
-            transition: border-color 0.15s, background 0.15s;
-          }
-          .benchmark-strip:hover {
-            background: rgba(16,185,129,0.1);
-            border-color: rgba(16,185,129,0.4);
-          }
-          .benchmark-strip-btn {
-            margin-left: auto;
-            font-size: 12px;
-            font-weight: 600;
-            padding: 5px 12px;
-            border-radius: 6px;
-            background: #1e40af;
-            color: #fff;
-            white-space: nowrap;
-            flex-shrink: 0;
-          }
-          @media (max-width: 480px) {
-            .benchmark-strip { flex-wrap: wrap; }
-            .benchmark-strip-btn { width: 100%; text-align: center; margin-left: 0; }
-          }
-        `}</style>
-        <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}>
-          <Link to="/salaries?tab=benchmark" className="benchmark-strip">
-            <div style={{ width: 26, height: 26, borderRadius: 7, flexShrink: 0, background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-              </svg>
-            </div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', whiteSpace: 'nowrap' }}>Got an offer?</span>
-            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-              Benchmark against {totalEntries != null ? fmtCount(totalEntries) : '—'} data points across {totalCompanies != null ? fmtCount(totalCompanies) : '—'} companies.
-            </span>
-            <div className="benchmark-strip-btn">Benchmark my offer →</div>
-          </Link>
-        </div>
+
 
       </section>
 
