@@ -104,41 +104,36 @@ export default function Navbar() {
         .nb-shell {
           position: fixed; top: 0; left: 0; right: 0;
           z-index: 100;
-          display: flex; justify-content: center;
-          padding: 10px 16px 0;
-          pointer-events: none;
         }
 
-        /* ── PILL ────────────────────────────────── */
+        /* ── FULL-WIDTH BAR ──────────────────────── */
         .nb-pill {
-          pointer-events: all;
-          width: 100%; max-width: 1120px; height: 54px;
+          width: 100%; height: 56px;
           display: flex; align-items: center;
           background: var(--panel);
-          border: 1px solid var(--border);
-          border-radius: 16px;
-          padding: 0 8px 0 16px;
-          gap: 4px;
+          border-bottom: 1px solid var(--border);
+          padding: 0 24px;
+          gap: 0;
           transition: box-shadow 0.25s, border-color 0.25s;
           position: relative;
         }
         .nb-pill.scrolled {
-          box-shadow: 0 8px 30px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06);
+          box-shadow: 0 2px 16px rgba(0,0,0,0.08);
           border-color: var(--border-2);
         }
         [data-theme='light'] .nb-pill {
           backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-          background: rgba(255,255,255,0.94);
+          background: rgba(255,255,255,0.96);
         }
         [data-theme='dark'] .nb-pill {
           backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-          background: rgba(15,23,42,0.94);
+          background: rgba(15,23,42,0.96);
         }
 
         /* ── LOGO ────────────────────────────────── */
         .nb-logo {
           display: flex; align-items: center; gap: 9px;
-          text-decoration: none; flex-shrink: 0; margin-right: 4px;
+          text-decoration: none; flex-shrink: 0;
         }
         .nb-logo-icon {
           width: 30px; height: 30px; border-radius: 9px;
@@ -156,20 +151,21 @@ export default function Navbar() {
         /* ── DIVIDER ─────────────────────────────── */
         .nb-sep {
           width: 1px; height: 20px; background: var(--border);
-          flex-shrink: 0; margin: 0 8px;
+          flex-shrink: 0; margin: 0 20px;
         }
 
-        /* ── NAV LINKS ───────────────────────────── */
+        /* ── NAV LINKS — centered ─────────────────── */
         .nb-links {
-          display: flex; align-items: center; gap: 2px;
-          list-style: none; margin: 0; padding: 0; flex: 1;
+          display: flex; align-items: center; gap: 1px;
+          list-style: none; margin: 0; padding: 0;
+          position: absolute; left: 50%; transform: translateX(-50%);
         }
         .nb-link, .nb-dropdown-trigger {
           display: inline-flex; align-items: center; gap: 6px;
           font-size: 13px; font-weight: 500;
           color: var(--text-2);
-          padding: 6px 11px;
-          border-radius: 10px;
+          padding: 6px 10px;
+          border-radius: 8px;
           text-decoration: none;
           background: transparent; border: none;
           cursor: pointer; font-family: inherit;
@@ -199,7 +195,7 @@ export default function Navbar() {
 
         /* ── SALARIES DROPDOWN ───────────────────── */
         .nb-salaries-menu {
-          position: absolute; top: calc(100% + 10px); left: 0;
+          position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%);
           width: 300px;
           background: var(--panel);
           border: 1px solid var(--border-2);
@@ -209,8 +205,8 @@ export default function Navbar() {
           animation: nbDropIn 0.15s cubic-bezier(0.16,1,0.3,1);
         }
         @keyframes nbDropIn {
-          from { opacity: 0; transform: translateY(-8px) scale(0.97); }
-          to   { opacity: 1; transform: translateY(0)   scale(1); }
+          from { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.97); }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0)   scale(1); }
         }
         .nb-menu-item {
           display: flex; align-items: center; gap: 11px;
@@ -235,11 +231,11 @@ export default function Navbar() {
 
         /* ── RIGHT ACTIONS ───────────────────────── */
         .nb-actions {
-          display: flex; align-items: center; gap: 4px;
-          flex-shrink: 0; margin-left: 4px;
+          display: flex; align-items: center; gap: 6px;
+          flex-shrink: 0; margin-left: auto;
         }
         .nb-theme-btn {
-          width: 34px; height: 34px; border-radius: 10px;
+          width: 34px; height: 34px; border-radius: 8px;
           border: 1px solid var(--border); background: transparent;
           color: var(--text-3);
           display: flex; align-items: center; justify-content: center;
@@ -252,7 +248,7 @@ export default function Navbar() {
         .nb-cta-share {
           display: inline-flex; align-items: center; gap: 6px;
           font-size: 13px; font-weight: 600;
-          padding: 7px 14px; border-radius: 10px;
+          padding: 7px 14px; border-radius: 8px;
           border: 1px solid rgba(22,163,74,0.35); color: #15803d;
           background: rgba(22,163,74,0.07);
           text-decoration: none; white-space: nowrap; flex-shrink: 0;
@@ -266,7 +262,7 @@ export default function Navbar() {
         .nb-cta-post {
           display: inline-flex; align-items: center; gap: 6px;
           font-size: 13px; font-weight: 700;
-          padding: 7px 16px; border-radius: 10px;
+          padding: 7px 16px; border-radius: 8px;
           border: none; color: #fff;
           background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
           text-decoration: none; white-space: nowrap; flex-shrink: 0;
@@ -277,7 +273,7 @@ export default function Navbar() {
         /* Auth buttons */
         .nb-btn-ghost {
           font-size: 13px; font-weight: 500;
-          padding: 7px 14px; border-radius: 10px;
+          padding: 7px 14px; border-radius: 8px;
           border: 1px solid var(--border); color: var(--text-2);
           background: transparent; text-decoration: none;
           transition: background 0.14s, color 0.14s;
@@ -285,7 +281,7 @@ export default function Navbar() {
         .nb-btn-ghost:hover { background: var(--bg-3); color: var(--text-1); }
         .nb-btn-signup {
           font-size: 13px; font-weight: 700;
-          padding: 7px 16px; border-radius: 10px;
+          padding: 7px 16px; border-radius: 8px;
           border: none; color: #fff;
           background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
           text-decoration: none; transition: opacity 0.14s;
@@ -295,14 +291,14 @@ export default function Navbar() {
         /* User button */
         .nb-user-btn {
           display: flex; align-items: center; gap: 7px;
-          padding: 4px 10px 4px 4px; border-radius: 10px;
+          padding: 4px 10px 4px 4px; border-radius: 8px;
           border: 1px solid var(--border); background: transparent;
           cursor: pointer; transition: background 0.14s, border-color 0.14s;
           flex-shrink: 0;
         }
         .nb-user-btn:hover { background: var(--bg-3); border-color: var(--border-2); }
         .nb-user-avatar {
-          width: 28px; height: 28px; border-radius: 8px;
+          width: 28px; height: 28px; border-radius: 7px;
           background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(99,102,241,0.15));
           border: 1.5px solid rgba(59,130,246,0.25);
           display: flex; align-items: center; justify-content: center;
@@ -319,7 +315,11 @@ export default function Navbar() {
           border: 1px solid var(--border-2); border-radius: 16px;
           box-shadow: 0 12px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
           overflow: hidden; z-index: 200;
-          animation: nbDropIn 0.15s cubic-bezier(0.16,1,0.3,1);
+          animation: nbUserDropIn 0.15s cubic-bezier(0.16,1,0.3,1);
+        }
+        @keyframes nbUserDropIn {
+          from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         .nb-user-header { padding: 12px 14px 11px; border-bottom: 1px solid var(--border); }
         .nb-user-header-name  { font-size: 13px; font-weight: 600; color: var(--text-1); }
@@ -339,7 +339,7 @@ export default function Navbar() {
         /* ── MOBILE ──────────────────────────────── */
         .nb-hamburger {
           display: none; width: 36px; height: 36px;
-          border-radius: 10px; border: 1px solid var(--border);
+          border-radius: 8px; border: 1px solid var(--border);
           background: transparent; color: var(--text-2);
           align-items: center; justify-content: center;
           cursor: pointer; transition: background 0.14s;
@@ -372,7 +372,7 @@ export default function Navbar() {
           border-bottom: 1px solid var(--border); flex-shrink: 0;
         }
         .nb-drawer-close {
-          width: 32px; height: 32px; border-radius: 10px;
+          width: 32px; height: 32px; border-radius: 8px;
           border: 1px solid var(--border); background: transparent;
           color: var(--text-2); display: flex; align-items: center; justify-content: center;
           cursor: pointer; transition: background 0.14s;
@@ -445,22 +445,20 @@ export default function Navbar() {
           .nb-hamburger    { display: flex !important; }
           .nb-overlay      { display: block; }
           .nb-desktop-only { display: none !important; }
-          .nb-pill         { padding: 0 10px 0 14px; }
+          .nb-pill         { padding: 0 16px; }
         }
         @media (max-width: 560px) {
-          .nb-shell { padding: 8px 10px 0; }
+          .nb-pill { padding: 0 12px; }
         }
       `}</style>
 
-      <nav className={`nb-pill${scrolled ? ' scrolled' : ''}`}>
+      <nav className={`nb-pill${scrolled ? ' scrolled' : ''}`} style={{ justifyContent: 'space-between' }}>
 
         {/* ── Logo ── */}
         <Link to="/" className="nb-logo">
           <div className="nb-logo-icon"><Icon.logo /></div>
           <span className="nb-logo-text">Salary<em>Insights</em></span>
         </Link>
-
-        <div className="nb-sep" />
 
         {/* ── Nav links ── */}
         <ul className="nb-links">
