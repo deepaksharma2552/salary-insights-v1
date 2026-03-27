@@ -20,6 +20,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.time.Instant;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -42,9 +46,93 @@ public class AiSalaryEnrichmentService {
 
     private static final int  MAX_ENTRIES       = 20;
     private static final long RATE_LIMIT_MILLIS = 60 * 60 * 1_000L; // 1 hour
+    private static final long JOB_TTL_MILLIS    = 30 * 60 * 1_000L; // keep jobs for 30 min
 
     // in-memory rate-limit store: companyNameLower -> lastEnrichmentEpochMs
     private final ConcurrentHashMap<String, Long> lastEnrichmentTime = new ConcurrentHashMap<>();
+
+    // Async job store: jobId -> EnrichJob
+    private final ConcurrentHashMap<String, EnrichJob> jobs = new ConcurrentHashMap<>();
+
+    // Single-thread executor for background enrichment runs
+    private final ExecutorService enrichExecutor = Executors.newCachedThreadPool();
+
+    // ── EnrichJob ──────────────────────────────────────────────────────────────
+
+    public enum JobStatus { RUNNING, DONE, FAILED }
+
+    public static class EnrichJob {
+        private final String    jobId;
+        private final String    companyName;
+        private volatile JobStatus status   = JobStatus.RUNNING;
+        private volatile int       inserted = 0;
+        private volatile String    error    = null;
+        private final long          createdAt;
+
+        public EnrichJob(String jobId, String companyName) {
+            this.jobId       = jobId;
+            this.companyName = companyName;
+            this.createdAt   = Instant.now().toEpochMilli();
+        }
+
+        public String    getJobId()      { return jobId; }
+        public String    getCompanyName(){ return companyName; }
+        public JobStatus getStatus()     { return status; }
+        public int       getInserted()   { return inserted; }
+        public String    getError()      { return error; }
+        public long      getCreatedAt()  { return createdAt; }
+
+        void markDone(int inserted)  { this.inserted = inserted; this.status = JobStatus.DONE; }
+        void markFailed(String err)  { this.error    = err;      this.status = JobStatus.FAILED; }
+    }
+
+    /**
+     * Submits an async enrichment job and returns it immediately.
+     * The actual Claude API call runs on a background thread.
+     */
+    public EnrichJob submitEnrichJob(String companyName) {
+        String key = companyName.trim().toLowerCase();
+
+        // Rate limit check
+        Long last = lastEnrichmentTime.get(key);
+        if (last != null && (Instant.now().toEpochMilli() - last) < RATE_LIMIT_MILLIS) {
+            long minutesLeft = (RATE_LIMIT_MILLIS - (Instant.now().toEpochMilli() - last)) / 60_000;
+            throw new IllegalStateException(
+                "Rate limit: already enriched \"" + companyName + "\" recently. "
+                + "Try again in ~" + minutesLeft + " minute(s).");
+        }
+
+        // Create and register the job
+        String    jobId = UUID.randomUUID().toString();
+        EnrichJob job   = new EnrichJob(jobId, companyName.trim());
+        jobs.put(jobId, job);
+
+        // Evict stale jobs in background
+        evictStaleJobs();
+
+        // Run enrichment asynchronously
+        enrichExecutor.submit(() -> {
+            try {
+                int inserted = enrich(companyName.trim());
+                job.markDone(inserted);
+            } catch (Exception e) {
+                log.error("[AI Enrich] Async job {} failed: {}", jobId, e.getMessage(), e);
+                job.markFailed(e.getMessage());
+            }
+        });
+
+        return job;
+    }
+
+    /** Returns the job by ID, or null if not found / expired. */
+    public EnrichJob getJob(String jobId) {
+        return jobs.get(jobId);
+    }
+
+    private void evictStaleJobs() {
+        long cutoff = Instant.now().toEpochMilli() - JOB_TTL_MILLIS;
+        jobs.entrySet().removeIf(e -> e.getValue().getCreatedAt() < cutoff);
+    }
 
     private final RestTemplate    restTemplate;
     private final ObjectMapper    objectMapper;
