@@ -159,6 +159,7 @@ export default function Navbar() {
           display: flex; align-items: center; gap: 1px;
           list-style: none; margin: 0; padding: 0;
           position: absolute; left: 50%; transform: translateX(-50%);
+          overflow: visible;
         }
         .nb-link, .nb-dropdown-trigger {
           display: inline-flex; align-items: center; gap: 6px;
@@ -194,19 +195,27 @@ export default function Navbar() {
         .nb-chevron.open { transform: rotate(180deg); }
 
         /* ── SALARIES DROPDOWN ───────────────────── */
+        .nb-salaries-wrapper {
+          position: relative;
+        }
         .nb-salaries-menu {
-          position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+          position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
           width: 300px;
           background: var(--panel);
           border: 1px solid var(--border-2);
           border-radius: 16px;
           box-shadow: 0 12px 40px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.06);
-          padding: 6px; z-index: 200;
+          padding: 6px; z-index: 9999;
           animation: nbDropIn 0.15s cubic-bezier(0.16,1,0.3,1);
+          pointer-events: all;
+        }
+        /* bridge gap so mouse moving into dropdown doesn't close it */
+        .nb-salaries-menu::before {
+          content: ''; position: absolute; top: -10px; left: 0; right: 0; height: 10px;
         }
         @keyframes nbDropIn {
-          from { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.97); }
-          to   { opacity: 1; transform: translateX(-50%) translateY(0)   scale(1); }
+          from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.97); }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
         }
         .nb-menu-item {
           display: flex; align-items: center; gap: 11px;
@@ -489,39 +498,43 @@ export default function Navbar() {
           </li>
 
           {/* Salaries dropdown */}
-          <li ref={salariesRef} style={{ position: 'relative' }}
-            onMouseEnter={() => setSalariesOpen(true)}
-            onMouseLeave={() => setSalariesOpen(false)}
-          >
-            <button
-              className={`nb-dropdown-trigger${salariesActive ? ' active' : ''}`}
-              onClick={() => { navigate('/salaries'); setSalariesOpen(o => !o); }}
+          <li>
+            <div
+              ref={salariesRef}
+              className="nb-salaries-wrapper"
+              onMouseEnter={() => setSalariesOpen(true)}
+              onMouseLeave={() => setSalariesOpen(false)}
             >
-              <span className="nb-nav-icon">{Icon.salaries(salariesActive ? '#2563eb' : 'currentColor')}</span>
-              Salaries
-              <span className={`nb-chevron${salariesOpen ? ' open' : ''}`}><Icon.chevronDown /></span>
-            </button>
+              <button
+                className={`nb-dropdown-trigger${salariesActive ? ' active' : ''}`}
+                onClick={() => setSalariesOpen(o => !o)}
+              >
+                <span className="nb-nav-icon">{Icon.salaries(salariesActive ? '#2563eb' : 'currentColor')}</span>
+                Salaries
+                <span className={`nb-chevron${salariesOpen ? ' open' : ''}`}><Icon.chevronDown /></span>
+              </button>
 
-            {salariesOpen && (
-              <div className="nb-salaries-menu">
-                {salariesItems.map(item => (
-                  <Link key={item.to} to={item.to} className="nb-menu-item">
-                    <div className="nb-menu-icon" style={{ background: item.iconBg }}>
-                      <item.icon />
-                    </div>
-                    <div>
-                      <div className="nb-menu-label">{item.label}</div>
-                      <div className="nb-menu-desc">{item.desc}</div>
-                    </div>
+              {salariesOpen && (
+                <div className="nb-salaries-menu">
+                  {salariesItems.map(item => (
+                    <Link key={item.to} to={item.to} className="nb-menu-item">
+                      <div className="nb-menu-icon" style={{ background: item.iconBg }}>
+                        <item.icon />
+                      </div>
+                      <div>
+                        <div className="nb-menu-label">{item.label}</div>
+                        <div className="nb-menu-desc">{item.desc}</div>
+                      </div>
+                    </Link>
+                  ))}
+                  <div className="nb-menu-divider"/>
+                  <Link to="/submit" className="nb-menu-footer">
+                    <Icon.share />
+                    Share your salary — help the community
                   </Link>
-                ))}
-                <div className="nb-menu-divider"/>
-                <Link to="/submit" className="nb-menu-footer">
-                  <Icon.share />
-                  Share your salary — help the community
-                </Link>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </li>
 
           <li>
