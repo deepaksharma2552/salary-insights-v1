@@ -142,7 +142,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  WHERE s.review_status = 'APPROVED' " +
         "  GROUP BY c.id, c.name, c.logo_url, c.website " +
         "  ORDER BY most_recent_entry DESC " +
-        "  LIMIT 5 " +
+        "  LIMIT 20 " +
         "), " +
         "level_agg AS ( " +
         "  SELECT tc.company_name, " +
@@ -184,7 +184,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  WHERE review_status = 'APPROVED' AND location IS NOT NULL " +
         "  GROUP BY location " +
         "  ORDER BY most_recent_entry DESC " +
-        "  LIMIT 5 " +
+        "  LIMIT 20 " +
         "), " +
         "loc_lvl AS ( " +
         "  SELECT " +
@@ -349,7 +349,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "    AND s.location IN (:locations) " +
         "  GROUP BY c.id, c.name, c.logo_url, c.website " +
         "  ORDER BY most_recent_entry DESC " +
-        "  LIMIT 5 " +
+        "  LIMIT 20 " +
         "), " +
         "level_agg AS ( " +
         "  SELECT tc.company_name, " +

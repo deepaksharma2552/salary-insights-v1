@@ -680,7 +680,7 @@ export default function DashboardPage() {
 
   const visibleCompanies = selCompanies.length > 0
     ? selCompanies.filter(c => companyGrouped[c])
-    : allCompanyNames.slice(0, 6);
+    : allCompanyNames;
 
   const maxLocTotal = useMemo(() => {
     const rows = visibleLocations.flatMap(l => locationGrouped[l] ?? []);
