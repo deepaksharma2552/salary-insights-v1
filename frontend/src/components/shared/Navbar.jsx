@@ -466,7 +466,7 @@ export default function Navbar() {
         <ul className="nb-links">
           <li>
             <Link to="/" className={`nb-link${isActive('/') ? ' active' : ''}`}>
-              <span className="nb-nav-icon"><Icon.home(isActive('/') ? '#2563eb' : 'currentColor') /></span>
+              <span className="nb-nav-icon">{Icon.home(isActive('/') ? '#2563eb' : 'currentColor')}</span>
               Home
             </Link>
           </li>
@@ -480,7 +480,7 @@ export default function Navbar() {
               className={`nb-dropdown-trigger${salariesActive ? ' active' : ''}`}
               onClick={() => setSalariesOpen(o => !o)}
             >
-              <span className="nb-nav-icon"><Icon.salaries(salariesActive ? '#2563eb' : 'currentColor') /></span>
+              <span className="nb-nav-icon">{Icon.salaries(salariesActive ? '#2563eb' : 'currentColor')}</span>
               Salaries
               <span className={`nb-chevron${salariesOpen ? ' open' : ''}`}><Icon.chevronDown /></span>
             </button>
@@ -509,26 +509,26 @@ export default function Navbar() {
 
           <li>
             <Link to="/companies" className={`nb-link${isActive('/companies') ? ' active' : ''}`}>
-              <span className="nb-nav-icon"><Icon.companies(isActive('/companies') ? '#2563eb' : 'currentColor') /></span>
+              <span className="nb-nav-icon">{Icon.companies(isActive('/companies') ? '#2563eb' : 'currentColor')}</span>
               Companies
             </Link>
           </li>
           <li>
             <Link to="/dashboard" className={`nb-link${isActive('/dashboard') ? ' active' : ''}`}>
-              <span className="nb-nav-icon"><Icon.analytics(isActive('/dashboard') ? '#2563eb' : 'currentColor') /></span>
+              <span className="nb-nav-icon">{Icon.analytics(isActive('/dashboard') ? '#2563eb' : 'currentColor')}</span>
               Analytics
             </Link>
           </li>
           <li>
             <Link to="/opportunities" className={`nb-link${isActive('/opportunities') ? ' active' : ''}`}>
-              <span className="nb-nav-icon"><Icon.opps(isActive('/opportunities') ? '#2563eb' : 'currentColor') /></span>
+              <span className="nb-nav-icon">{Icon.opps(isActive('/opportunities') ? '#2563eb' : 'currentColor')}</span>
               Opportunities
             </Link>
           </li>
           {user?.role === 'ADMIN' && (
             <li>
               <Link to="/admin" className={`nb-link${isActive('/admin') ? ' active' : ''}`}>
-                <span className="nb-nav-icon"><Icon.admin(isActive('/admin') ? '#2563eb' : 'currentColor') /></span>
+                <span className="nb-nav-icon">{Icon.admin(isActive('/admin') ? '#2563eb' : 'currentColor')}</span>
                 Admin
               </Link>
             </li>
