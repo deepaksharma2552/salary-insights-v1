@@ -701,21 +701,35 @@ function CompanyCard({ c, onViewDetails, openRoles }) {
           <span className="entries-badge-mono" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:"var(--text-3)", background:"var(--bg-2)", padding:"2px 7px", borderRadius:6, border:"1px solid var(--border)", whiteSpace:"nowrap" }}>
             {c.entries} entries
           </span>
-          {openRoles > 0 && (
-            <Link
-              to={`/opportunities?company=${encodeURIComponent(c.name)}`}
-              onClick={e => e.stopPropagation()}
-              style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10, fontWeight:700, color:"#16a34a", background:"#dcfce7", border:"1px solid #bbf7d0", borderRadius:6, padding:"2px 7px", whiteSpace:"nowrap", textDecoration:"none", cursor:"pointer" }}
-            >
-              <svg width="6" height="6" viewBox="0 0 8 8" fill="#16a34a"><circle cx="4" cy="4" r="4"/></svg>
-              {openRoles} open {openRoles === 1 ? "role" : "roles"}
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            </Link>
-          )}
         </div>
       </div>
 
       <div style={{ height:'0.5px', background:'var(--border)' }} />
+
+      {/* Open roles ghost strip — before TC, only shown when roles exist */}
+      {openRoles > 0 && (
+        <>
+          <Link
+            to={`/opportunities?company=${encodeURIComponent(c.name)}`}
+            onClick={e => e.stopPropagation()}
+            style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 10px', borderLeft:'2.5px solid #22c55e', borderRadius:'0 8px 8px 0', textDecoration:'none' }}
+          >
+            <div style={{ position:'relative', width:10, height:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <div style={{ position:'absolute', width:10, height:10, borderRadius:'50%', background:'#22c55e', opacity:0.2, animation:'roleRipple 1.8s ease-out infinite' }} />
+              <div style={{ position:'absolute', width:10, height:10, borderRadius:'50%', background:'#22c55e', opacity:0.12, animation:'roleRipple 1.8s 0.6s ease-out infinite' }} />
+              <div style={{ width:6, height:6, borderRadius:'50%', background:'#16a34a', position:'relative', zIndex:1 }} />
+            </div>
+            <span style={{ fontSize:13, fontWeight:500, color:'#15803d', flex:1 }}>
+              {openRoles} open {openRoles === 1 ? 'role' : 'roles'}
+            </span>
+            <span style={{ fontSize:11, fontWeight:500, color:'#15803d', background:'#dcfce7', border:'0.5px solid #86efac', borderRadius:20, padding:'3px 10px', whiteSpace:'nowrap' }}>
+              Browse →
+            </span>
+          </Link>
+          <style>{`@keyframes roleRipple { 0%{transform:scale(1);opacity:0.3} 100%{transform:scale(2.6);opacity:0} }`}</style>
+          <div style={{ height:'0.5px', background:'var(--border)' }} />
+        </>
+      )}
 
       {/* TC range pill — entire block clickable, two-row layout */}
       <button
