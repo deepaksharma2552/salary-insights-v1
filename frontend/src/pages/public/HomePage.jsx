@@ -488,70 +488,52 @@ export default function HomePage() {
 
         </div>
 
-        {/* ── Benchmark banner — full width below both columns ── */}
+        {/* ── Benchmark banner — compact highlight strip ── */}
         <style>{`
-          .benchmark-banner {
+          .benchmark-strip {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 14px;
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 13px 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            transition: border-color 0.15s, box-shadow 0.15s;
-            cursor: pointer;
-            margin-top: 20px;
+            gap: 10px;
+            background: rgba(16,185,129,0.06);
+            border: 1px solid rgba(16,185,129,0.22);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-top: 16px;
             text-decoration: none;
+            transition: border-color 0.15s, background 0.15s;
           }
-          .benchmark-banner:hover {
-            border-color: #3b82f6;
-            box-shadow: 0 2px 8px rgba(59,130,246,0.12);
+          .benchmark-strip:hover {
+            background: rgba(16,185,129,0.1);
+            border-color: rgba(16,185,129,0.4);
           }
-          .benchmark-banner-btn {
+          .benchmark-strip-btn {
+            margin-left: auto;
             font-size: 12px;
             font-weight: 600;
-            padding: 7px 14px;
-            border-radius: 7px;
+            padding: 5px 12px;
+            border-radius: 6px;
             background: #1e40af;
             color: #fff;
             white-space: nowrap;
             flex-shrink: 0;
           }
-          @media (max-width: 768px) {
-            .benchmark-banner { padding: 12px 14px; flex-wrap: nowrap; }
-            .benchmark-banner-btn { font-size: 11px; padding: 6px 11px; }
-          }
-          @media (max-width: 390px) {
-            .benchmark-banner { flex-direction: column; align-items: flex-start; gap: 10px; }
-            .benchmark-banner-btn { width: 100%; text-align: center; }
+          @media (max-width: 480px) {
+            .benchmark-strip { flex-wrap: wrap; }
+            .benchmark-strip-btn { width: 100%; text-align: center; margin-left: 0; }
           }
         `}</style>
         <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}>
-          <Link to="/salaries?tab=benchmark" className="benchmark-banner">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 9, flexShrink: 0,
-                background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round">
-                  <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-                </svg>
-              </div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.3 }}>
-                  Got an offer? See how it stacks up.
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                  Benchmark against {totalEntries != null ? fmtCount(totalEntries) : '—'} real data points across {totalCompanies != null ? fmtCount(totalCompanies) : '—'} companies.
-                </div>
-              </div>
+          <Link to="/salaries?tab=benchmark" className="benchmark-strip">
+            <div style={{ width: 26, height: 26, borderRadius: 7, flexShrink: 0, background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
             </div>
-            <div className="benchmark-banner-btn">
-              Benchmark my offer →
-            </div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', whiteSpace: 'nowrap' }}>Got an offer?</span>
+            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+              Benchmark against {totalEntries != null ? fmtCount(totalEntries) : '—'} data points across {totalCompanies != null ? fmtCount(totalCompanies) : '—'} companies.
+            </span>
+            <div className="benchmark-strip-btn">Benchmark my offer →</div>
           </Link>
         </div>
 
