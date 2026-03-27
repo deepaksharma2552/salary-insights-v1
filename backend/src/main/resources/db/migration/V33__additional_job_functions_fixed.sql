@@ -1,12 +1,11 @@
--- V31: Add missing job functions so AI enrichment can resolve roles like
--- "Product Designer", "Data Analyst", "Marketing Manager" etc. to the correct function.
--- Each function gets a minimal set of levels covering the seniority ladder.
--- Admins can extend these via the Admin → Job Functions page.
+-- V33: Re-apply additional job functions (replaces failed V31).
+-- Fully self-contained: inserts parent job_function rows before child function_levels.
+-- All statements use ON CONFLICT DO NOTHING so this is safe to run on any DB state.
 
 -- ── Design ───────────────────────────────────────────────────────────────────
 INSERT INTO job_functions (id, name, display_name, sort_order, created_at)
 VALUES ('f0000004-0000-0000-0000-000000000004', 'DESIGN', 'Design', 4, NOW())
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO function_levels (id, job_function_id, name, sort_order, created_at) VALUES
     (gen_random_uuid(), 'f0000004-0000-0000-0000-000000000004', 'Junior Designer',          1, NOW()),
@@ -24,7 +23,7 @@ ON CONFLICT (job_function_id, name) DO NOTHING;
 -- ── Analytics / Data Science ──────────────────────────────────────────────────
 INSERT INTO job_functions (id, name, display_name, sort_order, created_at)
 VALUES ('f0000005-0000-0000-0000-000000000005', 'ANALYTICS', 'Analytics & Data Science', 5, NOW())
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO function_levels (id, job_function_id, name, sort_order, created_at) VALUES
     (gen_random_uuid(), 'f0000005-0000-0000-0000-000000000005', 'Data Analyst',              1, NOW()),
@@ -40,7 +39,7 @@ ON CONFLICT (job_function_id, name) DO NOTHING;
 -- ── Marketing & Growth ────────────────────────────────────────────────────────
 INSERT INTO job_functions (id, name, display_name, sort_order, created_at)
 VALUES ('f0000006-0000-0000-0000-000000000006', 'MARKETING', 'Marketing & Growth', 6, NOW())
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO function_levels (id, job_function_id, name, sort_order, created_at) VALUES
     (gen_random_uuid(), 'f0000006-0000-0000-0000-000000000006', 'Marketing Associate',       1, NOW()),
@@ -55,7 +54,7 @@ ON CONFLICT (job_function_id, name) DO NOTHING;
 -- ── Sales ─────────────────────────────────────────────────────────────────────
 INSERT INTO job_functions (id, name, display_name, sort_order, created_at)
 VALUES ('f0000007-0000-0000-0000-000000000007', 'SALES', 'Sales', 7, NOW())
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO function_levels (id, job_function_id, name, sort_order, created_at) VALUES
     (gen_random_uuid(), 'f0000007-0000-0000-0000-000000000007', 'Sales Development Rep',     1, NOW()),
@@ -70,7 +69,7 @@ ON CONFLICT (job_function_id, name) DO NOTHING;
 -- ── HR & People ───────────────────────────────────────────────────────────────
 INSERT INTO job_functions (id, name, display_name, sort_order, created_at)
 VALUES ('f0000008-0000-0000-0000-000000000008', 'HR', 'HR & People', 8, NOW())
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO function_levels (id, job_function_id, name, sort_order, created_at) VALUES
     (gen_random_uuid(), 'f0000008-0000-0000-0000-000000000008', 'HR Associate',               1, NOW()),
@@ -85,7 +84,7 @@ ON CONFLICT (job_function_id, name) DO NOTHING;
 -- ── Finance ───────────────────────────────────────────────────────────────────
 INSERT INTO job_functions (id, name, display_name, sort_order, created_at)
 VALUES ('f0000009-0000-0000-0000-000000000009', 'FINANCE', 'Finance', 9, NOW())
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO function_levels (id, job_function_id, name, sort_order, created_at) VALUES
     (gen_random_uuid(), 'f0000009-0000-0000-0000-000000000009', 'Finance Analyst',            1, NOW()),
@@ -100,7 +99,7 @@ ON CONFLICT (job_function_id, name) DO NOTHING;
 -- ── Operations ────────────────────────────────────────────────────────────────
 INSERT INTO job_functions (id, name, display_name, sort_order, created_at)
 VALUES ('f0000010-0000-0000-0000-000000000010', 'OPERATIONS', 'Operations', 10, NOW())
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO function_levels (id, job_function_id, name, sort_order, created_at) VALUES
     (gen_random_uuid(), 'f0000010-0000-0000-0000-000000000010', 'Operations Associate',      1, NOW()),
@@ -114,7 +113,7 @@ ON CONFLICT (job_function_id, name) DO NOTHING;
 -- ── Support ───────────────────────────────────────────────────────────────────
 INSERT INTO job_functions (id, name, display_name, sort_order, created_at)
 VALUES ('f0000011-0000-0000-0000-000000000011', 'SUPPORT', 'Customer Support', 11, NOW())
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO function_levels (id, job_function_id, name, sort_order, created_at) VALUES
     (gen_random_uuid(), 'f0000011-0000-0000-0000-000000000011', 'Support Associate',          1, NOW()),
@@ -127,7 +126,7 @@ ON CONFLICT (job_function_id, name) DO NOTHING;
 -- ── Legal ─────────────────────────────────────────────────────────────────────
 INSERT INTO job_functions (id, name, display_name, sort_order, created_at)
 VALUES ('f0000012-0000-0000-0000-000000000012', 'LEGAL', 'Legal', 12, NOW())
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO function_levels (id, job_function_id, name, sort_order, created_at) VALUES
     (gen_random_uuid(), 'f0000012-0000-0000-0000-000000000012', 'Legal Associate',            1, NOW()),
