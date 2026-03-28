@@ -38,8 +38,6 @@ import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * AiSalaryEnrichmentService
@@ -248,7 +246,7 @@ public class AiSalaryEnrichmentService {
      * @return number of salary entries successfully inserted as PENDING
      * @throws IllegalStateException if rate-limited
      */
-    public int enrich(String companyName) {
+    private int enrich(String companyName) {
         // Note: rate-limit is now enforced (and the slot reserved) in submitEnrichJob()
         // before the async executor submits this method. The duplicate check that was
         // previously here has been removed to eliminate the race window between the two checks.
@@ -816,10 +814,11 @@ public class AiSalaryEnrichmentService {
                 aiEntry.getJobTitle(), e.getMessage());
         }
 
-        // Audit log — vestingYears already computed above, no second vestingYearsFor() call needed
+        // Audit log — use the resolved per-entry source (not the raw batch-level dataSource param)
+        // so logs accurately reflect which site this specific entry came from.
         String auditDetails = String.format(
             "[AI:%s] %s | internalLevel=%s | experienceLevel=%s | base=%.0f INR | equity=%s (/%dyr vesting)",
-            dataSource != null ? dataSource : "ai_inference",
+            source,
             req.getJobTitle(),
             aiEntry.getInternalLevel() != null ? aiEntry.getInternalLevel() : "n/a",
             req.getExperienceLevel() != null ? req.getExperienceLevel().name() : "auto",
