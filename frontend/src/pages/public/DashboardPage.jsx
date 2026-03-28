@@ -677,7 +677,10 @@ export default function DashboardPage() {
     return result;
   }, [companyGrouped]);
 
-  const allLocations    = ALL_LOCATIONS;
+  const allLocations    = useMemo(
+    () => ALL_LOCATIONS.filter(l => (locationGroupedSorted[l]?.length ?? 0) > 0),
+    [ALL_LOCATIONS, locationGroupedSorted],
+  );
   const allCompanyNames = useMemo(() => Object.keys(companyGrouped), [companyGrouped]);
   const allLevelNames   = useMemo(() => {
     // Build a rank lookup from the data itself — no hardcoded ORDER array needed
