@@ -252,21 +252,24 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
     //   3. experience_level enum fallback for legacy entries with neither
     // Ordering uses sl.hierarchy_rank so levels always sort junior → senior regardless of function.
     @Query(value =
-        "SELECT COALESCE(jf.display_name, 'Other')                                        AS functionName, " +
-        "       COALESCE(fl.name, sl.name, INITCAP(LOWER(s.experience_level)), 'Other')   AS internalLevel, " +
-        "       AVG(s.base_salary)                                                         AS avgBase, " +
-        "       AVG(s.bonus)                                                               AS avgBonus, " +
-        "       AVG(s.equity)                                                              AS avgEquity, " +
-        "       AVG(s.total_compensation)                                                  AS avgTC, " +
-        "       COUNT(*)                                                                   AS cnt " +
+        "SELECT COALESCE(jf.display_name, 'Other')                                                      AS functionName, " +
+        "       COALESCE(fl.name, sl.name, INITCAP(LOWER(s.experience_level)), 'Other')                 AS internalLevel, " +
+        "       AVG(s.base_salary)                                                                       AS avgBase, " +
+        "       AVG(s.bonus)                                                                             AS avgBonus, " +
+        "       AVG(s.equity)                                                                            AS avgEquity, " +
+        "       AVG(s.total_compensation)                                                                AS avgTC, " +
+        "       COUNT(*)                                                                                 AS cnt, " +
+        "       MIN(COALESCE(fl.sort_order, sl.hierarchy_rank, 99))                                     AS levelRank, " +
+        "       MIN(COALESCE(jf.sort_order, 99))                                                        AS fnRank " +
         "FROM salary_entries s " +
-        "LEFT JOIN function_levels fl         ON fl.id  = s.function_level_id " +
-        "LEFT JOIN standardized_levels sl     ON sl.id  = s.standardized_level_id " +
-        "LEFT JOIN job_functions jf           ON jf.id  = s.job_function_id " +
+        "LEFT JOIN function_levels fl     ON fl.id = s.function_level_id " +
+        "LEFT JOIN standardized_levels sl ON sl.id = s.standardized_level_id " +
+        "LEFT JOIN job_functions jf       ON jf.id = s.job_function_id " +
         "WHERE s.company_id = CAST(:companyId AS uuid) " +
         "  AND s.review_status = 'APPROVED' " +
-        "GROUP BY jf.id, jf.display_name, jf.sort_order, fl.id, fl.name, fl.sort_order, sl.id, sl.name, sl.hierarchy_rank, s.experience_level " +
-        "ORDER BY jf.sort_order ASC NULLS LAST, COALESCE(fl.sort_order, sl.hierarchy_rank, 99) ASC",
+        "GROUP BY COALESCE(jf.display_name, 'Other'), " +
+        "         COALESCE(fl.name, sl.name, INITCAP(LOWER(s.experience_level)), 'Other') " +
+        "ORDER BY MIN(COALESCE(jf.sort_order, 99)) ASC, MIN(COALESCE(fl.sort_order, sl.hierarchy_rank, 99)) ASC",
         nativeQuery = true)
     List<Object[]> salarySummaryByLevel(@Param("companyId") UUID companyId);
 
