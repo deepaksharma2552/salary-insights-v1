@@ -980,6 +980,8 @@ public class AiSalaryEnrichmentService {
         // More-specific patterns first
         m.put("product manager", "PRODUCT");
         m.put("product management", "PRODUCT");
+        m.put("program manager",  "PROGRAM");   // must be before "manager" and "engineer"
+        m.put("technical program","PROGRAM");   // "Technical Program Manager" before "engineer"
         m.put("data scientist",  "ANALYTICS");
         m.put("data analyst",    "ANALYTICS");
         m.put("business analyst","ANALYTICS");
