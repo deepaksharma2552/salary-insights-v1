@@ -37,7 +37,7 @@ export function AppDataProvider({ children }) {
    */
   function getLevelsForFunction(functionId) {
     if (!functionId) return [];
-    const fn = functions.find(f => f.id === functionId);
+    const fn = functions.find(f => String(f.id) === String(functionId));
     return fn?.levels ?? [];
   }
 
