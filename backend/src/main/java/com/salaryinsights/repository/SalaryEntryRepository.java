@@ -134,9 +134,11 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
 
     // Avg salary by company + standardized level (top 5 companies by weighted score).
     // CASE block removed — JOIN to standardized_levels returns sl.name directly.
-    // Sort order uses COALESCE(fl.sort_order, sl.hierarchy_rank): admin-defined
-    // function_levels.sort_order takes priority; falls back to standardized_levels.hierarchy_rank
-    // for entries that have no function_level_id set.
+    // ORDER BY sl.hierarchy_rank gives consistent level ordering within each company.
+    // Note: function_levels.sort_order is intentionally NOT used here — it is a
+    // per-function relative rank (1, 2, 3...) and is not globally comparable across
+    // entries that mix function-level-linked and non-linked rows. standardized_levels
+    // .hierarchy_rank (10, 20, 30...) is the single global sort key.
     @Query(value =
         "WITH top_companies AS ( " +
         "  SELECT c.id AS company_id, " +
@@ -162,7 +164,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "         tc.most_recent_entry, " +
         "         tc.weighted_score, " +
         "         sl.name AS internalLevel, " +
-        "         COALESCE(MIN(fl.sort_order), sl.hierarchy_rank) AS hierarchy_rank, " +
+        "         sl.hierarchy_rank, " +
         "         AVG(s.base_salary)        AS avgBaseSalary, " +
         "         AVG(s.bonus)              AS avgBonus, " +
         "         AVG(s.equity)             AS avgEquity, " +
@@ -171,7 +173,6 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  FROM salary_entries s " +
         "  JOIN top_companies tc ON s.company_id = tc.company_id " +
         "  JOIN standardized_levels sl ON sl.id = s.standardized_level_id " +
-        "  LEFT JOIN function_levels fl ON fl.id = s.function_level_id " +
         "  WHERE s.review_status = 'APPROVED' " +
         "  GROUP BY tc.company_name, tc.company_id, tc.logo_url, tc.website, " +
         "           tc.total_entries, tc.most_recent_entry, tc.weighted_score, " +
@@ -187,9 +188,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
 
     // Avg salary by location × standardized level (top 5 most-recent locations).
     // CASE block removed — JOIN to standardized_levels returns sl.name directly.
-    // Sort order uses COALESCE(fl.sort_order, sl.hierarchy_rank): admin-defined
-    // function_levels.sort_order takes priority; falls back to standardized_levels.hierarchy_rank
-    // for entries that have no function_level_id set.
+    // ORDER BY sl.hierarchy_rank gives consistent level ordering within each location.
     @Query(value =
         "WITH loc_recency AS ( " +
         "  SELECT location, MAX(created_at) AS most_recent_entry " +
@@ -204,7 +203,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "    s.location, " +
         "    lr.most_recent_entry, " +
         "    sl.name AS internalLevel, " +
-        "    COALESCE(MIN(fl.sort_order), sl.hierarchy_rank) AS hierarchy_rank, " +
+        "    sl.hierarchy_rank, " +
         "    AVG(s.base_salary)        AS avgBaseSalary, " +
         "    AVG(s.bonus)              AS avgBonus, " +
         "    AVG(s.equity)             AS avgEquity, " +
@@ -213,7 +212,6 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  FROM salary_entries s " +
         "  JOIN loc_recency lr ON s.location = lr.location " +
         "  JOIN standardized_levels sl ON sl.id = s.standardized_level_id " +
-        "  LEFT JOIN function_levels fl ON fl.id = s.function_level_id " +
         "  WHERE s.review_status = 'APPROVED' " +
         "  GROUP BY s.location, lr.most_recent_entry, sl.id, sl.name, sl.hierarchy_rank " +
         ") " +
@@ -372,7 +370,6 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
     Page<SalaryEntry> findByReviewStatusWithDetails(@Param("status") ReviewStatus status, Pageable pageable);
 
     // Location-filtered variant of avgSalaryByCompanyAndLevelRaw
-    // Also uses COALESCE(fl.sort_order, sl.hierarchy_rank) for consistent ordering.
     @Query(value =
         "WITH top_companies AS ( " +
         "  SELECT c.id AS company_id, " +
@@ -399,7 +396,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "         tc.most_recent_entry, " +
         "         tc.weighted_score, " +
         "         sl.name AS internalLevel, " +
-        "         COALESCE(MIN(fl.sort_order), sl.hierarchy_rank) AS hierarchy_rank, " +
+        "         sl.hierarchy_rank, " +
         "         AVG(s.base_salary)        AS avgBaseSalary, " +
         "         AVG(s.bonus)              AS avgBonus, " +
         "         AVG(s.equity)             AS avgEquity, " +
@@ -408,7 +405,6 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  FROM salary_entries s " +
         "  JOIN top_companies tc ON s.company_id = tc.company_id " +
         "  JOIN standardized_levels sl ON sl.id = s.standardized_level_id " +
-        "  LEFT JOIN function_levels fl ON fl.id = s.function_level_id " +
         "  WHERE s.review_status = 'APPROVED' " +
         "    AND s.location IN (:locations) " +
         "  GROUP BY tc.company_name, tc.company_id, tc.logo_url, tc.website, " +
