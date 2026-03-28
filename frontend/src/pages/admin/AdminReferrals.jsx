@@ -207,7 +207,7 @@ export default function AdminReferrals() {
                     {/* Company */}
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <CompanyLogo companyId={r.companyId} companyName={r.companyName} website={r.website} size={32} radius={8} />
+                        <CompanyLogo companyId={r.companyId} companyName={r.companyName} logoUrl={r.logoUrl} website={r.website} size={32} radius={8} />
                         <div className="company-name" style={{ fontSize: 14 }}>{r.companyName || '—'}</div>
                       </div>
                     </td>
