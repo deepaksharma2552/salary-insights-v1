@@ -296,12 +296,12 @@ export default function HomePage() {
       accentColor: '#1d4ed8',
       gradientBg: 'linear-gradient(145deg,#ffffff,#f8fafc)',
       gradientBorder: '2px solid #bfdbfe',
-      gradientShadow: '0 4px 20px rgba(14,165,233,0.15)',
-      badge: { label: 'Most popular', color: '#0284c7', bg: '#bae6fd' },
+      gradientShadow: '0 4px 20px rgba(59,130,246,0.12)',
+      badge: { label: 'Most popular', color: '#1d4ed8', bg: '#dbeafe' },
       desc: 'Compare your base, bonus and equity against real verified data from peers at your company and level.',
       highlights: [
         { icon: '📄', label: 'Salary Database',  sub: `${fmtCount(totalEntries)} verified entries across ${fmtCount(totalCompanies)} companies`, to: '/salaries',  color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-        { icon: '📈', label: 'Peer Analytics',   sub: 'Compare comp by role, level & location', to: '/dashboard', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+        { icon: '📈', label: 'Peer Analytics',   sub: 'Compare comp by role, level & location', to: '/dashboard', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
       ],
       stats: [
         { value: fmtCount(totalEntries),   label: 'salary entries' },
@@ -309,20 +309,20 @@ export default function HomePage() {
       ],
       actions: [
         { to: '/salaries',  label: 'Browse Salary Data →', bg: '#eff6ff', color: '#1d4ed8' },
-        { to: '/dashboard', label: 'View Analytics →',     bg: '#f5f3ff', color: '#7c3aed' },
+        { to: '/dashboard', label: 'View Analytics →',     bg: '#eff6ff', color: '#1d4ed8' },
       ],
     },
     {
       emoji: '🎯',
       title: "I'm negotiating an offer",
-      accentColor: '#0e7490',
+      accentColor: '#1d4ed8',
       gradientBg: 'linear-gradient(145deg,#ffffff,#f8fafc)',
-      gradientBorder: '1.5px solid #99f6e4',
-      gradientShadow: '0 4px 20px rgba(6,182,212,0.10)',
+      gradientBorder: '1.5px solid #bfdbfe',
+      gradientShadow: '0 4px 20px rgba(59,130,246,0.10)',
       desc: 'Know your worth before the call. Use our Salary Benchmark and Level Guide to walk in with a number — not a guess.',
       highlights: [
-        { icon: '📊', label: 'Benchmark My Offer', sub: 'See exact pay bands by role & level',         to: '/salaries?tab=benchmark', color: '#0e7490', bg: '#ecfeff', border: '#a5f3fc' },
-        { icon: '🏅', label: 'Level Guide',         sub: '11 levels mapped across top companies',       to: '/salaries?tab=levels',    color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe' },
+        { icon: '📊', label: 'Benchmark My Offer', sub: 'See exact pay bands by role & level',   to: '/salaries?tab=benchmark', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
+        { icon: '🏅', label: 'Level Guide',         sub: '11 levels mapped across top companies', to: '/salaries?tab=levels',    color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
       ],
       stats: [
         { value: fmtCount(totalEntries),   label: 'salary entries' },
@@ -330,29 +330,29 @@ export default function HomePage() {
         { value: '11',                     label: 'levels'         },
       ],
       actions: [
-        { to: '/salaries?tab=benchmark', label: 'View Salary Benchmark →', bg: '#ecfeff', color: '#0e7490' },
-        { to: '/salaries?tab=levels',    label: 'Explore Level Guide →',   bg: '#f5f3ff', color: '#6d28d9' },
+        { to: '/salaries?tab=benchmark', label: 'View Salary Benchmark →', bg: '#eff6ff', color: '#1d4ed8' },
+        { to: '/salaries?tab=levels',    label: 'Explore Level Guide →',   bg: '#eff6ff', color: '#1d4ed8' },
       ],
     },
     {
       emoji: '🔍',
       title: "I'm looking for a job",
-      accentColor: '#0369a1',
+      accentColor: '#1d4ed8',
       gradientBg: 'linear-gradient(145deg,#ffffff,#f8fafc)',
-      gradientBorder: '1.5px solid #bae6fd',
-      gradientShadow: '0 4px 20px rgba(3,105,161,0.08)',
+      gradientBorder: '1.5px solid #bfdbfe',
+      gradientShadow: '0 4px 20px rgba(59,130,246,0.08)',
       desc: 'Browse community-posted referrals and openings. Get a warm referral and skip straight to the interview queue.',
       highlights: [
-        { icon: '🤝', label: 'Referrals & Openings', sub: `${fmtCount(jobCount)} active openings across ${fmtCount(totalCompanies)} companies`, to: '/opportunities', color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd' },
-        { icon: '🏢', label: 'Company Profiles',      sub: 'Culture, pay & interview insights',                    to: '/companies',     color: '#0f766e', bg: '#f0fdfa', border: '#99f6e4' },
+        { icon: '🤝', label: 'Referrals & Openings', sub: `${fmtCount(jobCount)} active openings across ${fmtCount(totalCompanies)} companies`, to: '/opportunities', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
+        { icon: '🏢', label: 'Company Profiles',      sub: 'Culture, pay & interview insights',                                                  to: '/companies',     color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
       ],
       stats: [
         { value: fmtCount(jobCount),       label: 'active openings' },
         { value: fmtCount(totalCompanies), label: 'companies'       },
       ],
       actions: [
-        { to: '/opportunities', label: 'Browse Opportunities →', bg: '#f0f9ff', color: '#0369a1' },
-        { to: '/companies',     label: 'Company Profiles →',     bg: '#f0fdfa', color: '#0f766e' },
+        { to: '/opportunities', label: 'Browse Opportunities →', bg: '#eff6ff', color: '#1d4ed8' },
+        { to: '/companies',     label: 'Company Profiles →',     bg: '#eff6ff', color: '#1d4ed8' },
       ],
     },
   ];
@@ -360,23 +360,23 @@ export default function HomePage() {
   const opportunitiesCard = {
     emoji: '🎓',
     title: "I'm looking for an internship",
-    accentColor: '#6d28d9',
+    accentColor: '#1d4ed8',
     gradientBg: 'linear-gradient(145deg,#ffffff,#f8fafc)',
-    gradientBorder: '1.5px solid #ddd6fe',
-    gradientShadow: '0 4px 20px rgba(109,40,217,0.08)',
-    badge: { label: 'New', color: '#6d28d9', bg: '#ede9fe' },
+    gradientBorder: '1.5px solid #bfdbfe',
+    gradientShadow: '0 4px 20px rgba(59,130,246,0.08)',
+    badge: { label: 'New', color: '#1d4ed8', bg: '#dbeafe' },
     desc: 'Browse verified internship openings posted by the community. See stipends, duration, and get a referral to jump straight to the queue.',
     highlights: [
-      { icon: '📋', label: 'Browse Internships', sub: `${fmtCount(internshipCount)} openings across ${fmtCount(totalCompanies)} companies`, to: '/opportunities',      color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe' },
-      { icon: '📢', label: 'Post an Opening',    sub: 'Help students land their first role',                                                to: '/opportunities/post', color: '#be185d', bg: '#fdf2f8', border: '#fbcfe8' },
+      { icon: '📋', label: 'Browse Internships', sub: `${fmtCount(internshipCount)} openings across ${fmtCount(totalCompanies)} companies`, to: '/opportunities',      color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
+      { icon: '📢', label: 'Post an Opening',    sub: 'Help students land their first role',                                                to: '/opportunities/post', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
     ],
     stats: [
       { value: fmtCount(internshipCount), label: 'internships' },
       { value: fmtCount(totalCompanies),  label: 'companies'   },
     ],
     actions: [
-      { to: '/opportunities',      label: 'Browse Internships →', bg: '#f5f3ff', color: '#6d28d9' },
-      { to: '/opportunities/post', label: 'Post an Opening →',    bg: '#fdf2f8', color: '#be185d' },
+      { to: '/opportunities',      label: 'Browse Internships →', bg: '#eff6ff', color: '#1d4ed8' },
+      { to: '/opportunities/post', label: 'Post an Opening →',    bg: '#eff6ff', color: '#1d4ed8' },
     ],
   };
 
@@ -397,15 +397,27 @@ export default function HomePage() {
 
           {/* Left: tagline + CTAs */}
           <div>
-            <div className="hero-eyebrow" style={{ display: 'inline-block', marginBottom: 14 }}>
-              🇮🇳 India's tech salary community
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+              <div className="hero-eyebrow" style={{ display: 'inline-block', margin: 0 }}>
+                🇮🇳 India's tech salary community
+              </div>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+                color: '#3b82f6', background: 'rgba(59,130,246,0.08)',
+                border: '1px solid rgba(59,130,246,0.2)',
+                borderRadius: 20, padding: '3px 9px',
+                fontFamily: "'IBM Plex Mono',monospace",
+              }}>
+                ✦ AI-enriched
+              </div>
             </div>
             <h1 className="hero-title" style={{ marginBottom: 12 }}>
               Make every career<br />decision with <em>confidence.</em>
             </h1>
             <p className="hero-subtitle" style={{ margin: '0 0 28px' }}>
-              India's community-powered platform for salary data, referrals, interview prep
-              and career growth — 100% anonymous, 100% real.
+              India's AI-enriched, community-verified platform for salary data, referrals,
+              interview prep and career growth — 100% anonymous, 100% real.
             </p>
             <div className="hero-cta" style={{ justifyContent: 'flex-start' }}>
               <Link to="/salaries" className="btn-hero btn-hero-primary">
@@ -524,7 +536,7 @@ export default function HomePage() {
         <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
           <div>
-            <span className="section-tag">Recent Submissions</span>
+            <span className="section-tag">AI + Community Data</span>
             <h2 className="section-title">Latest <em>salary data</em></h2>
           </div>
           <Link to="/salaries" className="btn-ghost" style={{ padding: '8px 18px', fontSize: 13, whiteSpace: 'nowrap', textDecoration: 'none' }}>
@@ -544,10 +556,10 @@ export default function HomePage() {
           <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 3 }}>
-                This platform runs on community contributions.
+                This platform runs on AI enrichment + community contributions.
               </div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.8)' }}>
-                Share your salary anonymously — every entry makes the data better for everyone.
+                Share your salary anonymously — every entry makes the AI smarter and the data better for everyone.
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>

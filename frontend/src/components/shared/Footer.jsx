@@ -37,29 +37,29 @@ export default function Footer() {
       paddingBottom: 24,
       marginTop: 'auto',
     }}>
-      <style>{`
-        @keyframes siOrbitSweepA { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
-        @keyframes siOrbitSweepB { from { transform: rotate(90deg);  } to { transform: rotate(450deg); } }
-        @keyframes siOrbitSweepC { from { transform: rotate(30deg);  } to { transform: rotate(390deg); } }
-        @keyframes siOrbitTrack  { from { transform: rotate(0deg);   } to { transform: rotate(-360deg); } }
-        @keyframes siOrbitCore   { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
-        @keyframes siOrbitPing   { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.3); opacity: 0; } }
-        @media (prefers-reduced-motion: reduce) {
-          .si-sweep-a,.si-sweep-b,.si-sweep-c,.si-track,.si-core,.si-ping { animation: none !important; }
-        }
-      `}</style>
+      <style>{`</style>
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px' }}>
 
         {/* Brand block — full width on mobile, first column on desktop */}
         {isMobile && (
           <div style={{ marginBottom: 28 }}>
-            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', marginBottom: 10 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', letterSpacing: '-0.03em' }}>
+            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', marginBottom: 10 }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: 9,
+                background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, boxShadow: '0 2px 8px rgba(59,130,246,0.35)',
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+              </div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, letterSpacing: '-0.04em', color: 'var(--text-1)', lineHeight: 1 }}>
                 Salary<span style={{ color: '#3b82f6' }}>Insights</span>
               </div>
             </Link>
             <p style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.7 }}>
-              India's community-powered salary intelligence platform.
+              India's AI-enriched, community-verified salary intelligence platform.
             </p>
           </div>
         )}
@@ -70,41 +70,23 @@ export default function Footer() {
           {/* Brand column — desktop only */}
           {!isMobile && (
             <div>
-              <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', marginBottom: 14 }}>
-                <svg width="32" height="32" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"
-                  style={{ flexShrink: 0 }}>
-                  <circle cx="19" cy="19" r="18" stroke="#3b82f6" strokeWidth="0.8" fill="none"
-                    style={{ transformOrigin: '19px 19px', animation: 'siOrbitPing 3s ease-out infinite' }} />
-                  <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitTrack 20s linear infinite' }}>
-                    <circle cx="19" cy="19" r="15" stroke="#3b82f6" strokeWidth="0.7" fill="none" opacity="0.25" strokeDasharray="2.5 2.5" />
-                  </g>
-                  <circle cx="19" cy="19" r="9" stroke="#3b82f6" strokeWidth="0.5" fill="none" opacity="0.12" strokeDasharray="1.5 2" />
-                  <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepA 6s linear infinite' }}>
-                    <circle cx="19" cy="4" r="2.2" fill="#3b82f6" />
-                  </g>
-                  <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepB 6s linear infinite' }}>
-                    <circle cx="19" cy="4" r="1.8" fill="#2563eb" />
-                  </g>
-                  <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitSweepC 9s linear infinite' }}>
-                    <circle cx="19" cy="4" r="1.4" fill="#60a5fa" opacity="0.7" />
-                  </g>
-                  <g style={{ transformOrigin: '19px 19px', animation: 'siOrbitCore 3s ease-in-out infinite' }}>
-                    <circle cx="19" cy="19" r="6"   fill="#3b82f6" opacity="0.1" />
-                    <circle cx="19" cy="19" r="4"   fill="#3b82f6" opacity="0.2" />
-                    <circle cx="19" cy="19" r="2.5" fill="#3b82f6" />
-                  </g>
-                </svg>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', letterSpacing: '-0.03em' }}>
-                    Salary<span style={{ color: '#3b82f6' }}>Insights</span>
-                  </div>
-                  <div style={{ fontSize: 8.5, fontWeight: 500, color: '#3b82f6', letterSpacing: '0.12em', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', opacity: 0.75 }}>
-                    360° Career Clarity
-                  </div>
+              <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', marginBottom: 14 }}>
+                <div style={{
+                  width: 30, height: 30, borderRadius: 9,
+                  background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, boxShadow: '0 2px 8px rgba(59,130,246,0.35)',
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                  </svg>
+                </div>
+                <div style={{ fontSize: 14.5, fontWeight: 700, letterSpacing: '-0.04em', color: 'var(--text-1)', lineHeight: 1 }}>
+                  Salary<span style={{ color: '#3b82f6' }}>Insights</span>
                 </div>
               </Link>
               <p style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.7, maxWidth: 280 }}>
-                India's community-powered salary intelligence platform. Anonymous, verified and built by engineers, for engineers.
+                India's AI-enriched, community-verified salary intelligence platform. Anonymous, verified and built by engineers, for engineers.
               </p>
               <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                 <Link to="/submit" style={{ padding: '7px 14px', background: '#3b82f6', color: 'white', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none' }}>
