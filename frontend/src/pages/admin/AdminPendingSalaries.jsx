@@ -5,6 +5,20 @@ import api from '../../services/api';
 const fmt     = (val) => val != null ? `₹${(val / 100000).toFixed(1)}L` : '—';
 const fmtDate = (d)   => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
+function formatRelativeTime(isoString) {
+  if (!isoString) return null;
+  const diffMs  = Date.now() - new Date(isoString).getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 2)   return 'just now';
+  if (diffMin < 60)  return `${diffMin} minutes ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr  < 24)  return `${diffHr} hour${diffHr > 1 ? 's' : ''} ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 30)  return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
+  const diffMo = Math.floor(diffDay / 30);
+  return `${diffMo} month${diffMo > 1 ? 's' : ''} ago`;
+}
+
 // Derive the display label for data source
 function resolveSource(e) {
   if (e.dataSource && e.dataSource !== 'User') return e.dataSource; // e.g. "levels.fyi, glassdoor"
@@ -179,10 +193,13 @@ export default function AdminPendingSalaries() {
   const [enrichState,   setEnrichState]   = useState('idle'); // idle | submitting | polling | done | failed
   const [enrichResult,  setEnrichResult]  = useState(null);   // { inserted, companyName }
   const [enrichError,   setEnrichError]   = useState(null);
-  const pollRef = useRef(null); // holds the setInterval id
+  const [enrichInfo,    setEnrichInfo]    = useState(null);   // { lastEnrichedAt, pendingCount } | null
+  const [infoLoading,   setInfoLoading]   = useState(false);
+  const pollRef    = useRef(null);
+  const infoTimerRef = useRef(null);
 
   // Clean up polling on unmount
-  useEffect(() => () => clearInterval(pollRef.current), []);
+  useEffect(() => () => { clearInterval(pollRef.current); clearTimeout(infoTimerRef.current); }, []);
 
   // ── Salary list ────────────────────────────────────────────────────────────
   const loadSilent = useCallback(() => {
@@ -242,7 +259,24 @@ export default function AdminPendingSalaries() {
   }
 
   // ── AI Enrichment ──────────────────────────────────────────────────────────
-  function stopPolling() {
+  function fetchEnrichInfo(name) {
+    if (!name || name.trim().length < 2) { setEnrichInfo(null); return; }
+    setInfoLoading(true);
+    api.get('/admin/salaries/enrich/info', { params: { companyName: name.trim() } })
+      .then(r => setEnrichInfo(r.data?.data ?? null))
+      .catch(() => setEnrichInfo(null))
+      .finally(() => setInfoLoading(false));
+  }
+
+  function handleCompanyChange(val) {
+    setEnrichCompany(val);
+    setEnrichResult(null);
+    setEnrichError(null);
+    if (enrichState !== 'idle') setEnrichState('idle');
+    // Debounce the info fetch by 600ms so we don't fire on every keystroke
+    clearTimeout(infoTimerRef.current);
+    infoTimerRef.current = setTimeout(() => fetchEnrichInfo(val), 600);
+  }
     clearInterval(pollRef.current);
     pollRef.current = null;
   }
@@ -260,6 +294,7 @@ export default function AdminPendingSalaries() {
           setEnrichResult({ inserted: data.inserted, companyName: data.companyName });
           setEnrichState('done');
           loadSilent();
+          fetchEnrichInfo(data.companyName); // refresh pending count after insertion
         } else if (data?.status === 'FAILED') {
           stopPolling();
           setEnrichError(data.error ?? 'Enrichment failed — check backend logs.');
@@ -350,7 +385,13 @@ export default function AdminPendingSalaries() {
           <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--blue)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>AI Enrichment</span>
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 16, lineHeight: 1.6 }}>
-          Enter a company name and Claude will search the web for real salary data, then queue up to 20 entries for your review.
+          Enter a company name. Claude will search the web for real salary data and queue up to 20 entries for your review.
+          <span
+            title="Claude calls levels.fyi first, then glassdoor and ambitionbox if needed. All results land as PENDING — nothing goes live until you approve."
+            style={{ marginLeft: 6, cursor: 'help', color: 'var(--blue)', fontSize: 12, fontFamily: "'IBM Plex Mono',monospace" }}
+          >
+            ⓘ how it works
+          </span>
         </p>
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -359,7 +400,7 @@ export default function AdminPendingSalaries() {
             className="form-input"
             placeholder="e.g. Google, Flipkart, Zepto…"
             value={enrichCompany}
-            onChange={e => { setEnrichCompany(e.target.value); setEnrichResult(null); setEnrichError(null); if (enrichState !== 'idle') setEnrichState('idle'); }}
+            onChange={e => handleCompanyChange(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !isEnriching) handleEnrich(); }}
             disabled={isEnriching}
             style={{ flex: '1 1 260px', minWidth: 0, opacity: isEnriching ? 0.6 : 1 }}
@@ -394,6 +435,36 @@ export default function AdminPendingSalaries() {
             ) : '✦ Enrich with AI'}
           </button>
         </div>
+
+        {/* Info strip — last enriched + pending count */}
+        {(infoLoading || enrichInfo) && !isEnriching && enrichState === 'idle' && (
+          <div style={{
+            marginTop: 10, display: 'flex', alignItems: 'center', gap: 16,
+            fontFamily: "'IBM Plex Mono',monospace", fontSize: 11,
+            color: 'var(--text-3)',
+          }}>
+            {infoLoading ? (
+              <span style={{ opacity: 0.6 }}>checking…</span>
+            ) : enrichInfo && (
+              <>
+                <span title="When this company was last enriched via Claude">
+                  🕐 {enrichInfo.lastEnrichedAt
+                    ? `Last enriched ${formatRelativeTime(enrichInfo.lastEnrichedAt)}`
+                    : 'Never enriched'}
+                </span>
+                <span style={{ color: 'var(--border)' }}>·</span>
+                <span
+                  title="PENDING entries already queued for this company awaiting your review"
+                  style={{ color: enrichInfo.pendingCount > 0 ? 'rgba(245,158,11,0.9)' : 'var(--text-3)' }}
+                >
+                  {enrichInfo.pendingCount > 0
+                    ? `⚠ ${enrichInfo.pendingCount} pending review`
+                    : '✓ no pending entries'}
+                </span>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Progress hint */}
         {isEnriching && (

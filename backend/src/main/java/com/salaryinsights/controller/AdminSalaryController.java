@@ -2,7 +2,11 @@ package com.salaryinsights.controller;
 
 import com.salaryinsights.dto.request.AdminSalaryUpdateRequest;
 import com.salaryinsights.dto.response.*;
+import com.salaryinsights.entity.AuditLog;
 import com.salaryinsights.enums.ReviewStatus;
+import com.salaryinsights.repository.AuditLogRepository;
+import com.salaryinsights.repository.CompanyRepository;
+import com.salaryinsights.repository.SalaryEntryRepository;
 import com.salaryinsights.service.ai.AiSalaryEnrichmentService;
 import com.salaryinsights.service.ai.AiSalaryEnrichmentService.EnrichJob;
 import com.salaryinsights.service.impl.SalaryService;
@@ -10,6 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +32,70 @@ public class AdminSalaryController {
 
     private final SalaryService             salaryService;
     private final AiSalaryEnrichmentService aiSalaryEnrichmentService;
+    private final SalaryEntryRepository     salaryEntryRepository;
+    private final AuditLogRepository        auditLogRepository;
+    private final CompanyRepository         companyRepository;
+
+    // ── Enrichment info ────────────────────────────────────────────────────────
+
+    /**
+     * GET /admin/salaries/enrich/info?companyName=Google
+     *
+     * Returns pre-flight context for the enrichment panel:
+     *   - lastEnrichedAt  — ISO timestamp of the last ENRICH_COMPLETED audit log for this company (null if never)
+     *   - pendingCount    — number of PENDING salary entries currently queued for this company
+     *
+     * Used by the frontend to show "Last enriched 2 days ago · 4 pending review" before the admin triggers a new run.
+     * Lightweight — two fast indexed queries, no Claude call.
+     */
+    @GetMapping("/enrich/info")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getEnrichInfo(
+            @RequestParam String companyName) {
+
+        if (companyName == null || companyName.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("companyName is required"));
+        }
+
+        String name = companyName.trim();
+
+        // Last enrichment timestamp — find the most recent ENRICH_COMPLETED audit log for this company
+        String lastEnrichedAt = null;
+        try {
+            Specification<AuditLog> spec = (root, q, cb) -> cb.and(
+                cb.equal(root.get("entityType"), "AiEnrichment"),
+                cb.equal(root.get("action"), "ENRICH_COMPLETED"),
+                cb.like(cb.lower(root.get("entityId")), "%" + name.toLowerCase() + "%")
+            );
+            var logs = auditLogRepository.findAll(spec, PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "createdAt")));
+            if (logs.hasContent()) {
+                lastEnrichedAt = logs.getContent().get(0).getCreatedAt().toString();
+            }
+        } catch (Exception e) {
+            // Non-fatal — frontend handles null gracefully
+        }
+
+        // Pending count — how many entries for this company are waiting for review
+        long pendingCount = 0;
+        try {
+            var company = companyRepository.findByNameIgnoreCase(name);
+            if (company.isPresent()) {
+                Specification<com.salaryinsights.entity.SalaryEntry> entrySpec = (root, q, cb) -> cb.and(
+                    cb.equal(root.get("company"), company.get()),
+                    cb.equal(root.get("reviewStatus"), ReviewStatus.PENDING)
+                );
+                pendingCount = salaryEntryRepository.count(entrySpec);
+            }
+        } catch (Exception e) {
+            // Non-fatal
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("companyName",    name);
+        result.put("lastEnrichedAt", lastEnrichedAt);
+        result.put("pendingCount",   pendingCount);
+
+        return ResponseEntity.ok(ApiResponse.success("ok", result));
+    }
 
     // ── Pending queue ──────────────────────────────────────────────────────────
 

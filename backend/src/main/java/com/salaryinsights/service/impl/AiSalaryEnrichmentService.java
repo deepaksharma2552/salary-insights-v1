@@ -315,11 +315,21 @@ public class AiSalaryEnrichmentService {
     private String buildPrompt(String companyName) {
         return """
             You are a salary data researcher for an Indian salary transparency platform.
-            Search the web for real, current salary data for "%s" employees working in India.
+            Your goal is to return REAL, VERIFIED salary data for "%s" employees in India.
 
-            Focus on these Indian cities: Bengaluru, Hyderabad, Pune, Delhi NCR, Kochi, Coimbatore, Mysore, Mangaluru.
-            Target software engineering, data, product, and design roles. Look at sources like:
-            levels.fyi, glassdoor, linkedin, ambitionbox, iimjobs, naukri, payscale.
+            SEARCH STRATEGY — follow this order, stop when you have enough data:
+            1. Search levels.fyi for "%s India" first — this is the most reliable source for total comp breakdown.
+            2. Only search glassdoor.co.in if levels.fyi returned fewer than 10 entries.
+            3. Only search ambitionbox.com if you still need more data after steps 1 and 2.
+            Do NOT search linkedin, naukri, payscale, iimjobs unless the above 3 sources are all exhausted.
+
+            TARGET — return EXACTLY 20 entries. If you cannot find 20 real data points, return fewer.
+            Do NOT fabricate or estimate salaries to reach 20 — real data only.
+
+            DIVERSITY RULES — no two entries may share the same (jobTitle + experienceLevel + location):
+            - Cover ALL seniority bands: INTERN, ENTRY, MID, SENIOR, LEAD, MANAGER, DIRECTOR
+            - Cover at least 3 departments: Engineering, Product, Design, Data
+            - Cover at least 3 cities: Bengaluru, Hyderabad, Delhi NCR
 
             Return ONLY valid JSON — no prose, no markdown code fences, no explanation before or after.
             The JSON must exactly match this shape:
@@ -327,7 +337,7 @@ public class AiSalaryEnrichmentService {
             {
               "companyName": "%s",
               "location": "<primary Indian city where most data was found>",
-              "dataSource": "<comma-separated sources used, e.g. levels.fyi, glassdoor>",
+              "dataSource": "<comma-separated sources actually used, e.g. levels.fyi, glassdoor>",
               "entries": [
                 {
                   "jobTitle": "<e.g. Software Engineer>",
@@ -340,19 +350,19 @@ public class AiSalaryEnrichmentService {
                   "bonus": <annual bonus in INR as integer, or null>,
                   "equity": <annual equity/ESOP value in INR as integer, or null>,
                   "currency": "INR",
-                  "notes": "<brief context e.g. median for 3-5 yoe in Bengaluru>"
+                  "notes": "<brief context e.g. median for 3-5 yoe in Bengaluru, source: levels.fyi>"
                 }
               ]
             }
 
             Critical rules:
             - ALL salary values MUST be in INR (Indian Rupees), annual amounts
-            - Include 8-20 diverse role/level combinations covering different seniority bands
             - experienceLevel MUST be exactly one of the listed enum values — no other values
             - employmentType MUST be exactly one of the listed enum values — no other values
             - baseSalary must be a positive integer, never null or zero
             - Do NOT include any text, explanation, or markdown outside the JSON object
-            """.formatted(companyName, companyName);
+            - Do NOT repeat a (jobTitle + experienceLevel + location) combination across entries
+            """.formatted(companyName, companyName, companyName);
     }
 
     // ── Vesting schedule ───────────────────────────────────────────────────────
