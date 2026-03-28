@@ -286,24 +286,35 @@ export default function AdminPendingSalaries() {
   async function startPolling(jobId) {
     setEnrichState('polling');
 
+    // Safety timeout — if the job is still RUNNING after 90 seconds, stop polling
+    // and surface an error rather than spinning forever (e.g. if Claude API hangs).
+    const timeoutId = setTimeout(() => {
+      stopPolling();
+      setEnrichError('Enrichment is taking too long — the job may have stalled. Check backend logs.');
+      setEnrichState('failed');
+    }, 90_000);
+
     pollRef.current = setInterval(async () => {
       try {
         const res  = await api.get(`/admin/salaries/enrich/${jobId}`);
         const data = res.data?.data;
 
         if (data?.status === 'DONE') {
+          clearTimeout(timeoutId);
           stopPolling();
           setEnrichResult({ inserted: data.inserted, companyName: data.companyName });
           setEnrichState('done');
           loadSilent();
-          fetchEnrichInfo(data.companyName); // refresh pending count after insertion
+          fetchEnrichInfo(data.companyName);
         } else if (data?.status === 'FAILED') {
+          clearTimeout(timeoutId);
           stopPolling();
           setEnrichError(data.error ?? 'Enrichment failed — check backend logs.');
           setEnrichState('failed');
         }
         // status === 'RUNNING' → keep polling
       } catch (err) {
+        clearTimeout(timeoutId);
         stopPolling();
         setEnrichError(`Polling error: ${err.response?.data?.error ?? err.message}`);
         setEnrichState('failed');
