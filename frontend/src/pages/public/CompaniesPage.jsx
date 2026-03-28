@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
@@ -159,6 +159,8 @@ function getValueStyle(amount) {
 }
 
 function BenefitsGrid({ benefits }) {
+  const [activeTab, setActiveTab] = React.useState(null);
+
   if (!benefits || benefits.length === 0) {
     return (
       <div style={{ textAlign:'center', padding:'40px 0', color:'var(--text-3)', fontSize:13, fontStyle:'italic' }}>
@@ -180,82 +182,134 @@ function BenefitsGrid({ benefits }) {
   });
 
   const ORDER = ['financial', 'health', 'growth', 'lifestyle', 'other'];
+  const availableCats = ORDER.filter(cat => groups[cat]);
+
+  // Default to first available category
+  const currentTab = activeTab && groups[activeTab] ? activeTab : availableCats[0];
+
+  const TAB_ICONS = {
+    financial: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+    health:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>,
+    growth:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+    lifestyle: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+    other:     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  };
+
+  const currentMeta  = CATEGORY_META[currentTab];
+  const currentItems = groups[currentTab] ?? [];
 
   return (
     <>
       <style>{`
-        .benefits-grid-2col {
+        .ben-tab { transition: all 0.15s; border: 1.5px solid transparent; cursor: pointer; }
+        .ben-tab:hover { border-color: var(--border) !important; }
+        .ben-card {
+          background: var(--bg-2);
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          padding: 18px 16px 14px;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 10px;
+          transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+          cursor: default;
+        }
+        .ben-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+          border-color: var(--border);
+        }
+        .ben-grid {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 10px;
         }
         @media (max-width: 768px) {
-          .benefits-grid-2col {
-            grid-template-columns: 1fr !important;
-            gap: 8px !important;
-          }
-        }
-        @media (max-width: 390px) {
-          .benefits-grid-2col {
-            grid-template-columns: 1fr !important;
-          }
-        }
-        .benefit-tile {
-          background: var(--bg-2);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          padding: 12px 14px;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          transition: border-color 0.15s, box-shadow 0.15s;
-        }
-        .benefit-tile:hover {
-          border-color: var(--border);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+          .ben-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
-      <div style={{ display:'flex', flexDirection:'column', gap:22 }}>
-        {ORDER.filter(cat => groups[cat]).map(cat => {
-          const meta = CATEGORY_META[cat];
+
+      {/* Category tabs */}
+      <div className="ben-tabs-row" style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:20 }}>
+        {availableCats.map(cat => {
+          const meta    = CATEGORY_META[cat];
+          const isActive = cat === currentTab;
+          const count   = groups[cat].length;
           return (
-            <div key={cat}>
-              {/* Category header */}
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                <div style={{ width:7, height:7, borderRadius:'50%', background:meta.dot, flexShrink:0 }} />
-                <span style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-3)' }}>
-                  {meta.label}
-                </span>
-                <div style={{ flex:1, height:'0.5px', background:'var(--border)' }} />
+            <button
+              key={cat}
+              className="ben-tab"
+              onClick={() => setActiveTab(cat)}
+              style={{
+                display:'inline-flex', alignItems:'center', gap:6,
+                padding:'7px 14px', borderRadius:10,
+                background: isActive ? meta.dot : 'var(--bg-2)',
+                color: isActive ? '#fff' : 'var(--text-2)',
+                border: isActive ? `1.5px solid ${meta.dot}` : '1.5px solid var(--border)',
+                fontSize:12, fontWeight: isActive ? 600 : 400,
+              }}
+            >
+              <span style={{ color: isActive ? 'rgba(255,255,255,0.85)' : meta.dot }}>
+                {TAB_ICONS[cat]}
+              </span>
+              {meta.label}
+              <span style={{
+                fontSize:10, fontWeight:600,
+                background: isActive ? 'rgba(255,255,255,0.2)' : meta.iconBg,
+                color: isActive ? '#fff' : meta.dot,
+                padding:'1px 6px', borderRadius:20, minWidth:18, textAlign:'center',
+              }}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Cards for active category */}
+      <div className="ben-grid">
+        {currentItems.map((b, i) => {
+          const amount = b.amount;
+          const lower  = String(amount ?? '').toLowerCase();
+          const isGood = lower === 'offered' || lower === 'covered' || lower === 'free' || lower === 'yes';
+          const isNo   = lower === 'no';
+          const hasMoney = amount && !isGood && !isNo;
+
+          return (
+            <div key={i} className="ben-card">
+              {/* Icon */}
+              <div style={{
+                width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                background: currentMeta.iconBg,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: currentMeta.dot,
+              }}>
+                <div style={{ width: 22, height: 22 }}>
+                  {getBenefitSvgIcon(b.name, currentTab)}
+                </div>
               </div>
 
-              {/* 2-col tile grid */}
-              <div className="benefits-grid-2col">
-                {groups[cat].map((b, i) => (
-                  <div key={i} className="benefit-tile">
-                    {/* Icon square */}
-                    <div style={{
-                      width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                      background: meta.iconBg,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: meta.dot,
-                    }}>
-                      <div style={{ width: 18, height: 18 }}>
-                        {getBenefitSvgIcon(b.name, cat)}
-                      </div>
-                    </div>
-                    {/* Text */}
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 500 }}>
-                        {b.name}
-                      </div>
-                      <div style={getValueStyle(b.amount)}>
-                        {b.amount ?? 'not specified'}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              {/* Name */}
+              <div style={{ fontSize:12, fontWeight:600, color:'var(--text-1)', lineHeight:1.3 }}>
+                {b.name}
               </div>
+
+              {/* Value badge */}
+              {amount ? (
+                <span style={{
+                  display:'inline-flex', alignItems:'center',
+                  fontSize:11, fontWeight:600,
+                  padding:'3px 9px', borderRadius:20,
+                  background: isGood ? 'rgba(22,163,74,0.1)' : isNo ? 'rgba(220,38,38,0.08)' : currentMeta.iconBg,
+                  color: isGood ? '#16a34a' : isNo ? '#dc2626' : currentMeta.dot,
+                  fontFamily: hasMoney ? "'IBM Plex Mono',monospace" : 'inherit',
+                }}>
+                  {isGood ? '✓ ' : isNo ? '✗ ' : ''}{amount}
+                </span>
+              ) : (
+                <span style={{ fontSize:11, color:'var(--text-3)', fontStyle:'italic' }}>not specified</span>
+              )}
             </div>
           );
         })}
@@ -451,7 +505,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
       }}>
 
         {/* Header */}
-        <div style={{ padding:'24px 28px 0', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
+        <div className="modal-header" style={{ padding:'24px 28px 0', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:18 }}>
             <div style={{ display:'flex', gap:14, alignItems:'center' }}>
               <CompanyLogo
@@ -485,7 +539,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
                 flex: i === 2 ? '2' : '1',
               }}>
                 <div style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-3)', marginBottom:4 }}>{s.label}</div>
-                <div style={{ fontSize:15, fontWeight:500, fontFamily:"'IBM Plex Mono',monospace", color: s.accent ? '#3b82f6' : 'var(--text-1)', whiteSpace:'nowrap' }}>
+                <div className="tc-range-mono" style={{ fontSize:15, fontWeight:500, fontFamily:"'IBM Plex Mono',monospace", color: s.accent ? '#3b82f6' : 'var(--text-1)', whiteSpace:'nowrap' }}>
                   {s.value ?? '—'}
                 </div>
               </div>
@@ -493,7 +547,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
           </div>
 
           {/* Tabs */}
-          <div style={{ display:'flex' }}>
+          <div className="modal-tabs" style={{ display:'flex' }}>
             {[
               { id:'levels',   label:'TC by level' },
               { id:'entries',  label:'All entries' },
@@ -515,7 +569,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
         </div>
 
         {/* Body */}
-        <div style={{ overflowY:'auto', flex:1, padding:'20px 28px 28px' }}>
+        <div className="modal-body" style={{ overflowY:'auto', flex:1, padding:'20px 28px 28px' }}>
 
           {/* TC by level */}
           {tab === 'levels' && (
@@ -713,7 +767,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
           {tab === 'entries' && (
             <>
               {/* Filter + sort bar */}
-              <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:12, flexWrap:'wrap' }}>
+              <div className="entries-filter-bar" style={{ display:'flex', gap:8, alignItems:'center', marginBottom:12, flexWrap:'wrap' }}>
 
                 {/* Function dropdown */}
                 <select
@@ -736,7 +790,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
                 )}
 
                 {/* Location multi-select combobox */}
-                <div ref={locationPopRef} style={{ position:'relative' }}>
+                <div className="loc-btn-wrap" ref={locationPopRef} style={{ position:'relative' }}>
                   <button
                     onClick={() => setLocationPopover(o => !o)}
                     style={{
@@ -802,6 +856,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
 
                 {/* Sort */}
                 <select
+                  className="sort-select"
                   value={sortBy}
                   onChange={e => applyFilter(setSortBy, e.target.value)}
                   style={{ fontSize:11, padding:'5px 10px', borderRadius:8, border:'0.5px solid var(--border)', background:'var(--bg-2)', color:'var(--text-2)', cursor:'pointer', marginLeft:'auto' }}
@@ -832,7 +887,8 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
 
               {!loadingEnt && salaries.length > 0 && (
                 <>
-                  <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+                  {/* Desktop grid — hidden on mobile */}
+                  <div className="entries-desktop" style={{ display:'flex', flexDirection:'column', gap:0 }}>
                     {/* Header row */}
                     <div style={{
                       display:'grid',
@@ -862,38 +918,61 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
                         onMouseEnter={e => e.currentTarget.style.background = 'var(--ink-3)'}
                         onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--bg-2)'}
                       >
-                        {/* Role */}
                         <div style={{ minWidth:0 }}>
-                          <div style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.role}</div>
+                          <div title={s.role} style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.role}</div>
                         </div>
-
-                        {/* Level badge */}
                         <div>
                           <span style={getLevelBadgeStyle(s.internalLevel !== '—' ? s.internalLevel : null)}>
                             {s.internalLevel !== '—' ? s.internalLevel : s.level}
                           </span>
                         </div>
-
-                        {/* Location */}
                         <div style={{ fontSize:12, color:'var(--text-2)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.location}</div>
-
-                        {/* Exp */}
                         <div style={{ fontSize:11, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.yoe}</div>
-
-                        {/* Base */}
                         <div style={{ fontSize:13, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', fontWeight:500 }}>{s.base}</div>
-
-                        {/* Bonus */}
                         <div style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.bonus}</div>
-
-                        {/* RSU */}
                         <div style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.equity}</div>
-
-                        {/* Total TC — hero number */}
                         <div style={{ fontSize:14, fontWeight:700, fontFamily:"'IBM Plex Mono',monospace", color:'#3b82f6', whiteSpace:'nowrap' }}>{s.tc}</div>
-
-                        {/* Date */}
                         <div style={{ fontSize:11, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", whiteSpace:'nowrap' }}>{s.recordedAt}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Mobile cards — shown only on mobile */}
+                  <div className="entries-mobile" style={{ display:'none', flexDirection:'column', gap:8 }}>
+                    {salaries.map(s => (
+                      <div key={s.id} style={{
+                        background:'var(--bg-2)', border:'1px solid var(--border)',
+                        borderRadius:12, padding:'12px 14px',
+                      }}>
+                        {/* Top: role + TC */}
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
+                          <div style={{ minWidth:0, flex:1, marginRight:8 }}>
+                            <div style={{ fontSize:14, fontWeight:600, color:'var(--text-1)', marginBottom:3 }}>{s.role}</div>
+                            <span style={getLevelBadgeStyle(s.internalLevel !== '—' ? s.internalLevel : null)}>
+                              {s.internalLevel !== '—' ? s.internalLevel : s.level}
+                            </span>
+                          </div>
+                          <div style={{ textAlign:'right', flexShrink:0 }}>
+                            <div style={{ fontSize:16, fontWeight:700, fontFamily:"'IBM Plex Mono',monospace", color:'#3b82f6' }}>{s.tc}</div>
+                            <div style={{ fontSize:10, color:'var(--text-3)', marginTop:2 }}>Total TC</div>
+                          </div>
+                        </div>
+                        {/* Bottom: meta row */}
+                        <div style={{ display:'flex', gap:12, flexWrap:'wrap', paddingTop:8, borderTop:'0.5px solid var(--border)' }}>
+                          {[
+                            { label:'Location', value: s.location },
+                            { label:'Exp',      value: s.yoe      },
+                            { label:'Base',     value: s.base     },
+                            { label:'Bonus',    value: s.bonus    },
+                            { label:'RSU',      value: s.equity   },
+                            { label:'Date',     value: s.recordedAt },
+                          ].map(({ label, value }) => (
+                            <div key={label}>
+                              <div style={{ fontSize:9, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-3)', marginBottom:2 }}>{label}</div>
+                              <div style={{ fontSize:12, color:'var(--text-2)', fontFamily:"'IBM Plex Mono',monospace" }}>{value}</div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1174,7 +1253,7 @@ export default function CompaniesPage() {
           .company-card .benefits-row {
             flex-wrap: wrap !important;
           }
-          /* Modal: full screen on mobile */
+          /* Modal: full screen bottom sheet on mobile */
           .company-modal-root {
             width: 100vw !important;
             max-width: 100vw !important;
@@ -1185,7 +1264,14 @@ export default function CompaniesPage() {
             transform: none !important;
             border-radius: 20px 20px 0 0 !important;
           }
-          /* Stat bar: single row on mobile, allow wrap */
+          /* Tighter modal padding on mobile */
+          .company-modal-root .modal-body {
+            padding: 16px 16px 24px !important;
+          }
+          .company-modal-root .modal-header {
+            padding: 18px 16px 0 !important;
+          }
+          /* Stat bar: wrap into 2-across grid */
           .company-modal-statbar {
             flex-wrap: wrap !important;
           }
@@ -1193,10 +1279,64 @@ export default function CompaniesPage() {
             border-left: none !important;
             border-top: 0.5px solid var(--border) !important;
             flex: 1 1 45% !important;
+            min-width: 0 !important;
           }
           .company-modal-statbar > div:nth-child(-n+2) {
             border-top: none !important;
           }
+          /* TC Range value: allow text to wrap rather than overflow */
+          .company-modal-statbar .tc-range-mono {
+            font-size: 12px !important;
+            white-space: normal !important;
+            word-break: break-all !important;
+          }
+          /* Tabs: allow scroll if they overflow */
+          .modal-tabs {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            flex-wrap: nowrap !important;
+          }
+          .modal-tabs button {
+            flex-shrink: 0 !important;
+            padding: 9px 14px !important;
+          }
+          /* Filter bar: stack vertically */
+          .entries-filter-bar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+          .entries-filter-bar select,
+          .entries-filter-bar .loc-btn-wrap {
+            width: 100% !important;
+          }
+          .entries-filter-bar .sort-select {
+            margin-left: 0 !important;
+          }
+          /* Entries: hide desktop grid, show mobile cards */
+          .entries-desktop { display: none !important; }
+          .entries-mobile  { display: flex !important; }
+          /* Benefits tabs: allow horizontal scroll */
+          .ben-tabs-row {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            flex-wrap: nowrap !important;
+            padding-bottom: 4px !important;
+          }
+          .ben-tabs-row button { flex-shrink: 0 !important; }
+          /* Benefits grid: 2 col on mobile */
+          .ben-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          /* Level bar label width: tighter on mobile */
+          .lvl-bar-label { width: 80px !important; }
+          .lvl-bar-sub   { display: none !important; }
+        }
+
+        @media (max-width: 420px) {
+          .ben-grid { grid-template-columns: 1fr !important; }
+          .company-modal-statbar > div { flex: 1 1 100% !important; }
+          .company-modal-statbar > div:nth-child(-n+1) { border-top: none !important; }
+          .company-modal-statbar > div:nth-child(2) { border-top: 0.5px solid var(--border) !important; }
         }
       `}</style>
 
