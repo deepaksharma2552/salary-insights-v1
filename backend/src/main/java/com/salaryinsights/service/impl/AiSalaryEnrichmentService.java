@@ -24,6 +24,9 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
@@ -147,6 +150,7 @@ public class AiSalaryEnrichmentService {
     private final JobFunctionRepository    jobFunctionRepository;
     private final FunctionLevelRepository  functionLevelRepository;
     private final UserRepository           userRepository;
+    private final com.salaryinsights.repository.SalaryEntryRepository salaryEntryRepository;
 
     @Value("${anthropic.api.key}")
     private String anthropicApiKey;
@@ -203,23 +207,28 @@ public class AiSalaryEnrichmentService {
         User systemUser = userRepository.findFirstByRole(com.salaryinsights.enums.Role.ADMIN)
                 .orElseThrow(() -> new RuntimeException("No admin user found for AI enrichment"));
 
-        // Map and submit each entry
+        // Map and submit each entry via upsert-by-fingerprint
         int inserted = 0;
+        int skipped  = 0;
         for (AiSalaryEntry aiEntry : entries) {
             try {
                 SalaryRequest req = mapToSalaryRequest(aiEntry, companyName, aiData.getDataSource(), parentLocation);
-                salaryService.submitSalary(req, systemUser);
-                inserted++;
+                UpsertResult result = upsertAiEntry(req, systemUser);
+                switch (result) {
+                    case INSERTED -> inserted++;
+                    case SKIPPED  -> skipped++;
+                }
             } catch (Exception e) {
-                log.warn("[AI Enrich] Failed to insert entry '{}' for {}: {}",
+                log.warn("[AI Enrich] Failed to upsert entry '{}' for {}: {}",
                     aiEntry.getJobTitle(), companyName, e.getMessage());
             }
         }
 
-        log.info("[AI Enrich] Inserted {}/{} entries for: {}", inserted, entries.size(), companyName);
+        log.info("[AI Enrich] Complete for {}: {} inserted, {} skipped (stale/no change)",
+            companyName, inserted, skipped);
         auditLogService.log("AiEnrichment", companyName, "ENRICH_COMPLETED",
-            String.format("AI enrichment completed for %s — %d entries queued as PENDING. Source: %s",
-                companyName, inserted, aiData.getDataSource()));
+            String.format("AI enrichment for %s — %d new observations inserted, %d skipped. Source: %s",
+                companyName, inserted, skipped, aiData.getDataSource()));
 
         return inserted;
     }
@@ -401,6 +410,147 @@ public class AiSalaryEnrichmentService {
             if (lower.contains(entry.getKey())) return entry.getValue();
         }
         return DEFAULT_VESTING_YEARS;
+    }
+
+    // ── Dedup constants ────────────────────────────────────────────────────────
+
+    /**
+     * If the incoming base salary differs from the most recent existing entry
+     * by more than this percentage, treat it as a genuinely new observation
+     * and insert a fresh PENDING entry regardless of how recent the last one was.
+     */
+    private static final double SALARY_CHANGE_THRESHOLD_PCT = 0.10; // 10 %
+
+    /**
+     * If the most recent existing entry (for the same fingerprint) is older than
+     * this many days, insert a fresh entry even if the salary hasn't moved —
+     * market data ages out and should be periodically refreshed.
+     */
+    private static final long STALE_ENTRY_DAYS = 90;
+
+    // ── Upsert by fingerprint ──────────────────────────────────────────────────
+
+    private enum UpsertResult { INSERTED, SKIPPED }
+
+    /**
+     * Decides whether to insert a fresh PENDING entry or skip an AI-enriched salary.
+     *
+     * Rules (applied against the MOST RECENT existing entry sharing the fingerprint):
+     *
+     *  1. No existing entry at all           → INSERT  (brand-new role/level combination)
+     *  2. Base salary changed > 10 %         → INSERT  (meaningfully different observation)
+     *  3. Existing entry older than 90 days  → INSERT  (data aged out, refresh it)
+     *  4. Everything else                    → SKIP    (stale repeat, nothing new)
+     *
+     * Each inserted entry is independent — existing APPROVED entries are never touched.
+     * The fingerprint is stored on the new entry so future runs can look it up.
+     *
+     * Fingerprint = SHA-256(companyName | jobTitle | experienceLevel | location | employmentType)
+     */
+    @org.springframework.transaction.annotation.Transactional
+    private UpsertResult upsertAiEntry(SalaryRequest req, User systemUser) {
+        String companyKey = req.getCompanyName() != null
+            ? req.getCompanyName().trim().toLowerCase()
+            : "unknown";
+
+        String fingerprint = computeFingerprint(
+            companyKey,
+            req.getJobTitle(),
+            req.getExperienceLevel(),
+            req.getLocation(),
+            req.getEmploymentType()
+        );
+
+        // Store fingerprint on the request so submitSalary() persists it on the new entity
+        req.setAiFingerprint(fingerprint);
+
+        // Find the most recent existing entry for this fingerprint (any review status)
+        java.util.Optional<com.salaryinsights.entity.SalaryEntry> mostRecent =
+            salaryEntryRepository.findTopByAiFingerprintOrderByCreatedAtDesc(fingerprint);
+
+        // Rule 1 — no prior entry for this role/level/location combination
+        if (mostRecent.isEmpty()) {
+            salaryService.submitSalary(req, systemUser);
+            log.debug("[AI Enrich] INSERTED (new combination): {} fingerprint={}", req.getJobTitle(), fingerprint);
+            return UpsertResult.INSERTED;
+        }
+
+        com.salaryinsights.entity.SalaryEntry latest = mostRecent.get();
+
+        // Rule 2 — base salary has shifted by more than the threshold → new real-world observation
+        BigDecimal existingBase = latest.getBaseSalary();
+        BigDecimal incomingBase = req.getBaseSalary();
+        if (existingBase != null && incomingBase != null
+                && existingBase.compareTo(BigDecimal.ZERO) > 0) {
+
+            double changePct = incomingBase.subtract(existingBase)
+                                           .abs()
+                                           .divide(existingBase, 4, RoundingMode.HALF_UP)
+                                           .doubleValue();
+
+            if (changePct > SALARY_CHANGE_THRESHOLD_PCT) {
+                salaryService.submitSalary(req, systemUser);
+                log.info("[AI Enrich] INSERTED (salary moved {:.1f}%): {} — was ₹{} now ₹{}",
+                    changePct * 100, req.getJobTitle(),
+                    existingBase.toPlainString(), incomingBase.toPlainString());
+                auditLogService.log("SalaryEntry", fingerprint, "AI_SALARY_SHIFT",
+                    String.format("[AI] %s at %s: base ₹%s → ₹%s (%.1f%% change)",
+                        req.getJobTitle(), req.getCompanyName(),
+                        existingBase.toPlainString(), incomingBase.toPlainString(),
+                        changePct * 100));
+                return UpsertResult.INSERTED;
+            }
+        }
+
+        // Rule 3 — existing entry has aged out past the staleness threshold
+        if (latest.getCreatedAt() != null) {
+            long daysSinceCreated = java.time.temporal.ChronoUnit.DAYS.between(
+                latest.getCreatedAt(), java.time.LocalDateTime.now());
+
+            if (daysSinceCreated >= STALE_ENTRY_DAYS) {
+                salaryService.submitSalary(req, systemUser);
+                log.info("[AI Enrich] INSERTED (data aged {}d > {}d): {}",
+                    daysSinceCreated, STALE_ENTRY_DAYS, req.getJobTitle());
+                auditLogService.log("SalaryEntry", fingerprint, "AI_STALE_REFRESH",
+                    String.format("[AI] %s at %s: previous entry was %d days old — refreshed",
+                        req.getJobTitle(), req.getCompanyName(), daysSinceCreated));
+                return UpsertResult.INSERTED;
+            }
+        }
+
+        // Rule 4 — salary is within threshold and entry is recent → stale repeat, skip
+        log.debug("[AI Enrich] SKIPPED (no meaningful change, entry is recent): {} fingerprint={}",
+            req.getJobTitle(), fingerprint);
+        return UpsertResult.SKIPPED;
+    }
+
+    /**
+     * Computes a stable SHA-256 fingerprint for a salary entry combination.
+     * All inputs are normalised (lowercased, trimmed) before hashing so that
+     * "Software Engineer" and "software engineer" produce the same key.
+     */
+    private String computeFingerprint(String companyKey,
+                                       String jobTitle,
+                                       com.salaryinsights.enums.ExperienceLevel experienceLevel,
+                                       com.salaryinsights.enums.Location location,
+                                       com.salaryinsights.enums.EmploymentType employmentType) {
+        String raw = String.join("|",
+            companyKey   != null ? companyKey.trim().toLowerCase()           : "unknown",
+            jobTitle     != null ? jobTitle.trim().toLowerCase()             : "unknown",
+            experienceLevel  != null ? experienceLevel.name().toLowerCase()  : "unknown",
+            location         != null ? location.name().toLowerCase()         : "unknown",
+            employmentType   != null ? employmentType.name().toLowerCase()   : "unknown"
+        );
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(raw.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(64);
+            for (byte b : hash) hex.append(String.format("%02x", b));
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            // SHA-256 is guaranteed present in all JVMs — this never throws
+            throw new RuntimeException("SHA-256 not available", e);
+        }
     }
 
     // ── Mapping ────────────────────────────────────────────────────────────────

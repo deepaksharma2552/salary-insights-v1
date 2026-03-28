@@ -66,6 +66,14 @@ public class SalaryEntry extends BaseEntity {
     @Column(name = "data_source", length = 255)
     private String dataSource;
 
+    /**
+     * Deduplication fingerprint for AI-sourced entries.
+     * SHA-256 hex of (companyId | jobTitle.lower | experienceLevel | location | employmentType).
+     * NULL for manual user submissions — uniqueness is only enforced on AI rows.
+     */
+    @Column(name = "ai_fingerprint", length = 64, unique = false) // uniqueness via partial DB index
+    private String aiFingerprint;
+
     @Column(name = "total_compensation", precision = 15, scale = 2)
     private BigDecimal totalCompensation;
 

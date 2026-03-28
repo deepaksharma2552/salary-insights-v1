@@ -320,6 +320,11 @@ public class SalaryService {
             entry.setEquityTotalGrant(request.getEquityTotalGrant());
         }
 
+        // Persist AI dedup fingerprint when set (null for manual user submissions)
+        if (request.getAiFingerprint() != null && !request.getAiFingerprint().isBlank()) {
+            entry.setAiFingerprint(request.getAiFingerprint());
+        }
+
         entry = salaryEntryRepository.save(entry);
         log.info("Salary SAVED — id={}, reviewStatus={}, company={}, submittedBy={}",
                 entry.getId(), entry.getReviewStatus(), company.getName(),

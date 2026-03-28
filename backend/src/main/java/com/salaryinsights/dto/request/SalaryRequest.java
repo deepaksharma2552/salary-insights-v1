@@ -47,6 +47,13 @@ public class SalaryRequest {
     @Size(max = 255)
     private String dataSource;
 
+    /**
+     * AI deduplication fingerprint — set internally by AiSalaryEnrichmentService.
+     * Never sent by frontend clients; ignored for manual user submissions.
+     */
+    @Size(max = 64)
+    private String aiFingerprint;
+
     // Job function + level (DB-driven, optional — existing entries have Engineering inferred)
     private UUID jobFunctionId;
     private UUID functionLevelId;

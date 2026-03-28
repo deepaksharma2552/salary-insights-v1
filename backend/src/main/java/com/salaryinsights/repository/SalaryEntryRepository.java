@@ -21,6 +21,13 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
 
     Page<SalaryEntry> findByReviewStatus(ReviewStatus status, Pageable pageable);
 
+    /**
+     * Returns the most recent salary entry sharing a given AI fingerprint.
+     * Used by the dedup logic in AiSalaryEnrichmentService to compare against
+     * the latest known observation for a given role/level/location combination.
+     */
+    java.util.Optional<SalaryEntry> findTopByAiFingerprintOrderByCreatedAtDesc(String aiFingerprint);
+
     @Query("SELECT s FROM SalaryEntry s JOIN FETCH s.company LEFT JOIN FETCH s.submittedBy " +
            "WHERE s.submittedBy.email = :email " +
            "ORDER BY s.createdAt DESC")
