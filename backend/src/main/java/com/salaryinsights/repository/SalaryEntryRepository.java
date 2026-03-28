@@ -246,21 +246,25 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
     // Salary summary by function + standardized level for a single company.
     // Returns one row per (job_function, standardized_level) pair so the frontend
     // can group by function and show a chip-based breakdown.
+    // LEFT JOIN on standardized_levels so AI-enriched entries (standardized_level_id = NULL)
+    // are included. Falls back to experience_level as the display label when no standardized
+    // level is set, so Product/Design/etc. chips are never greyed out just because entries
+    // came through the AI enrichment path rather than the human submission flow.
     @Query(value =
-        "SELECT COALESCE(jf.display_name, 'Other') AS functionName, " +
-        "       sl.name                             AS internalLevel, " +
-        "       AVG(s.base_salary)                 AS avgBase, " +
-        "       AVG(s.bonus)                       AS avgBonus, " +
-        "       AVG(s.equity)                      AS avgEquity, " +
-        "       AVG(s.total_compensation)           AS avgTC, " +
-        "       COUNT(*)                            AS cnt " +
+        "SELECT COALESCE(jf.display_name, 'Other')                             AS functionName, " +
+        "       COALESCE(sl.name, INITCAP(LOWER(s.experience_level)), 'Other') AS internalLevel, " +
+        "       AVG(s.base_salary)                                              AS avgBase, " +
+        "       AVG(s.bonus)                                                    AS avgBonus, " +
+        "       AVG(s.equity)                                                   AS avgEquity, " +
+        "       AVG(s.total_compensation)                                       AS avgTC, " +
+        "       COUNT(*)                                                        AS cnt " +
         "FROM salary_entries s " +
-        "JOIN standardized_levels sl ON sl.id = s.standardized_level_id " +
-        "LEFT JOIN job_functions jf  ON jf.id = s.job_function_id " +
+        "LEFT JOIN standardized_levels sl ON sl.id = s.standardized_level_id " +
+        "LEFT JOIN job_functions jf        ON jf.id = s.job_function_id " +
         "WHERE s.company_id = CAST(:companyId AS uuid) " +
         "  AND s.review_status = 'APPROVED' " +
-        "GROUP BY jf.id, jf.display_name, jf.sort_order, sl.id, sl.name, sl.hierarchy_rank " +
-        "ORDER BY jf.sort_order ASC NULLS LAST, sl.hierarchy_rank ASC",
+        "GROUP BY jf.id, jf.display_name, jf.sort_order, sl.id, sl.name, sl.hierarchy_rank, s.experience_level " +
+        "ORDER BY jf.sort_order ASC NULLS LAST, COALESCE(sl.hierarchy_rank, 99) ASC",
         nativeQuery = true)
     List<Object[]> salarySummaryByLevel(@Param("companyId") UUID companyId);
 
