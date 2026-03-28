@@ -69,8 +69,16 @@ public class AiSalaryEnrichmentService {
     // Async job store: jobId -> EnrichJob
     private final ConcurrentHashMap<String, EnrichJob> jobs = new ConcurrentHashMap<>();
 
-    // Single-thread executor for background enrichment runs
-    private final ExecutorService enrichExecutor = Executors.newCachedThreadPool();
+    // Single-thread executor for background enrichment runs — bounded to 4 concurrent
+    // jobs so an impatient admin can't spawn unlimited threads all blocking on Claude HTTP.
+    // A 5th request will queue rather than spin up a new thread.
+    private final ExecutorService enrichExecutor = new ThreadPoolExecutor(
+        1, 4,
+        60L, TimeUnit.SECONDS,
+        new java.util.concurrent.LinkedBlockingQueue<>(20),
+        r -> { Thread t = new Thread(r, "enrich-worker"); t.setDaemon(true); return t; },
+        new ThreadPoolExecutor.CallerRunsPolicy()
+    );
 
     // ── EnrichJob ──────────────────────────────────────────────────────────────
 
@@ -262,12 +270,22 @@ public class AiSalaryEnrichmentService {
         User systemUser = userRepository.findFirstByRole(com.salaryinsights.enums.Role.ADMIN)
                 .orElseThrow(() -> new RuntimeException("No admin user found for AI enrichment"));
 
+        // Load job functions once for the whole batch — resolveJobFunction() previously
+        // called findAllWithLevels() inside the per-entry loop (up to 20 identical DB hits).
+        List<JobFunction> allJobFunctions = jobFunctionRepository.findAllWithLevels();
+
         // Map and submit each entry via upsert-by-fingerprint
         int inserted = 0;
         int skipped  = 0;
+        int rejected = 0;
         for (AiSalaryEntry aiEntry : entries) {
             try {
-                SalaryRequest req = mapToSalaryRequest(aiEntry, companyName, aiData.getDataSource());
+                SalaryRequest req = mapToSalaryRequest(aiEntry, companyName, aiData.getDataSource(), allJobFunctions);
+                if (req == null) {
+                    // null means the entry was rejected (e.g. non-INR currency) — already logged
+                    rejected++;
+                    continue;
+                }
                 UpsertResult result = upsertAiEntry(req, systemUser);
                 switch (result) {
                     case INSERTED -> inserted++;
@@ -279,11 +297,11 @@ public class AiSalaryEnrichmentService {
             }
         }
 
-        log.info("[AI Enrich] Complete for {}: {} inserted, {} skipped (stale/no change)",
-            companyName, inserted, skipped);
+        log.info("[AI Enrich] Complete for {}: {} inserted, {} skipped, {} rejected (wrong currency)",
+            companyName, inserted, skipped, rejected);
         auditLogService.log("AiEnrichment", companyName, "ENRICH_COMPLETED",
-            String.format("AI enrichment for %s — %d new observations inserted, %d skipped. Source: %s",
-                companyName, inserted, skipped, aiData.getDataSource()));
+            String.format("AI enrichment for %s — %d inserted, %d skipped, %d rejected (currency). Source: %s",
+                companyName, inserted, skipped, rejected, aiData.getDataSource()));
 
         return inserted;
     }
@@ -624,7 +642,8 @@ public class AiSalaryEnrichmentService {
 
     private SalaryRequest mapToSalaryRequest(AiSalaryEntry aiEntry,
                                               String companyName,
-                                              String dataSource) {
+                                              String dataSource,
+                                              List<JobFunction> allJobFunctions) {
         SalaryRequest req = new SalaryRequest();
 
         req.setCompanyName(companyName);
@@ -647,25 +666,77 @@ public class AiSalaryEnrichmentService {
         // Falls back to BENGALURU if the entry omits the field.
         req.setLocation(resolveLocationFromString(aiEntry.getLocation()));
 
-        // Salary (INR annual). Apply a floor of ₹1L as a basic sanity check.
+        // ── Currency guard ─────────────────────────────────────────────────────
+        // The prompt instructs Claude to return INR, but levels.fyi often surfaces USD
+        // values for multinationals. An undetected USD figure would be ~83× too large
+        // (e.g. $120,000 stored as ₹1,20,00,000 — ₹1.2 Cr instead of ₹1L base).
+        // We reject any entry whose currency field is not INR rather than silently
+        // persisting wildly wrong data.
+        String currency = aiEntry.getCurrency();
+        if (currency != null && !currency.isBlank() && !"INR".equalsIgnoreCase(currency.trim())) {
+            log.warn("[AI Enrich] SKIPPING entry '{}' at {} — currency is '{}', expected INR. " +
+                     "Raw baseSalary={} would be ~{}x too large if stored as INR.",
+                aiEntry.getJobTitle(), companyName, currency,
+                aiEntry.getBaseSalary(),
+                "USD".equalsIgnoreCase(currency.trim()) ? "83" : "unknown");
+            return null; // caller checks for null and skips the entry
+        }
+
+        // ── Salary sanity bounds ───────────────────────────────────────────────
+        // Floor: ₹1L minimum — anything below is clearly wrong data.
+        // Ceiling: ₹5Cr baseSalary — above this the figure is almost certainly a USD
+        // amount that Claude labelled as INR without actually converting it. Even the
+        // highest-paid engineering leaders at Indian unicorns don't draw ₹5Cr base.
+        // USD values at this scale (e.g. $600K base) would come in as 60_000_000 INR
+        // which is 12× the ceiling — easy to catch.
+        // We reject rather than clamp: clamping would silently corrupt the data.
         BigDecimal base = aiEntry.getBaseSalary();
         if (base == null || base.compareTo(BigDecimal.valueOf(100_000)) < 0) {
-            base = BigDecimal.valueOf(500_000); // ₹5L fallback
-            log.debug("[AI Enrich] baseSalary missing/too low for '{}', using fallback", aiEntry.getJobTitle());
+            base = BigDecimal.valueOf(500_000); // ₹5L fallback for missing/implausibly low
+            log.debug("[AI Enrich] baseSalary missing/too low for '{}', using ₹5L fallback", aiEntry.getJobTitle());
+        }
+        final BigDecimal BASE_SALARY_CEILING = BigDecimal.valueOf(5_00_00_000L); // ₹5 Cr
+        if (base.compareTo(BASE_SALARY_CEILING) > 0) {
+            log.warn("[AI Enrich] SKIPPING entry '{}' at {} — baseSalary={} exceeds ₹5Cr ceiling. " +
+                     "Likely a USD figure (~${}) that Claude did not convert to INR.",
+                aiEntry.getJobTitle(), companyName, base.toPlainString(),
+                base.divide(BigDecimal.valueOf(83), 0, RoundingMode.HALF_UP).toPlainString());
+            return null;
         }
         req.setBaseSalary(base);
-        req.setBonus(aiEntry.getBonus());
+
+        // Bonus ceiling: ₹2Cr — bonuses above this are implausible for Indian market
+        BigDecimal bonus = aiEntry.getBonus();
+        if (bonus != null && bonus.compareTo(BigDecimal.valueOf(2_00_00_000L)) > 0) {
+            log.warn("[AI Enrich] Nulling bonus for '{}' at {} — bonus={} exceeds ₹2Cr ceiling, likely USD",
+                aiEntry.getJobTitle(), companyName, bonus.toPlainString());
+            bonus = null;
+        }
+        req.setBonus(bonus);
 
         // Normalise equity: Claude returns total grant value (as sourced from levels.fyi /
         // Glassdoor), so we divide by the company's standard vesting period to get the
         // annual equivalent before storing.
+        // Ceiling: ₹20Cr total grant — above this is almost certainly a USD figure
+        // (e.g. $2M RSU grant at FAANG = ₹16.6Cr which is right at the boundary).
+        // vestingYears is computed once here and reused in the audit log below.
+        int vestingYears = vestingYearsFor(companyName);
         BigDecimal annualEquity = null;
-        if (aiEntry.getEquity() != null) {
-            int vestingYears = vestingYearsFor(companyName);
-            annualEquity = aiEntry.getEquity().divide(BigDecimal.valueOf(vestingYears), 0, RoundingMode.HALF_UP);
+        BigDecimal rawEquity = aiEntry.getEquity();
+        if (rawEquity != null) {
+            final BigDecimal EQUITY_GRANT_CEILING = BigDecimal.valueOf(20_00_00_000L); // ₹20 Cr
+            if (rawEquity.compareTo(EQUITY_GRANT_CEILING) > 0) {
+                log.warn("[AI Enrich] Nulling equity for '{}' at {} — total grant={} exceeds ₹20Cr ceiling, likely USD (~${})",
+                    aiEntry.getJobTitle(), companyName, rawEquity.toPlainString(),
+                    rawEquity.divide(BigDecimal.valueOf(83), 0, RoundingMode.HALF_UP).toPlainString());
+                rawEquity = null;
+            }
+        }
+        if (rawEquity != null) {
+            annualEquity = rawEquity.divide(BigDecimal.valueOf(vestingYears), 0, RoundingMode.HALF_UP);
             log.debug("[AI Enrich] Equity for '{}' at {}: total={} / {}yr vesting = {} annual",
                 aiEntry.getJobTitle(), companyName,
-                aiEntry.getEquity().toPlainString(), vestingYears, annualEquity.toPlainString());
+                rawEquity.toPlainString(), vestingYears, annualEquity.toPlainString());
         }
         req.setEquity(annualEquity);
 
@@ -682,8 +753,8 @@ public class AiSalaryEnrichmentService {
         req.setDataSource(source);
 
         // Preserve the raw total grant so admin UI can display both values
-        if (aiEntry.getEquity() != null) {
-            req.setEquityTotalGrant(aiEntry.getEquity());
+        if (rawEquity != null) {
+            req.setEquityTotalGrant(rawEquity);
         }
 
         // Employment type
@@ -698,10 +769,9 @@ public class AiSalaryEnrichmentService {
         }
         req.setEmploymentType(empType);
 
-        // Resolve job function + level from the AI-returned department/jobTitle
-        // This maps e.g. "Product Designer" → Design function → Designer (Senior) level
+        // Resolve job function + level using the pre-loaded list (not a fresh DB query per entry)
         try {
-            JobFunction fn = resolveJobFunction(aiEntry.getDepartment(), aiEntry.getJobTitle());
+            JobFunction fn = resolveJobFunction(aiEntry.getDepartment(), aiEntry.getJobTitle(), allJobFunctions);
             if (fn != null) {
                 req.setJobFunctionId(fn.getId());
                 FunctionLevel fl = resolveFunctionLevel(fn, aiEntry.getJobTitle(), req.getExperienceLevel());
@@ -720,8 +790,7 @@ public class AiSalaryEnrichmentService {
                 aiEntry.getJobTitle(), e.getMessage());
         }
 
-        // Audit log — captures internalLevel, dataSource, equity normalisation, and function resolution
-        int vestingYears = aiEntry.getEquity() != null ? vestingYearsFor(companyName) : 0;
+        // Audit log — vestingYears already computed above, no second vestingYearsFor() call needed
         String auditDetails = String.format(
             "[AI:%s] %s | internalLevel=%s | experienceLevel=%s | base=%.0f INR | equity=%s (/%dyr vesting)",
             dataSource != null ? dataSource : "ai_inference",
@@ -730,7 +799,7 @@ public class AiSalaryEnrichmentService {
             req.getExperienceLevel() != null ? req.getExperienceLevel().name() : "auto",
             req.getBaseSalary(),
             annualEquity != null ? annualEquity.toPlainString() : "null",
-            vestingYears
+            rawEquity != null ? vestingYears : 0
         );
         auditLogService.log("SalaryEntry", companyName, "AI_ENTRY_MAPPED", auditDetails);
 
@@ -822,9 +891,7 @@ public class AiSalaryEnrichmentService {
      * Resolves a department string to a JobFunction from the DB using fuzzy keyword matching.
      * Returns null if no match — entry still saves, just without a function mapping.
      */
-    private JobFunction resolveJobFunction(String department, String jobTitle) {
-        // Load all functions once (small table, cached by JPA first-level cache)
-        List<JobFunction> allFunctions = jobFunctionRepository.findAllWithLevels();
+    private JobFunction resolveJobFunction(String department, String jobTitle, List<JobFunction> allFunctions) {
         if (allFunctions.isEmpty()) return null;
 
         // Build a search string from both department and job title
