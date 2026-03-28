@@ -53,10 +53,7 @@ export default function AdminSidebar() {
           transform: 'translateX(0)',
           transition: 'transform 0.25s cubic-bezier(0.16,1,0.3,1)',
           pointerEvents: 'all',
-        } : {
-          transform: 'translateX(-100%)',
-          pointerEvents: 'none',
-        }}
+        } : undefined}
       >
         <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-4)', marginBottom: 12, padding: '0 4px' }}>
           Admin Panel
