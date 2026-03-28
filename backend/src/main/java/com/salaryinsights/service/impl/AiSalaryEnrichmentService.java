@@ -380,10 +380,26 @@ public class AiSalaryEnrichmentService {
                 return null;
             }
 
-            // Strip markdown code fences if Claude wrapped the JSON
             jsonText = jsonText.trim();
+
+            // Strip markdown code fences if Claude wrapped the JSON
             if (jsonText.startsWith("```")) {
                 jsonText = jsonText.replaceAll("(?s)^```[a-z]*\\n?", "").replaceAll("(?s)```$", "").trim();
+            }
+
+            // Claude sometimes prefixes the JSON with a prose preamble (e.g. "Based on my
+            // searches...") before the actual JSON object, even when instructed not to.
+            // Extract the JSON object by finding the first '{' and the matching last '}'.
+            // This is safe because our expected schema is always a single top-level object.
+            int jsonStart = jsonText.indexOf('{');
+            int jsonEnd   = jsonText.lastIndexOf('}');
+            if (jsonStart > 0 && jsonEnd > jsonStart) {
+                log.warn("[AI Enrich] Claude prefixed JSON with {} chars of prose for '{}' — extracting JSON and continuing",
+                    jsonStart, companyName);
+                jsonText = jsonText.substring(jsonStart, jsonEnd + 1);
+            } else if (jsonStart < 0) {
+                log.error("[AI Enrich] No JSON object found in Claude response for: {}", companyName);
+                return null;
             }
 
             AiSalaryData data = objectMapper.readValue(jsonText, AiSalaryData.class);
@@ -401,6 +417,8 @@ public class AiSalaryEnrichmentService {
 
     private String buildPrompt(String companyName) {
         return """
+            IMPORTANT: Your response must begin immediately with the character '{'. Do NOT write any text, commentary, or explanation before the JSON object.
+
             Your goal is to return REAL, VERIFIED salary data for "%s" employees in India.
 
             SEARCH STRATEGY — follow this order, stop as soon as you have enough data:
