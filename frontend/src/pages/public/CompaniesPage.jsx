@@ -280,6 +280,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
   const locationLabels  = { BENGALURU:'Bengaluru', HYDERABAD:'Hyderabad', PUNE:'Pune', DELHI_NCR:'Delhi NCR', MUMBAI:'Mumbai', CHENNAI:'Chennai', KOLKATA:'Kolkata', REMOTE:'Remote' };
 
   // ── Function breakdown state ───────────────────────────────────────────────
+  const PINNED_FUNCTIONS = ['Engineering', 'Product', 'Design'];
   const [selectedFn,    setSelectedFn]    = useState(null);
   const [popoverOpen,   setPopoverOpen]   = useState(false);
   const [popoverSearch, setPopoverSearch] = useState('');
@@ -292,8 +293,13 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
     fnMap[fn].count += Number(l.count ?? 0);
   });
   const allFunctions = Object.values(fnMap).sort((a, b) => b.count - a.count);
-  const top3Fns      = allFunctions.slice(0, 3);
-  const moreFns      = allFunctions.slice(3);
+
+  // Always include Engineering, Product, Design — even if count is 0
+  const pinnedFnsWithData = PINNED_FUNCTIONS.map(name => fnMap[name] ?? { name, count: 0 });
+  const nonPinnedFns = allFunctions.filter(fn => !PINNED_FUNCTIONS.includes(fn.name));
+  // top3 = always the 3 pinned; moreFns = everything else
+  const top3Fns  = pinnedFnsWithData;
+  const moreFns  = nonPinnedFns;
 
   const FN_PALETTE = [
     { bg:'#E6F1FB', color:'#185FA5', bar:'#185FA5' },
@@ -365,7 +371,20 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
   useEffect(() => {
     setLoadingLvl(true);
     api.get(`/public/companies/${company.id}/salary-summary`)
-      .then(r => setLevels(r.data?.data?.levels ?? []))
+      .then(r => {
+        const lvls = r.data?.data?.levels ?? [];
+        setLevels(lvls);
+        // Auto-select Engineering by default; fall back to the top function if no Engineering data
+        const hasEngineering = lvls.some(l => (l.functionName ?? 'Other') === 'Engineering');
+        const topFn = lvls.reduce((top, l) => {
+          const fn = l.functionName ?? 'Other';
+          if (!top[fn]) top[fn] = 0;
+          top[fn] += Number(l.count ?? 0);
+          return top;
+        }, {});
+        const topFnName = Object.entries(topFn).sort((a, b) => b[1] - a[1])[0]?.[0];
+        setSelectedFn(hasEngineering ? 'Engineering' : (topFnName ?? null));
+      })
       .catch(() => setLevels([]))
       .finally(() => setLoadingLvl(false));
   }, [company.id]);
@@ -505,24 +524,26 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
                   <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:14, flexWrap:'wrap', position:'relative' }}>
                     <span style={{ fontSize:10, color:'var(--text-3)', fontWeight:500, textTransform:'uppercase', letterSpacing:'0.06em', flexShrink:0 }}>Function</span>
 
-                    {/* Top 3 chips */}
+                    {/* Top 3 chips — always Engineering, Product, Design */}
                     {top3Fns.map(fn => {
                       const pal     = fnPaletteMap[fn.name] ?? FN_PALETTE[0];
                       const isActive = selectedFn === fn.name;
+                      const isEmpty  = fn.count === 0;
                       return (
                         <button
                           key={fn.name}
                           className="fn-chip"
-                          onClick={() => { setSelectedFn(isActive ? null : fn.name); setPopoverOpen(false); }}
+                          onClick={() => { if (!isEmpty) { setSelectedFn(isActive ? null : fn.name); setPopoverOpen(false); } }}
                           style={{
                             display:'inline-flex', alignItems:'center', gap:5,
                             fontSize:12, fontWeight:500, padding:'5px 12px', borderRadius:6,
-                            border:'none', cursor:'pointer', transition:'opacity 0.15s',
-                            background: isActive ? pal.bar   : pal.bg,
-                            color:      isActive ? '#fff'    : pal.color,
+                            border:'none', cursor: isEmpty ? 'default' : 'pointer', transition:'opacity 0.15s',
+                            background: isEmpty ? 'var(--bg-2)' : isActive ? pal.bar   : pal.bg,
+                            color:      isEmpty ? 'var(--text-3)' : isActive ? '#fff'    : pal.color,
+                            opacity:    isEmpty ? 0.55 : 1,
                           }}
                         >
-                          <span style={{ width:6, height:6, borderRadius:'50%', background: isActive ? 'rgba(255,255,255,0.6)' : pal.bar, flexShrink:0 }} />
+                          <span style={{ width:6, height:6, borderRadius:'50%', background: isEmpty ? 'var(--text-3)' : isActive ? 'rgba(255,255,255,0.6)' : pal.bar, flexShrink:0 }} />
                           {fn.name}
                           <span style={{ fontSize:10, opacity:0.7 }}>{fn.count}</span>
                         </button>
@@ -597,15 +618,17 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
                     )}
                   </div>
 
-                  {/* No function selected — prompt */}
-                  {!selectedFn && (
+                  {/* No function selected or selected function has no data */}
+                  {(!selectedFn || activeFnLevels.length === 0) && (
                     <div style={{ textAlign:'center', padding:'36px 0', color:'var(--text-3)', fontSize:13, fontStyle:'italic' }}>
-                      Select a function above to view the level breakdown
+                      {!selectedFn
+                        ? 'Select a function above to view the level breakdown'
+                        : `No data available for ${selectedFn} yet`}
                     </div>
                   )}
 
                   {/* Level bars for selected function */}
-                  {selectedFn && (
+                  {selectedFn && activeFnLevels.length > 0 && (
                     <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                       <div style={{ fontSize:11, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", marginBottom:4 }}>
                         {selectedFn} · {activeFnLevels.length} level{activeFnLevels.length !== 1 ? 's' : ''} · median TC
