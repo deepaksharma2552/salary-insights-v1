@@ -322,7 +322,7 @@ public class AiSalaryEnrichmentService {
 
         Map<String, Object> requestBody = new LinkedHashMap<>();
         requestBody.put("model", CLAUDE_MODEL);
-        requestBody.put("max_tokens", 2500); // 20 entries × ~80 tokens each ≈ 1600 max; 2500 gives headroom
+        requestBody.put("max_tokens", 5000); // 20 entries × ~150-200 tokens each (notes, rupee symbols, city names) ≈ 3000-4000; 5000 gives safe headroom
         requestBody.put("system", systemPrompt);
         // max_uses: 5 caps web searches so Claude doesn't over-search trying to reach 20 entries.
         // 5 gives enough headroom for one refinement search per source (levels.fyi, glassdoor,
@@ -363,6 +363,16 @@ public class AiSalaryEnrichmentService {
         try {
             List<Map<String, Object>> content = (List<Map<String, Object>>) body.get("content");
             if (content == null || content.isEmpty()) return null;
+
+            // Detect token-limit truncation early — if stop_reason is "max_tokens" the JSON
+            // is guaranteed to be cut off mid-structure, which will always fail to parse.
+            // Fail fast with a clear log rather than letting Jackson throw a confusing error.
+            String stopReason = (String) body.get("stop_reason");
+            if ("max_tokens".equals(stopReason)) {
+                log.error("[AI Enrich] Claude hit max_tokens limit for '{}' — response truncated, JSON will be invalid. " +
+                    "Increase max_tokens in callClaudeApi().", companyName);
+                return null;
+            }
 
             // Find the last text block — Claude emits tool_use + tool_result blocks
             // before its final JSON answer, so we scan from the end.
