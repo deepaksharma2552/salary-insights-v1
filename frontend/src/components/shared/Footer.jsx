@@ -37,7 +37,7 @@ export default function Footer() {
       paddingBottom: 24,
       marginTop: 'auto',
     }}>
-      <style>{`</style>
+    
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px' }}>
 
         {/* Brand block — full width on mobile, first column on desktop */}
