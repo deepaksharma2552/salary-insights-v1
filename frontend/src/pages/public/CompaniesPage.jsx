@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 import ScrollableSelect from '../../components/shared/ScrollableSelect';
+import { useAppData } from '../../context/AppDataContext';
 
 const VIZ_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#6366f1','#a78bfa','#818cf8'];
 const SEARCH_MIN_CHARS = 3;
@@ -270,14 +271,36 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
   const [totalPages,    setTotalPages]   = useState(1);
   const [totalElements, setTotalElements]= useState(0);
   // Server-side filter + sort state
-  const [filterLevel,    setFilterLevel]    = useState('');
-  const [filterLocation, setFilterLocation] = useState('');
+  const [filterFunctionId,  setFilterFunctionId]  = useState('');
+  const [filterLevelId,     setFilterLevelId]     = useState('');
+  const [filterLocations,   setFilterLocations]   = useState([]);
+  const [locationPopover,   setLocationPopover]   = useState(false);
+  const locationPopRef = useRef(null);
   const [sortBy,         setSortBy]         = useState('totalCompensation');
 
-  // Unique level/location options derived from already-loaded level data + company entries
-  const levelOptions    = levels ? [...new Set(levels.map(l => l.internalLevel))].filter(Boolean) : [];
-  const locationOptions = ['BENGALURU','HYDERABAD','PUNE','DELHI_NCR','MUMBAI','CHENNAI','KOLKATA','REMOTE'];
-  const locationLabels  = { BENGALURU:'Bengaluru', HYDERABAD:'Hyderabad', PUNE:'Pune', DELHI_NCR:'Delhi NCR', MUMBAI:'Mumbai', CHENNAI:'Chennai', KOLKATA:'Kolkata', REMOTE:'Remote' };
+  // Function + Level options from app context
+  const { functions, getLevelsForFunction } = useAppData();
+  const functionOptions = [{ value: '', label: 'All Functions' }, ...functions.map(f => ({ value: String(f.id), label: f.displayName || f.name }))];
+  const levelOptions    = [{ value: '', label: 'All Levels'    }, ...(filterFunctionId ? getLevelsForFunction(filterFunctionId).map(l => ({ value: String(l.id), label: l.name })) : [])];
+
+  const LOCATION_OPTIONS = [
+    { value:'BENGALURU', label:'Bengaluru' },
+    { value:'HYDERABAD', label:'Hyderabad' },
+    { value:'PUNE',      label:'Pune'      },
+    { value:'DELHI_NCR', label:'Delhi NCR' },
+    { value:'MUMBAI',    label:'Mumbai'    },
+    { value:'CHENNAI',   label:'Chennai'   },
+    { value:'KOLKATA',   label:'Kolkata'   },
+    { value:'REMOTE',    label:'Remote'    },
+  ];
+
+  // Close location popover on outside click
+  useEffect(() => {
+    if (!locationPopover) return;
+    const handler = (e) => { if (!locationPopRef.current?.contains(e.target)) setLocationPopover(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [locationPopover]);
 
   // ── Function breakdown state ───────────────────────────────────────────────
   const PINNED_FUNCTIONS = ['Engineering', 'Product', 'Design'];
@@ -394,8 +417,9 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
     if (tab !== 'entries') return;
     setLoadingEnt(true);
     const params = { page, size: 10, sortBy };
-    if (filterLevel)    params.level    = filterLevel;
-    if (filterLocation) params.location = filterLocation;
+    if (filterFunctionId) params.jobFunctionId    = filterFunctionId;
+    if (filterLevelId)    params.functionLevelId  = filterLevelId;
+    if (filterLocations.length > 0) params.location = filterLocations.join(',');
     api.get(`/public/companies/${company.id}/salaries`, { params })
       .then(r => {
         const paged = r.data?.data;
@@ -405,9 +429,8 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
       })
       .catch(console.error)
       .finally(() => setLoadingEnt(false));
-  }, [company.id, tab, page, filterLevel, filterLocation, sortBy]);
+  }, [company.id, tab, page, filterFunctionId, filterLevelId, filterLocations, sortBy]);
 
-  // Reset to page 0 when filters/sort change
   function applyFilter(setter, value) { setter(value); setPage(0); }
 
   const maxTC = levels ? Math.max(...levels.map(l => l.avgTC ?? 0), 1) : 1;
@@ -418,7 +441,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
       <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', backdropFilter:'blur(4px)', zIndex:300 }} />
       <div className="company-modal-root" style={{
         position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)',
-        zIndex:301, width:'min(860px, 94vw)', maxHeight:'88vh',
+        zIndex:301, width:'min(860px, 94vw)', height:'88vh',
         background:'var(--panel)', border:'1px solid var(--border)',
         borderRadius:20, overflow:'hidden', display:'flex', flexDirection:'column',
       }}>
@@ -447,24 +470,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
 
           {/* Stat bar — single surface with internal dividers */}
           <div className="company-modal-statbar" style={{ display:'flex', background:'var(--bg-2)', borderRadius:10, marginBottom:18, overflow:'hidden' }}>
-            {[
-              { label:'Entries',  value: company.entries,  accent: false },
-              { label:'Median Base', value: company.avgBase,  accent: false },
-              { label:'Median TC',   value: company.avgTC,    accent: false },
-              { label:'TC Range', value: hasTcRange ? `${fmtSalary(company.tcMin)} – ${fmtSalary(company.tcMax)}` : '—', accent: true },
-            ].map((s, i) => (
-              <div key={s.label} style={{
-                display:'flex', flexDirection:'column', padding:'10px 16px',
-                borderLeft: i === 0 ? 'none' : '0.5px solid var(--border)',
-                flex: i === 3 ? '1.5' : '1',
-              }}>
-                <div style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-3)', marginBottom:4 }}>{s.label}</div>
-                <div style={{ fontSize:15, fontWeight:500, fontFamily:"'IBM Plex Mono',monospace", color: s.accent ? '#3b82f6' : 'var(--text-1)', whiteSpace:'nowrap' }}>
-                  {s.value ?? '—'}
-                </div>
-              </div>
-            ))}
-          </div>
+            {[\r\n              { label:'Entries',    value: company.entries,  accent: false },\r\n              { label:'Median TC',   value: company.avgTC,    accent: false },\r\n              { label:'TC Range',    value: hasTcRange ? `${fmtSalary(company.tcMin)} – ${fmtSalary(company.tcMax)}` : '—', accent: true },\r\n            ].map((s, i) => (\r\n              <div key={s.label} style={{\r\n                display:'flex', flexDirection:'column', padding:'10px 16px',\r\n                borderLeft: i === 0 ? 'none' : '0.5px solid var(--border)',\r\n                flex: i === 2 ? '2' : '1',\r\n              }}>\r\n                <div style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-3)', marginBottom:4 }}>{s.label}</div>\r\n                <div style={{ fontSize:15, fontWeight:500, fontFamily:"'IBM Plex Mono',monospace", color: s.accent ? '#3b82f6' : 'var(--text-1)', whiteSpace:'nowrap' }}>\r\n                  {s.value ?? '—'}\r\n                </div>\r\n              </div>\r\n            ))}\r\n          </div>
 
           {/* Tabs */}
           <div style={{ display:'flex' }}>
@@ -688,35 +694,93 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
             <>
               {/* Filter + sort bar */}
               <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:12, flexWrap:'wrap' }}>
+
+                {/* Function dropdown */}
                 <select
-                  value={filterLevel}
-                  onChange={e => applyFilter(setFilterLevel, e.target.value)}
+                  value={filterFunctionId}
+                  onChange={e => { applyFilter(setFilterFunctionId, e.target.value); applyFilter(setFilterLevelId, ''); }}
                   style={{ fontSize:11, padding:'5px 10px', borderRadius:8, border:'0.5px solid var(--border)', background:'var(--bg-2)', color:'var(--text-2)', cursor:'pointer' }}
                 >
-                  <option value="">All levels</option>
-                  {levelOptions.map(l => <option key={l} value={l}>{l}</option>)}
+                  {functionOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
-                <select
-                  value={filterLocation}
-                  onChange={e => applyFilter(setFilterLocation, e.target.value)}
-                  style={{ fontSize:11, padding:'5px 10px', borderRadius:8, border:'0.5px solid var(--border)', background:'var(--bg-2)', color:'var(--text-2)', cursor:'pointer' }}
-                >
-                  <option value="">All locations</option>
-                  {locationOptions.map(l => <option key={l} value={l}>{locationLabels[l] ?? l}</option>)}
-                </select>
-                {/* Active filter chips */}
-                {filterLevel && (
-                  <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, padding:'3px 8px 3px 10px', borderRadius:99, background:'#E6F1FB', color:'#185FA5', border:'0.5px solid #B5D4F4' }}>
-                    {filterLevel}
-                    <span onClick={() => applyFilter(setFilterLevel, '')} style={{ cursor:'pointer', fontSize:13, opacity:0.7, lineHeight:1 }}>×</span>
-                  </span>
+
+                {/* Level dropdown — only shown when a function is selected */}
+                {filterFunctionId && (
+                  <select
+                    value={filterLevelId}
+                    onChange={e => applyFilter(setFilterLevelId, e.target.value)}
+                    style={{ fontSize:11, padding:'5px 10px', borderRadius:8, border:'0.5px solid var(--border)', background:'var(--bg-2)', color:'var(--text-2)', cursor:'pointer' }}
+                  >
+                    {levelOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
                 )}
-                {filterLocation && (
-                  <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, padding:'3px 8px 3px 10px', borderRadius:99, background:'#E6F1FB', color:'#185FA5', border:'0.5px solid #B5D4F4' }}>
-                    {locationLabels[filterLocation] ?? filterLocation}
-                    <span onClick={() => applyFilter(setFilterLocation, '')} style={{ cursor:'pointer', fontSize:13, opacity:0.7, lineHeight:1 }}>×</span>
-                  </span>
-                )}
+
+                {/* Location multi-select combobox */}
+                <div ref={locationPopRef} style={{ position:'relative' }}>
+                  <button
+                    onClick={() => setLocationPopover(o => !o)}
+                    style={{
+                      fontSize:11, padding:'5px 10px', borderRadius:8,
+                      border:`0.5px solid ${locationPopover ? '#3b82f6' : filterLocations.length > 0 ? '#3b82f6' : 'var(--border)'}`,
+                      background: filterLocations.length > 0 ? '#E6F1FB' : 'var(--bg-2)',
+                      color: filterLocations.length > 0 ? '#185FA5' : 'var(--text-2)',
+                      cursor:'pointer', display:'flex', alignItems:'center', gap:5,
+                    }}
+                  >
+                    {filterLocations.length === 0
+                      ? 'All locations'
+                      : filterLocations.length === 1
+                        ? LOCATION_OPTIONS.find(l => l.value === filterLocations[0])?.label
+                        : `${filterLocations.length} locations`}
+                    {filterLocations.length > 0 && (
+                      <span
+                        onClick={e => { e.stopPropagation(); applyFilter(setFilterLocations, []); }}
+                        style={{ fontSize:13, opacity:0.6, lineHeight:1 }}
+                      >×</span>
+                    )}
+                    <span style={{ opacity:0.5, fontSize:9 }}>{locationPopover ? '▴' : '▾'}</span>
+                  </button>
+
+                  {locationPopover && (
+                    <div style={{
+                      position:'absolute', top:'calc(100% + 5px)', left:0, zIndex:25,
+                      background:'var(--panel)', border:'1px solid var(--border)',
+                      borderRadius:10, padding:6, minWidth:160,
+                      boxShadow:'0 8px 24px rgba(0,0,0,0.12)',
+                    }}>
+                      {LOCATION_OPTIONS.map(loc => {
+                        const checked = filterLocations.includes(loc.value);
+                        return (
+                          <label
+                            key={loc.value}
+                            style={{
+                              display:'flex', alignItems:'center', gap:8,
+                              padding:'6px 10px', borderRadius:6, cursor:'pointer',
+                              background: checked ? '#E6F1FB' : 'transparent',
+                              color: checked ? '#185FA5' : 'var(--text-1)',
+                              fontSize:12, fontWeight: checked ? 500 : 400,
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                const next = checked
+                                  ? filterLocations.filter(l => l !== loc.value)
+                                  : [...filterLocations, loc.value];
+                                applyFilter(setFilterLocations, next);
+                              }}
+                              style={{ accentColor:'#3b82f6', cursor:'pointer' }}
+                            />
+                            {loc.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Sort */}
                 <select
                   value={sortBy}
                   onChange={e => applyFilter(setSortBy, e.target.value)}
@@ -742,7 +806,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
 
               {!loadingEnt && salaries.length === 0 && (
                 <div style={{ textAlign:'center', padding:'40px 0', color:'var(--text-3)', fontSize:13, fontStyle:'italic' }}>
-                  No entries found{filterLevel || filterLocation ? ' for the selected filters' : ''}.
+                  No entries found{filterFunctionId || filterLocations.length > 0 ? ' for the selected filters' : ''}.
                 </div>
               )}
 
@@ -1068,24 +1132,21 @@ export default function CompaniesPage() {
           .company-modal-root {
             width: 100vw !important;
             max-width: 100vw !important;
-            max-height: 92vh !important;
+            height: 92vh !important;
             top: auto !important;
             bottom: 0 !important;
             left: 0 !important;
             transform: none !important;
             border-radius: 20px 20px 0 0 !important;
           }
-          /* Stat bar: 2x2 grid on mobile */
+          /* Stat bar: single row on mobile, allow wrap */
           .company-modal-statbar {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
+            flex-wrap: wrap !important;
           }
           .company-modal-statbar > div {
             border-left: none !important;
             border-top: 0.5px solid var(--border) !important;
-          }
-          .company-modal-statbar > div:nth-child(odd) {
-            border-right: 0.5px solid var(--border) !important;
+            flex: 1 1 45% !important;
           }
           .company-modal-statbar > div:nth-child(-n+2) {
             border-top: none !important;
