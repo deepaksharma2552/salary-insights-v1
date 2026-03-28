@@ -3,6 +3,7 @@ package com.salaryinsights.service.ai;
 import com.salaryinsights.entity.FunctionLevel;
 import com.salaryinsights.entity.User;
 import com.salaryinsights.entity.JobFunction;
+import com.salaryinsights.repository.AuditLogRepository;
 import com.salaryinsights.repository.FunctionLevelRepository;
 import com.salaryinsights.repository.UserRepository;
 import com.salaryinsights.repository.JobFunctionRepository;
@@ -15,9 +16,13 @@ import com.salaryinsights.enums.ExperienceLevel;
 import com.salaryinsights.enums.Location;
 import com.salaryinsights.service.impl.AuditLogService;
 import com.salaryinsights.service.impl.SalaryService;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -28,10 +33,11 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -147,6 +153,7 @@ public class AiSalaryEnrichmentService {
     private final ObjectMapper             objectMapper;
     private final SalaryService            salaryService;
     private final AuditLogService          auditLogService;
+    private final AuditLogRepository       auditLogRepository;
     private final JobFunctionRepository    jobFunctionRepository;
     private final FunctionLevelRepository  functionLevelRepository;
     private final UserRepository           userRepository;
@@ -157,6 +164,54 @@ public class AiSalaryEnrichmentService {
 
     private static final String CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
     private static final String CLAUDE_MODEL   = "claude-sonnet-4-20250514";
+
+    // ── Startup: warm rate-limit cache from DB ─────────────────────────────────
+
+    /**
+     * Runs once after the bean is fully constructed (all repositories injected).
+     *
+     * Reads the most recent ENRICH_COMPLETED audit log for every company that has
+     * ever been enriched and pre-populates the in-memory lastEnrichmentTime map.
+     *
+     * Without this, a pod restart silently clears the rate limit for all companies,
+     * allowing unlimited back-to-back enrichment calls until the map is rebuilt by
+     * real traffic — burning Claude API budget with no guard.
+     *
+     * The warm-up is a single query returning only company names, then one
+     * targeted query per company — typically a handful of rows total, fast at startup.
+     */
+    @PostConstruct
+    void warmRateLimitCache() {
+        try {
+            List<String> companies = auditLogRepository.findAllEnrichedCompanyNames();
+            if (companies.isEmpty()) return;
+
+            PageRequest firstOnly = PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "createdAt"));
+            int warmed = 0;
+
+            for (String companyName : companies) {
+                try {
+                    Slice<LocalDateTime> result =
+                        auditLogRepository.findLastEnrichCompletedAt(companyName, firstOnly);
+
+                    if (result.hasContent()) {
+                        LocalDateTime lastAt = result.getContent().get(0);
+                        long epochMs = lastAt.toInstant(ZoneOffset.UTC).toEpochMilli();
+                        lastEnrichmentTime.put(companyName.trim().toLowerCase(), epochMs);
+                        warmed++;
+                    }
+                } catch (Exception e) {
+                    log.warn("[AI Enrich] Could not warm rate-limit entry for '{}': {}", companyName, e.getMessage());
+                }
+            }
+
+            log.info("[AI Enrich] Rate-limit cache warmed from DB: {} companies restored", warmed);
+        } catch (Exception e) {
+            // Non-fatal — service still starts. Worst case: one extra enrichment per company
+            // until the map is populated by real traffic.
+            log.warn("[AI Enrich] Rate-limit cache warm-up failed (non-fatal): {}", e.getMessage());
+        }
+    }
 
     // ── Public entry point ─────────────────────────────────────────────────────
 

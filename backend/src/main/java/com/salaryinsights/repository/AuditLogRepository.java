@@ -31,6 +31,37 @@ public interface AuditLogRepository
             Pageable pageable
     );
 
+    // ── AI enrichment rate-limit recovery ─────────────────────────────────────
+
+    /**
+     * Returns the createdAt timestamp of the most recent ENRICH_COMPLETED audit log
+     * for a given company (case-insensitive match on entityId).
+     * Used by AiSalaryEnrichmentService on startup to warm the in-memory rate-limit
+     * map from durable state so pod restarts don't silently clear the rate limit.
+     */
+    @Query("""
+        SELECT a.createdAt FROM AuditLog a
+        WHERE a.entityType = 'AiEnrichment'
+          AND a.action     = 'ENRICH_COMPLETED'
+          AND LOWER(a.entityId) = LOWER(:companyName)
+        ORDER BY a.createdAt DESC
+        """)
+    Slice<LocalDateTime> findLastEnrichCompletedAt(
+            @Param("companyName") String companyName,
+            Pageable pageable
+    );
+
+    /**
+     * Returns all distinct company names that have an ENRICH_COMPLETED audit log.
+     * Called once on startup to warm the in-memory rate-limit map.
+     */
+    @Query("""
+        SELECT DISTINCT a.entityId FROM AuditLog a
+        WHERE a.entityType = 'AiEnrichment'
+          AND a.action     = 'ENRICH_COMPLETED'
+        """)
+    java.util.List<String> findAllEnrichedCompanyNames();
+
     // ── Keyset + filters ──────────────────────────────────────────────────────
     // Built dynamically in AuditLogService via Specification — no JPQL needed.
     // JpaSpecificationExecutor.findAll(Specification, Pageable) returns a Page
