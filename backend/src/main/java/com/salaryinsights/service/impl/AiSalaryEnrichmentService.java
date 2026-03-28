@@ -80,6 +80,19 @@ public class AiSalaryEnrichmentService {
         new ThreadPoolExecutor.CallerRunsPolicy()
     );
 
+    // Scheduled eviction of stale jobs — runs every 5 minutes so the job map
+    // doesn't grow unboundedly when admins trigger enrichment and close the tab
+    // before polling completes (evictStaleJobs was previously only called inside
+    // submitEnrichJob, meaning stale entries would never evict on a quiet server).
+    private final java.util.concurrent.ScheduledExecutorService evictScheduler =
+        java.util.concurrent.Executors.newSingleThreadScheduledExecutor(
+            r -> { Thread t = new Thread(r, "enrich-evict"); t.setDaemon(true); return t; });
+
+    @PostConstruct
+    void startEvictionScheduler() {
+        evictScheduler.scheduleAtFixedRate(this::evictStaleJobs, 5, 5, TimeUnit.MINUTES);
+    }
+
     // ── EnrichJob ──────────────────────────────────────────────────────────────
 
     public enum JobStatus { RUNNING, DONE, FAILED }
@@ -124,6 +137,11 @@ public class AiSalaryEnrichmentService {
                 "Rate limit: already enriched \"" + companyName + "\" recently. "
                 + "Try again in ~" + minutesLeft + " minute(s).");
         }
+
+        // Reserve the rate-limit slot immediately — before the async job runs — so a second
+        // concurrent request cannot slip through the window between the check above and when
+        // enrich() would have updated the map after the Claude call finishes.
+        lastEnrichmentTime.put(key, Instant.now().toEpochMilli());
 
         // Create and register the job
         String    jobId = UUID.randomUUID().toString();
@@ -231,16 +249,9 @@ public class AiSalaryEnrichmentService {
      * @throws IllegalStateException if rate-limited
      */
     public int enrich(String companyName) {
-        String key = companyName.trim().toLowerCase();
-
-        // Rate limit check
-        Long last = lastEnrichmentTime.get(key);
-        if (last != null && (Instant.now().toEpochMilli() - last) < RATE_LIMIT_MILLIS) {
-            long minutesLeft = (RATE_LIMIT_MILLIS - (Instant.now().toEpochMilli() - last)) / 60_000;
-            throw new IllegalStateException(
-                "Rate limit: already enriched \"" + companyName + "\" recently. "
-                + "Try again in ~" + minutesLeft + " minute(s).");
-        }
+        // Note: rate-limit is now enforced (and the slot reserved) in submitEnrichJob()
+        // before the async executor submits this method. The duplicate check that was
+        // previously here has been removed to eliminate the race window between the two checks.
 
         log.info("[AI Enrich] Starting enrichment for company: {}", companyName);
         auditLogService.log("AiEnrichment", companyName, "ENRICH_STARTED",
@@ -252,9 +263,6 @@ public class AiSalaryEnrichmentService {
             log.warn("[AI Enrich] No entries returned from Claude for: {}", companyName);
             return 0;
         }
-
-        // Update rate-limit timestamp before inserting (prevents hammering on partial failure)
-        lastEnrichmentTime.put(key, Instant.now().toEpochMilli());
 
         // Cap at MAX_ENTRIES
         List<AiSalaryEntry> entries = aiData.getEntries();
@@ -309,16 +317,24 @@ public class AiSalaryEnrichmentService {
     // ── Claude API call ────────────────────────────────────────────────────────
 
     private AiSalaryData callClaudeApi(String companyName) {
-        String prompt = buildPrompt(companyName);
+        String userPrompt = buildPrompt(companyName);
+        String systemPrompt = "You are a salary data researcher for an Indian salary transparency platform. " +
+            "Return ONLY valid JSON in the exact shape specified. " +
+            "Never include prose, markdown code fences, or any explanation before or after the JSON object.";
 
         Map<String, Object> requestBody = new LinkedHashMap<>();
         requestBody.put("model", CLAUDE_MODEL);
         requestBody.put("max_tokens", 2500); // 20 entries × ~80 tokens each ≈ 1600 max; 2500 gives headroom
+        requestBody.put("system", systemPrompt);
+        // max_uses: 5 caps web searches so Claude doesn't over-search trying to reach 20 entries.
+        // 5 gives enough headroom for one refinement search per source (levels.fyi, glassdoor,
+        // ambitionbox) without the hard ceiling cutting off legitimate data on sparse companies.
+        // The prompt already instructs stopping at 15 confirmed points; this enforces it at the API layer.
         requestBody.put("tools", List.of(
-            Map.of("type", "web_search_20250305", "name", "web_search")
+            Map.of("type", "web_search_20250305", "name", "web_search", "max_uses", 5)
         ));
         requestBody.put("messages", List.of(
-            Map.of("role", "user", "content", prompt)
+            Map.of("role", "user", "content", userPrompt)
         ));
 
         HttpHeaders headers = new HttpHeaders();
@@ -387,7 +403,6 @@ public class AiSalaryEnrichmentService {
 
     private String buildPrompt(String companyName) {
         return """
-            You are a salary data researcher for an Indian salary transparency platform.
             Your goal is to return REAL, VERIFIED salary data for "%s" employees in India.
 
             SEARCH STRATEGY — follow this order, stop as soon as you have enough data:
@@ -397,8 +412,8 @@ public class AiSalaryEnrichmentService {
             Do NOT search linkedin, naukri, payscale, iimjobs unless the above 3 sources are all exhausted.
             STOP SEARCHING as soon as you have 15 or more real data points — do not search all sources unnecessarily.
 
-            TARGET — return EXACTLY 20 entries. If you cannot find 20 real data points, return fewer.
-            Do NOT fabricate or estimate salaries to reach 20 — real data only.
+            TARGET — return UP TO 20 entries. Stop at whatever real data you have found — do NOT fabricate
+            or estimate salaries to pad to 20. Fewer real entries are always better than fabricated ones.
 
             DIVERSITY RULES — no two entries may share the same (jobTitle + experienceLevel + location):
             - Cover ALL seniority bands: INTERN, ENTRY, MID, SENIOR, LEAD, MANAGER, DIRECTOR
@@ -410,12 +425,12 @@ public class AiSalaryEnrichmentService {
 
             {
               "companyName": "%s",
-              "dataSource": "<comma-separated sources actually used, e.g. levels.fyi, glassdoor>",
               "entries": [
                 {
                   "jobTitle": "<e.g. Software Engineer>",
                   "department": "<e.g. Engineering, Data Science, Product>",
                   "location": "<MUST be the actual city for this specific entry: Bengaluru, Hyderabad, Delhi NCR, Mumbai, Pune, Chennai, or other Indian city>",
+                  "dataSource": "<the specific source this entry came from: levels.fyi, glassdoor, or ambitionbox>",
                   "internalLevel": "<company-specific level e.g. L4, SDE-II, IC3, or null if unknown>",
                   "experienceLevel": "<MUST be exactly one of: INTERN, ENTRY, MID, SENIOR, LEAD, MANAGER, DIRECTOR, VP, C_LEVEL>",
                   "yearsOfExperience": <typical years of experience as integer, e.g. 1 for ENTRY, 3 for MID, 6 for SENIOR, 9 for LEAD>,
@@ -432,6 +447,7 @@ public class AiSalaryEnrichmentService {
             Critical rules:
             - ALL salary values MUST be in INR (Indian Rupees), annual amounts
             - location MUST be the actual city for that specific data point — do not default every entry to one city
+            - dataSource MUST be the specific site this data point came from (levels.fyi, glassdoor, or ambitionbox)
             - experienceLevel MUST be exactly one of the listed enum values — no other values
             - employmentType MUST be exactly one of the listed enum values — no other values
             - baseSalary must be a positive integer, never null or zero
@@ -748,8 +764,18 @@ public class AiSalaryEnrichmentService {
             req.setYearsOfExperience(deriveYoeFromLevel(req.getExperienceLevel()));
         }
 
-        // Set data source — use what Claude reported (e.g. "levels.fyi, glassdoor"), fall back to "AI"
-        String source = (dataSource != null && !dataSource.isBlank()) ? dataSource : "AI";
+        // Set data source — prefer per-entry dataSource (new schema), fall back to batch-level
+        // dataSource (old schema, kept for backwards compatibility), then "AI" as last resort.
+        String entrySource = aiEntry.getDataSource();
+        String batchSource = dataSource;
+        String source;
+        if (entrySource != null && !entrySource.isBlank()) {
+            source = entrySource.trim();
+        } else if (batchSource != null && !batchSource.isBlank()) {
+            source = batchSource;
+        } else {
+            source = "AI";
+        }
         req.setDataSource(source);
 
         // Preserve the raw total grant so admin UI can display both values
@@ -808,10 +834,11 @@ public class AiSalaryEnrichmentService {
 
     /**
      * Resolves a free-text location string to a Location enum value.
-     * Falls back to BENGALURU for anything unrecognised.
+     * Returns null for unrecognised values so the admin can set the correct location
+     * during review, rather than silently misfiling entries under BENGALURU.
      */
     private Location resolveLocationFromString(String locationStr) {
-        if (locationStr == null || locationStr.isBlank()) return Location.BENGALURU;
+        if (locationStr == null || locationStr.isBlank()) return null;
 
         // Try direct enum name match (e.g. "BENGALURU")
         try {
@@ -841,51 +868,73 @@ public class AiSalaryEnrichmentService {
             return Location.PUNE;
         }
 
-        log.debug("[AI Enrich] Could not resolve location '{}', defaulting to BENGALURU", locationStr);
-        return Location.BENGALURU;
+        // Unknown location — return null so the admin can correct it during review
+        // rather than silently misfiling it under BENGALURU and skewing that city's data.
+        log.info("[AI Enrich] Could not resolve location '{}', leaving blank for admin review", locationStr);
+        return null;
     }
 
     // ── Job function / level resolution ────────────────────────────────────────
 
     /**
      * Department → function keyword map.
-     * Keys are lowercased substrings to match against the AI-returned department string.
+     * Keys are lowercased substrings to match against the AI-returned department + job title string.
      * Values are the canonical job_functions.name values in the DB.
+     *
+     * IMPORTANT: Uses a LinkedHashMap with explicit insertion order so that more-specific
+     * keywords are checked before broader ones. For example, "data analyst" must match
+     * "analyst" → ANALYTICS before "data" → ENGINEERING, so "analyst" is inserted first.
+     * Likewise "product manager" must match before "product" alone.
+     *
+     * The old Map.ofEntries() had no guaranteed iteration order, causing e.g. "Data Analyst"
+     * to resolve to ENGINEERING (via "data") instead of ANALYTICS (via "analyst").
      */
-    private static final Map<String, String> DEPT_TO_FUNCTION = Map.ofEntries(
-        Map.entry("engineer",  "ENGINEERING"),
-        Map.entry("software",  "ENGINEERING"),
-        Map.entry("backend",   "ENGINEERING"),
-        Map.entry("frontend",  "ENGINEERING"),
-        Map.entry("fullstack", "ENGINEERING"),
-        Map.entry("sre",       "ENGINEERING"),
-        Map.entry("devops",    "ENGINEERING"),
-        Map.entry("data",      "ENGINEERING"),
-        Map.entry("ml",        "ENGINEERING"),
-        Map.entry("ai",        "ENGINEERING"),
-        Map.entry("product",   "PRODUCT"),
-        Map.entry("pm ",       "PRODUCT"),
-        Map.entry("program",   "PROGRAM"),
-        Map.entry("design",    "DESIGN"),
-        Map.entry("ux",        "DESIGN"),
-        Map.entry("ui",        "DESIGN"),
-        Map.entry("research",  "DESIGN"),
-        Map.entry("analytics", "ANALYTICS"),
-        Map.entry("analyst",   "ANALYTICS"),
-        Map.entry("finance",   "FINANCE"),
-        Map.entry("legal",     "LEGAL"),
-        Map.entry("hr",        "HR"),
-        Map.entry("people",    "HR"),
-        Map.entry("recruit",   "HR"),
-        Map.entry("sales",     "SALES"),
-        Map.entry("marketing", "MARKETING"),
-        Map.entry("growth",    "MARKETING"),
-        Map.entry("content",   "MARKETING"),
-        Map.entry("ops",       "OPERATIONS"),
-        Map.entry("operation", "OPERATIONS"),
-        Map.entry("support",   "SUPPORT"),
-        Map.entry("customer",  "SUPPORT")
-    );
+    private static final Map<String, String> DEPT_TO_FUNCTION;
+    static {
+        Map<String, String> m = new LinkedHashMap<>();
+        // More-specific patterns first
+        m.put("product manager", "PRODUCT");
+        m.put("product management", "PRODUCT");
+        m.put("data scientist",  "ANALYTICS");
+        m.put("data analyst",    "ANALYTICS");
+        m.put("business analyst","ANALYTICS");
+        m.put("analytics",       "ANALYTICS");
+        m.put("analyst",         "ANALYTICS");
+        m.put("devops",          "ENGINEERING");
+        m.put("sre",             "ENGINEERING");
+        m.put("fullstack",       "ENGINEERING");
+        m.put("full stack",      "ENGINEERING");
+        m.put("frontend",        "ENGINEERING");
+        m.put("front-end",       "ENGINEERING");
+        m.put("backend",         "ENGINEERING");
+        m.put("back-end",        "ENGINEERING");
+        m.put("machine learning","ENGINEERING");
+        m.put("software",        "ENGINEERING");
+        m.put("engineer",        "ENGINEERING");
+        m.put("ml",              "ENGINEERING");
+        m.put("ai",              "ENGINEERING");
+        m.put("data",            "ENGINEERING");  // generic "Data Engineering" — after analyst/scientist
+        m.put("product",         "PRODUCT");      // generic "Product" — after "product manager"
+        m.put("program",         "PROGRAM");
+        m.put("design",          "DESIGN");
+        m.put("ux",              "DESIGN");
+        m.put("ui",              "DESIGN");
+        m.put("research",        "DESIGN");
+        m.put("finance",         "FINANCE");
+        m.put("legal",           "LEGAL");
+        m.put("recruit",         "HR");
+        m.put("people",          "HR");
+        m.put("hr",              "HR");
+        m.put("sales",           "SALES");
+        m.put("growth",          "MARKETING");
+        m.put("content",         "MARKETING");
+        m.put("marketing",       "MARKETING");
+        m.put("operation",       "OPERATIONS");
+        m.put("ops",             "OPERATIONS");
+        m.put("customer",        "SUPPORT");
+        m.put("support",         "SUPPORT");
+        DEPT_TO_FUNCTION = Collections.unmodifiableMap(m);
+    }
 
     /**
      * Resolves a department string to a JobFunction from the DB using fuzzy keyword matching.

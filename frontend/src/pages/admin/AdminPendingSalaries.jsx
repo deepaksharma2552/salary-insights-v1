@@ -333,6 +333,8 @@ export default function AdminPendingSalaries() {
   }
 
   const isEnriching = enrichState === 'submitting' || enrichState === 'polling';
+  const hasTooManyPending = enrichInfo && enrichInfo.pendingCount > 5;
+  const enrichBlocked = isEnriching || hasTooManyPending;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -389,7 +391,7 @@ export default function AdminPendingSalaries() {
         <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 16, lineHeight: 1.6 }}>
           Enter a company name. Claude will search the web for real salary data and queue up to 20 entries for your review.
           <span
-            title="Claude calls levels.fyi first, then glassdoor and ambitionbox if needed. All results land as PENDING — nothing goes live until you approve."
+            title="Claude searches levels.fyi first, then glassdoor and ambitionbox if needed (max 3 searches). Each entry is tagged with its own source. All results land as PENDING — nothing goes live until you approve."
             style={{ marginLeft: 6, cursor: 'help', color: 'var(--blue)', fontSize: 12, fontFamily: "'IBM Plex Mono',monospace" }}
           >
             ⓘ how it works
@@ -403,22 +405,23 @@ export default function AdminPendingSalaries() {
             placeholder="e.g. Google, Flipkart, Zepto…"
             value={enrichCompany}
             onChange={e => handleCompanyChange(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !isEnriching) handleEnrich(); }}
-            disabled={isEnriching}
-            style={{ flex: '1 1 260px', minWidth: 0, opacity: isEnriching ? 0.6 : 1 }}
+            onKeyDown={e => { if (e.key === 'Enter' && !enrichBlocked) handleEnrich(); }}
+            disabled={enrichBlocked}
+            style={{ flex: '1 1 260px', minWidth: 0, opacity: enrichBlocked ? 0.6 : 1 }}
           />
           <button
             onClick={handleEnrich}
-            disabled={isEnriching || !enrichCompany.trim()}
+            disabled={enrichBlocked || !enrichCompany.trim()}
+            title={hasTooManyPending ? `Review the ${enrichInfo.pendingCount} pending entries for this company before enriching again` : undefined}
             style={{
               padding: '9px 22px', fontSize: 13, fontWeight: 600,
               fontFamily: "Inter,sans-serif",
-              background: isEnriching ? 'var(--blue-dim)' : 'rgba(59,130,246,0.12)',
+              background: enrichBlocked ? 'var(--blue-dim)' : 'rgba(59,130,246,0.12)',
               color: 'var(--blue)',
               border: '1px solid rgba(59,130,246,0.3)',
               borderRadius: 9,
-              cursor: isEnriching || !enrichCompany.trim() ? 'not-allowed' : 'pointer',
-              opacity: isEnriching || !enrichCompany.trim() ? 0.7 : 1,
+              cursor: enrichBlocked || !enrichCompany.trim() ? 'not-allowed' : 'pointer',
+              opacity: enrichBlocked || !enrichCompany.trim() ? 0.7 : 1,
               display: 'flex', alignItems: 'center', gap: 8,
               whiteSpace: 'nowrap',
               transition: 'opacity 0.2s ease',
@@ -434,7 +437,7 @@ export default function AdminPendingSalaries() {
                 }} />
                 {enrichState === 'submitting' ? 'Starting…' : 'Enriching…'}
               </>
-            ) : '✦ Enrich with AI'}
+            ) : hasTooManyPending ? '⛔ Review pending first' : '✦ Enrich with AI'}
           </button>
         </div>
 
@@ -456,10 +459,14 @@ export default function AdminPendingSalaries() {
                 </span>
                 <span style={{ color: 'var(--border)' }}>·</span>
                 <span
-                  title="PENDING entries already queued for this company awaiting your review"
-                  style={{ color: enrichInfo.pendingCount > 0 ? 'rgba(245,158,11,0.9)' : 'var(--text-3)' }}
+                  title={enrichInfo.pendingCount > 0
+                    ? 'Review and action these entries before enriching again to avoid duplicate data'
+                    : 'No pending entries — safe to enrich'}
+                  style={{ color: enrichInfo.pendingCount > 5 ? 'var(--rose)' : enrichInfo.pendingCount > 0 ? 'rgba(245,158,11,0.9)' : 'var(--text-3)' }}
                 >
-                  {enrichInfo.pendingCount > 0
+                  {enrichInfo.pendingCount > 5
+                    ? `⛔ ${enrichInfo.pendingCount} pending — review before enriching again`
+                    : enrichInfo.pendingCount > 0
                     ? `⚠ ${enrichInfo.pendingCount} pending review`
                     : '✓ no pending entries'}
                 </span>
