@@ -102,31 +102,35 @@ function detectIcon(name) {
   return '✦';
 }
 
-// SVG icon components for benefits
+// SVG icon components for benefits — correct semantic icons per category
 const BENEFIT_SVG_ICONS = {
   financial: {
-    esop:        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
-    meal:        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>,
-    relocation:  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>,
-    bonus:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+    esop:        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+    meal:        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>,
+    relocation:  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+    bonus:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+    allowance:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
   },
   health: {
-    health:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
-    dental:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2a5 5 0 0 0-5 5c0 2 1 3.5 1 5s-.5 4-1 6h10c-.5-2-1-4.5-1-6s1-3 1-5a5 5 0 0 0-5-5z"/></svg>,
-    gym:         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>,
-    mental:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+    health:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>,
+    dental:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 0 0-5 5c0 2 1 3.5 1 5s-.5 4-1 6h10c-.5-2-1-4.5-1-6s1-3 1-5a5 5 0 0 0-5-5z"/></svg>,
+    gym:         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="M3 9.5v5"/><path d="M21 9.5v5"/><path d="M3 12h18"/><rect x="1" y="9" width="4" height="6" rx="1"/><rect x="19" y="9" width="4" height="6" rx="1"/></svg>,
+    mental:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/></svg>,
+    vision:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
   },
   growth: {
-    learning:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
-    certification:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>,
+    learning:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
+    certification:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>,
+    conference:  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+    budget:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
   },
   lifestyle: {
-    remote:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>,
-    parental:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-    leave:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-    commute:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
+    remote:      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>,
+    parental:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C6.48 2 3 6 3 10c0 3.5 2.5 6.5 6 7.5V21h6v-3.5c3.5-1 6-4 6-7.5 0-4-3.48-8-9-8z"/></svg>,
+    leave:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+    commute:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
   },
-  default:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  default:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
 };
 
 function getBenefitSvgIcon(name = '', cat = 'other') {
@@ -828,44 +832,70 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
 
               {!loadingEnt && salaries.length > 0 && (
                 <>
-                  <div className="salary-table-wrap">
-                    <table className="salary-table">
-                      <thead>
-                        <tr>
-                          <th>Role</th>
-                          <th>Level</th>
-                          <th>Location</th>
-                          <th>Exp</th>
-                          <th>Base</th>
-                          <th>Bonus</th>
-                          <th>RSU</th>
-                          <th>Total TC</th>
-                          <th>Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {salaries.map(s => (
-                          <tr key={s.id}>
-                            <td>
-                              <div style={{ fontSize:13, fontWeight:500, color:'var(--text-1)' }}>{s.role}</div>
-                              <div style={{ fontSize:11, color:'var(--text-3)' }}>{s.empType?.replace('_',' ').toLowerCase()}</div>
-                            </td>
-                            <td>
-                              <span style={getLevelBadgeStyle(s.internalLevel !== '—' ? s.internalLevel : null)}>
-                                {s.internalLevel !== '—' ? s.internalLevel : s.level}
-                              </span>
-                            </td>
-                            <td style={{ fontSize:12, color:'var(--text-2)' }}>{s.location}</td>
-                            <td style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.yoe}</td>
-                            <td style={{ fontSize:13, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', fontWeight:500 }}>{s.base}</td>
-                            <td style={{ fontSize:12, color:'var(--text-2)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.bonus}</td>
-                            <td style={{ fontSize:12, color:'var(--text-2)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.equity}</td>
-                            <td style={{ fontSize:14, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', whiteSpace:'nowrap' }}>{s.tc}</td>
-                            <td style={{ fontSize:11, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", whiteSpace:'nowrap' }}>{s.recordedAt}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+                    {/* Header row */}
+                    <div style={{
+                      display:'grid',
+                      gridTemplateColumns:'1fr 130px 100px 52px 90px 80px 80px 96px 80px',
+                      padding:'6px 14px',
+                      borderBottom:'1px solid var(--border)',
+                      marginBottom:2,
+                    }}>
+                      {['Role','Level','Location','Exp','Base','Bonus','RSU','Total TC','Date'].map(h => (
+                        <div key={h} style={{ fontSize:9, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-3)' }}>{h}</div>
+                      ))}
+                    </div>
+
+                    {/* Entry rows */}
+                    {salaries.map((s, idx) => (
+                      <div
+                        key={s.id}
+                        style={{
+                          display:'grid',
+                          gridTemplateColumns:'1fr 130px 100px 52px 90px 80px 80px 96px 80px',
+                          padding:'11px 14px',
+                          borderRadius:10,
+                          background: idx % 2 === 0 ? 'transparent' : 'var(--bg-2)',
+                          alignItems:'center',
+                          transition:'background 0.12s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--ink-3)'}
+                        onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--bg-2)'}
+                      >
+                        {/* Role */}
+                        <div style={{ minWidth:0 }}>
+                          <div style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.role}</div>
+                        </div>
+
+                        {/* Level badge */}
+                        <div>
+                          <span style={getLevelBadgeStyle(s.internalLevel !== '—' ? s.internalLevel : null)}>
+                            {s.internalLevel !== '—' ? s.internalLevel : s.level}
+                          </span>
+                        </div>
+
+                        {/* Location */}
+                        <div style={{ fontSize:12, color:'var(--text-2)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.location}</div>
+
+                        {/* Exp */}
+                        <div style={{ fontSize:11, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.yoe}</div>
+
+                        {/* Base */}
+                        <div style={{ fontSize:13, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', fontWeight:500 }}>{s.base}</div>
+
+                        {/* Bonus */}
+                        <div style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.bonus}</div>
+
+                        {/* RSU */}
+                        <div style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.equity}</div>
+
+                        {/* Total TC — hero number */}
+                        <div style={{ fontSize:14, fontWeight:700, fontFamily:"'IBM Plex Mono',monospace", color:'#3b82f6', whiteSpace:'nowrap' }}>{s.tc}</div>
+
+                        {/* Date */}
+                        <div style={{ fontSize:11, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", whiteSpace:'nowrap' }}>{s.recordedAt}</div>
+                      </div>
+                    ))}
                   </div>
 
                   {/* Pagination — smart ellipsis */}
