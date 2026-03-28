@@ -504,16 +504,31 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* Top companies by median salary (placeholder — real data would come from API) */}
+            {/* Top companies by submission count — real data from API */}
             <div className="chart-card" style={{ marginBottom: 0 }}>
               <div className="chart-title" style={{ marginBottom: 16 }}>Company Overview</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <TopCompanyRow initial="G" name="Google India"   count={214} maxCount={214} color="#3b82f6" />
-                <TopCompanyRow initial="M" name="Microsoft India" count={178} maxCount={214} color="#8b5cf6" />
-                <TopCompanyRow initial="A" name="Amazon India"    count={147} maxCount={214} color="#06b6d4" />
-                <TopCompanyRow initial="F" name="Flipkart"        count={112} maxCount={214} color="#6366f1" />
-                <TopCompanyRow initial="S" name="Swiggy"          count={98}  maxCount={214} color="#a78bfa" />
-              </div>
+              {stats.topCompanies && stats.topCompanies.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {stats.topCompanies.map((c, i) => {
+                    const colors = ['#3b82f6', '#8b5cf6', '#06b6d4', '#6366f1', '#a78bfa'];
+                    const maxCount = stats.topCompanies[0].count;
+                    return (
+                      <TopCompanyRow
+                        key={c.name}
+                        initial={c.name.charAt(0).toUpperCase()}
+                        name={c.name}
+                        count={Number(c.count)}
+                        maxCount={Number(maxCount)}
+                        color={colors[i % colors.length]}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-3)', fontSize: 12, fontStyle: 'italic' }}>
+                  No approved entries yet
+                </div>
+              )}
               <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
                   {(stats.totalCompanies ?? 0).toLocaleString('en-IN')} companies total

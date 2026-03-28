@@ -18,4 +18,5 @@ public class AdminDashboardResponse {
     private Double avgBaseSalary;
     private List<Map<String, Object>> submissionTrend;
     private List<Map<String, Object>> weeklyTrend;  // null unless year+month requested
+    private List<Map<String, Object>> topCompanies; // top 5 by approved submission count
 }

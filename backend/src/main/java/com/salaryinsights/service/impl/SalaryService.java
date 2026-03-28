@@ -621,6 +621,18 @@ public class SalaryService {
             }
         }
 
+        // Top 5 companies by approved submission count
+        List<java.util.Map<String, Object>> topCompanies = salaryEntryRepository
+                .topCompaniesBySubmissions(5)
+                .stream()
+                .map(row -> {
+                    java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("name",  row[0] != null ? row[0].toString() : "");
+                    m.put("count", row[1]);
+                    return m;
+                })
+                .collect(Collectors.toList());
+
         return AdminDashboardResponse.builder()
                 .totalCompanies(companyRepository.count())
                 .activeCompanies(companyRepository.countByStatus(com.salaryinsights.enums.CompanyStatus.ACTIVE))
@@ -631,6 +643,7 @@ public class SalaryService {
                 .avgBaseSalary(salaryEntryRepository.avgBaseSalaryApproved())
                 .submissionTrend(trendData)
                 .weeklyTrend(weeklyData)
+                .topCompanies(topCompanies)
                 .build();
     }
 

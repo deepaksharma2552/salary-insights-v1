@@ -196,6 +196,13 @@ export default function AdminPendingSalaries() {
   const [enrichError,   setEnrichError]   = useState(null);
   const [enrichInfo,    setEnrichInfo]    = useState(null);   // { lastEnrichedAt, pendingCount } | null
   const [infoLoading,   setInfoLoading]   = useState(false);
+
+  // ── Bulk selection state ───────────────────────────────────────────────────
+  const [selected,      setSelected]      = useState(new Set());
+  const [bulkActioning, setBulkActioning] = useState(false);
+  const [bulkResult,    setBulkResult]    = useState(null);   // { approved, failed } | null
+  const [showBulkModal, setShowBulkModal] = useState(false);
+
   const pollRef    = useRef(null);
   const infoTimerRef = useRef(null);
 
@@ -228,7 +235,7 @@ export default function AdminPendingSalaries() {
       .finally(() => setLoading(false));
   }, [page]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); setSelected(new Set()); }, [load]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
   async function approve(id) {
@@ -257,6 +264,46 @@ export default function AdminPendingSalaries() {
 
   function toggleExpand(id) {
     setExpanded(prev => prev === id ? null : id);
+  }
+
+  // ── Bulk selection helpers ─────────────────────────────────────────────────
+  const allSelected  = entries.length > 0 && entries.every(e => selected.has(e.id));
+  const someSelected = entries.some(e => selected.has(e.id));
+
+  function toggleSelect(id, e) {
+    e.stopPropagation();
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(e) {
+    e.stopPropagation();
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(entries.map(e => e.id)));
+    }
+  }
+
+  async function bulkApprove() {
+    setShowBulkModal(false);
+    setBulkActioning(true);
+    setBulkResult(null);
+    try {
+      const ids = [...selected];
+      const res = await api.post('/admin/salaries/bulk-approve', { ids });
+      const data = res.data?.data ?? {};
+      setBulkResult({ approved: data.approved ?? 0, failed: data.failed ?? 0 });
+      setSelected(new Set());
+      loadSilent();
+    } catch (err) {
+      setBulkResult({ approved: 0, failed: selected.size, error: err.response?.data?.message ?? err.message });
+    } finally {
+      setBulkActioning(false);
+    }
   }
 
   // ── AI Enrichment ──────────────────────────────────────────────────────────
@@ -547,9 +594,55 @@ export default function AdminPendingSalaries() {
       )}
 
       {/* ── Pending table ────────────────────────────────────────────────── */}
+      {/* ── Bulk result banner ───────────────────────────────────────────── */}
+      {bulkResult && (
+        <div style={{
+          marginBottom: 16, padding: '10px 16px', borderRadius: 8, fontSize: 13,
+          background: bulkResult.failed === 0 ? 'var(--green-dim)' : 'var(--rose-dim)',
+          border: `0.5px solid ${bulkResult.failed === 0 ? 'rgba(22,163,74,0.3)' : 'rgba(224,92,122,0.3)'}`,
+          color: bulkResult.failed === 0 ? 'var(--green)' : 'var(--rose)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <span>
+            {bulkResult.failed === 0
+              ? `✓ ${bulkResult.approved} entries approved successfully`
+              : `⚠ ${bulkResult.approved} approved, ${bulkResult.failed} failed${bulkResult.error ? `: ${bulkResult.error}` : ''}`}
+          </span>
+          <button onClick={() => setBulkResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: 16 }}>×</button>
+        </div>
+      )}
+
+      {/* ── Bulk action bar ──────────────────────────────────────────────── */}
+      {someSelected && (
+        <div style={{
+          marginBottom: 12, padding: '10px 16px', borderRadius: 8,
+          background: 'var(--blue-dim)', border: '0.5px solid rgba(59,130,246,0.3)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        }}>
+          <span style={{ fontSize: 13, color: 'var(--blue)', fontWeight: 600 }}>
+            {selected.size} entr{selected.size === 1 ? 'y' : 'ies'} selected
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => setSelected(new Set())}
+              style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, background: 'none', color: 'var(--text-3)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}
+            >
+              Clear
+            </button>
+            <button
+              onClick={() => setShowBulkModal(true)}
+              disabled={bulkActioning}
+              style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 6, cursor: bulkActioning ? 'not-allowed' : 'pointer', opacity: bulkActioning ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              {bulkActioning ? 'Approving…' : `✓ Approve ${selected.size}`}
+            </button>
+          </div>
+        </div>
+      )}
+
       {!loading && entries.length > 0 && (
         <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, fontFamily: "'IBM Plex Mono',monospace" }}>
-          ↓ Click any row to expand full details
+          ↓ Click any row to expand · use checkboxes to bulk-approve
         </p>
       )}
 
@@ -571,7 +664,17 @@ export default function AdminPendingSalaries() {
             <table className="salary-table">
               <thead>
                 <tr>
-                  <th style={{ width: 24 }}></th>
+                  <th style={{ width: 36, paddingRight: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                      onChange={toggleSelectAll}
+                      onClick={e => e.stopPropagation()}
+                      style={{ cursor: 'pointer', width: 14, height: 14 }}
+                    />
+                  </th>
+                  <th style={{ width: 16 }}></th>
                   <th>Company</th>
                   <th>Role</th>
                   <th>Location</th>
@@ -593,6 +696,15 @@ export default function AdminPendingSalaries() {
                         className={`pending-row${isOpen ? ' is-expanded' : ''}`}
                         onClick={() => toggleExpand(e.id)}
                       >
+                        <td style={{ paddingRight: 0 }} onClick={ev => ev.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selected.has(e.id)}
+                            onChange={ev => toggleSelect(e.id, ev)}
+                            onClick={ev => ev.stopPropagation()}
+                            style={{ cursor: 'pointer', width: 14, height: 14 }}
+                          />
+                        </td>
                         <td style={{ textAlign: 'center', paddingRight: 0 }}>
                           <span className={`expand-chevron${isOpen ? ' open' : ''}`}>▶</span>
                         </td>
@@ -644,6 +756,26 @@ export default function AdminPendingSalaries() {
             </div>
           )}
         </>
+      )}
+
+      {/* ── Bulk approve confirmation modal ──────────────────────────────── */}
+      {showBulkModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setShowBulkModal(false)}>
+          <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 20, padding: 36, width: 420, maxWidth: '90vw' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-1)', marginBottom: 8 }}>Approve {selected.size} Entries?</h3>
+            <p style={{ color: 'var(--text-3)', fontSize: 14, marginBottom: 24 }}>
+              This will approve all {selected.size} selected entr{selected.size === 1 ? 'y' : 'ies'} and make them publicly visible. This cannot be undone in bulk.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button onClick={() => setShowBulkModal(false)} style={{ padding: '9px 22px', fontSize: 13, fontWeight: 600, background: 'var(--bg-2)', color: 'var(--text-2)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={bulkApprove} style={{ padding: '9px 22px', fontSize: 13, fontWeight: 600, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+                ✓ Approve All {selected.size}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Reject modal ─────────────────────────────────────────────────── */}

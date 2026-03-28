@@ -321,6 +321,18 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         nativeQuery = true)
     List<Object[]> salaryTrendsRaw();
 
+    // Top N companies by approved submission count — used by admin dashboard Company Overview card
+    @Query(value =
+        "SELECT c.name AS companyName, COUNT(*) AS submissionCount " +
+        "FROM salary_entries s " +
+        "JOIN companies c ON s.company_id = c.id " +
+        "WHERE s.review_status = 'APPROVED' " +
+        "GROUP BY c.id, c.name " +
+        "ORDER BY submissionCount DESC " +
+        "LIMIT :limit",
+        nativeQuery = true)
+    List<Object[]> topCompaniesBySubmissions(@Param("limit") int limit);
+
     @Query(value = "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as count " +
                    "FROM salary_entries WHERE created_at >= NOW() - INTERVAL '12 months' " +
                    "GROUP BY month ORDER BY month", nativeQuery = true)

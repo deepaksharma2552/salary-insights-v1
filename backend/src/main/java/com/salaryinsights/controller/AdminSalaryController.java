@@ -114,6 +114,52 @@ public class AdminSalaryController {
                 salaryService.reviewSalary(id, ReviewStatus.APPROVED, null)));
     }
 
+    /**
+     * POST /admin/salaries/bulk-approve
+     *
+     * Approves a list of salary entry IDs in one shot.
+     * Body: { "ids": ["uuid1", "uuid2", ...] }
+     * Returns: { "approved": N, "failed": M, "errors": [...] }
+     *
+     * Processes every ID independently — a single failure does not abort the rest.
+     * Max 200 IDs per request to prevent runaway transactions.
+     */
+    @PostMapping("/bulk-approve")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> bulkApprove(
+            @RequestBody Map<String, List<String>> body) {
+
+        List<String> rawIds = body != null ? body.get("ids") : null;
+        if (rawIds == null || rawIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("ids list is required"));
+        }
+        if (rawIds.size() > 200) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Maximum 200 IDs per request"));
+        }
+
+        int approved = 0, failed = 0;
+        List<String> errors = new java.util.ArrayList<>();
+
+        for (String rawId : rawIds) {
+            try {
+                UUID id = UUID.fromString(rawId.trim());
+                salaryService.reviewSalary(id, ReviewStatus.APPROVED, null);
+                approved++;
+            } catch (Exception e) {
+                failed++;
+                errors.add(rawId + ": " + e.getMessage());
+            }
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("approved", approved);
+        result.put("failed",   failed);
+        if (!errors.isEmpty()) result.put("errors", errors);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                String.format("Bulk approve complete: %d approved, %d failed", approved, failed),
+                result));
+    }
+
     @PatchMapping("/{id}/reject")
     public ResponseEntity<ApiResponse<SalaryResponse>> reject(
             @PathVariable UUID id,
