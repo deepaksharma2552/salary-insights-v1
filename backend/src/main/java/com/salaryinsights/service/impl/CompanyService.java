@@ -79,7 +79,7 @@ public class CompanyService {
     @Transactional
     @org.springframework.cache.annotation.CacheEvict(value = "companyList", allEntries = true)
     public CompanyResponse createCompany(CompanyRequest request) {
-        if (companyRepository.existsByName(request.getName())) {
+        if (companyRepository.findByNameIgnoreCase(request.getName()).isPresent()) {
             throw new BadRequestException("Company with name '" + request.getName() + "' already exists");
         }
 
@@ -91,6 +91,62 @@ public class CompanyService {
 
         log.info("Created company: {}", company.getName());
         return companyMapper.toResponse(company);
+    }
+
+    /**
+     * Upsert for bulk import: if a company with the same name (case-insensitive) already exists,
+     * patch ONLY blank/null fields — never overwrite data the admin has already curated.
+     * If the company doesn't exist, create it fresh.
+     * Returns a result indicating whether the record was CREATED, PATCHED, or SKIPPED (already complete).
+     */
+    @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "companyList", allEntries = true)
+    public UpsertResult upsertCompany(CompanyRequest request) {
+        java.util.Optional<Company> existing = companyRepository.findByNameIgnoreCase(request.getName());
+
+        if (existing.isEmpty()) {
+            // Brand new company — create it
+            Company company = companyMapper.toEntity(request);
+            company = companyRepository.save(company);
+            auditLogService.log("Company", company.getId().toString(), "CREATED",
+                    "Bulk import created: " + company.getName());
+            log.info("Bulk import — created: {}", company.getName());
+            return new UpsertResult(UpsertResult.Action.CREATED, companyMapper.toResponse(company));
+        }
+
+        // Company exists — patch only fields that are currently blank/null
+        Company company = existing.get();
+        boolean changed = false;
+
+        if (isBlank(company.getWebsite())     && hasValue(request.getWebsite()))     { company.setWebsite(request.getWebsite());         changed = true; }
+        if (isBlank(company.getLogoUrl())     && hasValue(request.getLogoUrl()))     { company.setLogoUrl(request.getLogoUrl());         changed = true; }
+        if (isBlank(company.getIndustry())    && hasValue(request.getIndustry()))    { company.setIndustry(request.getIndustry());       changed = true; }
+        if (isBlank(company.getLocation())    && hasValue(request.getLocation()))    { company.setLocation(request.getLocation());       changed = true; }
+
+        if (!changed) {
+            log.info("Bulk import — skipped (already complete): {}", company.getName());
+            return new UpsertResult(UpsertResult.Action.SKIPPED, companyMapper.toResponse(company));
+        }
+
+        company = companyRepository.save(company);
+        auditLogService.log("Company", company.getId().toString(), "PATCHED",
+                "Bulk import patched blank fields for: " + company.getName());
+        log.info("Bulk import — patched blank fields for: {}", company.getName());
+        return new UpsertResult(UpsertResult.Action.PATCHED, companyMapper.toResponse(company));
+    }
+
+    private static boolean isBlank(String s) { return s == null || s.isBlank(); }
+    private static boolean hasValue(String s) { return s != null && !s.isBlank(); }
+
+    /** Result carrier for upsertCompany. */
+    public static class UpsertResult {
+        public enum Action { CREATED, PATCHED, SKIPPED }
+        public final Action action;
+        public final CompanyResponse company;
+        public UpsertResult(Action action, CompanyResponse company) {
+            this.action  = action;
+            this.company = company;
+        }
     }
 
     @Transactional

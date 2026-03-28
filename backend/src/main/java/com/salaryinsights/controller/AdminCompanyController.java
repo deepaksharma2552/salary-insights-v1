@@ -39,6 +39,22 @@ public class AdminCompanyController {
                 .body(ApiResponse.success("Company created successfully", response));
     }
 
+    /**
+     * POST /admin/companies/upsert
+     * Used by the bulk import tool.
+     * - If the company name doesn't exist (case-insensitive): creates it.
+     * - If it already exists: patches ONLY blank/null fields — never overwrites curated data.
+     * Returns action: CREATED | PATCHED | SKIPPED
+     */
+    @PostMapping("/upsert")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> upsertCompany(@Valid @RequestBody CompanyRequest request) {
+        CompanyService.UpsertResult result = companyService.upsertCompany(request);
+        java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("action",  result.action.name());
+        body.put("company", result.company);
+        return ResponseEntity.ok(ApiResponse.success(body));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<CompanyResponse>> updateCompany(
             @PathVariable UUID id, @Valid @RequestBody CompanyRequest request) {

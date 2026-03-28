@@ -147,6 +147,15 @@ function ImportTab({ onImportDone }) {
     };
   }
 
+  // Fuzzy name match: normalise both sides and check substring containment
+  function normaliseName(n) { return n.toLowerCase().replace(/[^a-z0-9]/g, ''); }
+  function isFuzzyMatch(a, b) {
+    const na = normaliseName(a), nb = normaliseName(b);
+    if (na === nb) return true;
+    if (na.includes(nb) || nb.includes(na)) return true;
+    return false;
+  }
+
   async function runFetch() {
     if (!apiKey.trim()) { alert('Please enter your Google Knowledge Graph API key first.'); return; }
     const list = seeds.split('\n').map(s => s.trim()).filter(Boolean);
@@ -158,19 +167,33 @@ function ImportTab({ onImportDone }) {
     setResults([]);
     setStep('preview');
 
+    // Pre-load all existing company names from DB for fuzzy duplicate detection
+    let existingNames = [];
+    try {
+      const res = await api.get('/admin/companies', { params: { size: 1000 } });
+      existingNames = (res.data?.data?.content ?? []).map(c => c.name);
+    } catch (_) { /* non-fatal */ }
+
     const out = [];
     for (let i = 0; i < list.length; i++) {
       if (abortRef.current) break;
       try {
         const r = await fetchOne(list[i], apiKey.trim());
-        if (r) out.push(r);
-        else   out.push({ name: list[i], website: '', industry: '', description: '', logoUrl: '', selected: false, status: 'not_found' });
+        if (r) {
+          const fuzzyMatch = existingNames.find(en => isFuzzyMatch(en, r.name));
+          if (fuzzyMatch) {
+            out.push({ ...r, selected: false, status: 'likely_duplicate', matchedWith: fuzzyMatch });
+          } else {
+            out.push(r);
+          }
+        } else {
+          out.push({ name: list[i], website: '', industry: '', description: '', logoUrl: '', selected: false, status: 'not_found' });
+        }
       } catch (e) {
         out.push({ name: list[i], website: '', industry: '', description: '', logoUrl: '', selected: false, status: 'error', errorMsg: e.message });
       }
       setResults([...out]);
       setFetchProgress({ done: i + 1, total: list.length });
-      // Small delay to avoid hammering the API
       await new Promise(r => setTimeout(r, 120));
     }
     setFetching(false);
@@ -181,11 +204,11 @@ function ImportTab({ onImportDone }) {
   function toggleSelect(i) {
     setResults(prev => prev.map((r, idx) => idx === i ? { ...r, selected: !r.selected } : r));
   }
-  function selectAll()   { setResults(prev => prev.map(r => r.status === 'ready' ? { ...r, selected: true  } : r)); }
+  function selectAll()   { setResults(prev => prev.map(r => (r.status === 'ready' || r.status === 'likely_duplicate') ? { ...r, selected: true } : r)); }
   function deselectAll() { setResults(prev => prev.map(r => ({ ...r, selected: false }))); }
 
   async function runImport() {
-    const toImport = results.filter(r => r.selected && r.status === 'ready');
+    const toImport = results.filter(r => r.selected && (r.status === 'ready' || r.status === 'likely_duplicate'));
     if (toImport.length === 0) { alert('No companies selected.'); return; }
     setImporting(true);
     setImportLog([]);
@@ -193,21 +216,22 @@ function ImportTab({ onImportDone }) {
 
     for (const r of toImport) {
       try {
-        await api.post('/admin/companies', {
-          name:        r.name,
-          website:     r.website   || null,
-          industry:    r.industry  || null,
-          description: r.description || null,
-          logoUrl:     r.logoUrl   || null,
-          benefits:    [],
+        // Always call /upsert — backend creates if new, patches blank fields if exists, skips if already complete
+        const resp = await api.post('/admin/companies/upsert', {
+          name:     r.name,
+          website:  r.website  || null,
+          industry: r.industry || null,
+          logoUrl:  r.logoUrl  || null,
+          benefits: [],
         });
-        log.push({ name: r.name, ok: true });
-        setResults(prev => prev.map(x => x.name === r.name ? { ...x, status: 'imported' } : x));
+        const action = resp.data?.data?.action ?? 'CREATED';
+        const statusMap = { CREATED: 'imported', PATCHED: 'patched', SKIPPED: 'skipped' };
+        log.push({ name: r.name, ok: true, action });
+        setResults(prev => prev.map(x => x.name === r.name ? { ...x, status: statusMap[action] ?? 'imported' } : x));
       } catch (e) {
         const msg = e.response?.data?.message ?? e.message;
-        const isDup = msg?.toLowerCase().includes('duplicate') || msg?.toLowerCase().includes('already exists') || e.response?.status === 409;
-        log.push({ name: r.name, ok: false, msg: isDup ? 'Already exists' : msg });
-        setResults(prev => prev.map(x => x.name === r.name ? { ...x, status: isDup ? 'duplicate' : 'failed' } : x));
+        log.push({ name: r.name, ok: false, msg });
+        setResults(prev => prev.map(x => x.name === r.name ? { ...x, status: 'failed' } : x));
       }
       setImportLog([...log]);
       await new Promise(r => setTimeout(r, 60));
@@ -218,12 +242,14 @@ function ImportTab({ onImportDone }) {
     onImportDone?.();
   }
 
-  const readyCount    = results.filter(r => r.status === 'ready').length;
-  const selectedCount = results.filter(r => r.selected && r.status === 'ready').length;
-  const importedCount = results.filter(r => r.status === 'imported').length;
-  const dupCount      = results.filter(r => r.status === 'duplicate').length;
-  const failedCount   = results.filter(r => r.status === 'failed').length;
-  const notFoundCount = results.filter(r => r.status === 'not_found').length;
+  const readyCount         = results.filter(r => r.status === 'ready').length;
+  const likelyDupCount     = results.filter(r => r.status === 'likely_duplicate').length;
+  const selectedCount      = results.filter(r => r.selected && (r.status === 'ready' || r.status === 'likely_duplicate')).length;
+  const importedCount      = results.filter(r => r.status === 'imported').length;
+  const patchedCount       = results.filter(r => r.status === 'patched').length;
+  const skippedCount       = results.filter(r => r.status === 'skipped').length;
+  const failedCount        = results.filter(r => r.status === 'failed').length;
+  const notFoundCount      = results.filter(r => r.status === 'not_found').length;
 
   return (
     <div style={{ maxWidth: 900 }}>
@@ -310,11 +336,13 @@ function ImportTab({ onImportDone }) {
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>Preview — {results.length} companies</span>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {readyCount > 0    && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontWeight: 500 }}>{readyCount} ready</span>}
-              {importedCount > 0 && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontWeight: 500 }}>{importedCount} imported</span>}
-              {dupCount > 0      && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'rgba(251,191,36,0.15)', color: '#d97706', fontWeight: 500 }}>{dupCount} duplicate</span>}
-              {failedCount > 0   && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'var(--rose-dim)', color: 'var(--rose)', fontWeight: 500 }}>{failedCount} failed</span>}
-              {notFoundCount > 0 && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'var(--bg-3)', color: 'var(--text-3)', fontWeight: 500 }}>{notFoundCount} not found</span>}
+              {readyCount > 0      && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontWeight: 500 }}>{readyCount} ready</span>}
+              {likelyDupCount > 0  && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'rgba(251,191,36,0.15)', color: '#d97706', fontWeight: 500 }}>{likelyDupCount} likely duplicate</span>}
+              {importedCount > 0   && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontWeight: 500 }}>{importedCount} imported</span>}
+              {patchedCount > 0    && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'rgba(99,102,241,0.12)', color: '#6366f1', fontWeight: 500 }}>{patchedCount} patched</span>}
+              {skippedCount > 0    && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'var(--bg-3)', color: 'var(--text-3)', fontWeight: 500 }}>{skippedCount} skipped</span>}
+              {failedCount > 0     && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'var(--rose-dim)', color: 'var(--rose)', fontWeight: 500 }}>{failedCount} failed</span>}
+              {notFoundCount > 0   && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'var(--bg-3)', color: 'var(--text-3)', fontWeight: 500 }}>{notFoundCount} not found</span>}
             </div>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
               <button onClick={selectAll}   style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-2)', color: 'var(--text-2)', cursor: 'pointer' }}>Select all</button>
@@ -368,12 +396,14 @@ function ImportTab({ onImportDone }) {
                           : <span style={{ fontSize: 11, color: 'var(--text-3)' }}>—</span>}
                       </td>
                       <td style={{ padding: '10px 16px' }}>
-                        {r.status === 'ready'      && <span style={{ fontSize: 11, fontWeight: 500, color: '#3b82f6' }}>● Ready</span>}
-                        {r.status === 'imported'   && <span style={{ fontSize: 11, fontWeight: 500, color: '#22c55e' }}>✓ Imported</span>}
-                        {r.status === 'duplicate'  && <span style={{ fontSize: 11, fontWeight: 500, color: '#d97706' }}>⚠ Duplicate</span>}
-                        {r.status === 'failed'     && <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--rose)' }} title={r.errorMsg}>✕ Failed</span>}
-                        {r.status === 'not_found'  && <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Not found</span>}
-                        {r.status === 'error'      && <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--rose)' }} title={r.errorMsg}>Error</span>}
+                        {r.status === 'ready'           && <span style={{ fontSize: 11, fontWeight: 500, color: '#3b82f6' }}>● Ready</span>}
+                        {r.status === 'likely_duplicate' && <span style={{ fontSize: 11, fontWeight: 500, color: '#d97706' }} title={`Fuzzy match: "${r.matchedWith}"`}>⚠ Likely duplicate</span>}
+                        {r.status === 'imported'        && <span style={{ fontSize: 11, fontWeight: 500, color: '#22c55e' }}>✓ Created</span>}
+                        {r.status === 'patched'         && <span style={{ fontSize: 11, fontWeight: 500, color: '#6366f1' }}>↑ Patched</span>}
+                        {r.status === 'skipped'         && <span style={{ fontSize: 11, color: 'var(--text-3)' }}>— Skipped</span>}
+                        {r.status === 'failed'          && <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--rose)' }} title={r.errorMsg}>✕ Failed</span>}
+                        {r.status === 'not_found'       && <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Not found</span>}
+                        {r.status === 'error'           && <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--rose)' }} title={r.errorMsg}>Error</span>}
                       </td>
                     </tr>
                   );
@@ -383,10 +413,11 @@ function ImportTab({ onImportDone }) {
           </div>
 
           {/* Import footer */}
-          {readyCount > 0 && step !== 'done' && (
+          {(readyCount > 0 || likelyDupCount > 0) && step !== 'done' && (
             <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
-                <strong style={{ color: 'var(--text-1)' }}>{selectedCount}</strong> of {readyCount} companies selected
+                <strong style={{ color: 'var(--text-1)' }}>{selectedCount}</strong> selected
+                {likelyDupCount > 0 && <span style={{ marginLeft: 6, fontSize: 12, color: '#d97706' }}>({likelyDupCount} likely duplicates — will patch blank fields only)</span>}
               </span>
               <button
                 onClick={runImport}
@@ -405,9 +436,10 @@ function ImportTab({ onImportDone }) {
         <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 14, padding: '20px 24px' }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#16a34a', marginBottom: 10 }}>✓ Import complete</div>
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-            <div style={{ fontSize: 13 }}><span style={{ color: '#22c55e', fontWeight: 600 }}>{importedCount}</span> <span style={{ color: 'var(--text-2)' }}>imported</span></div>
-            {dupCount > 0    && <div style={{ fontSize: 13 }}><span style={{ color: '#d97706', fontWeight: 600 }}>{dupCount}</span> <span style={{ color: 'var(--text-2)' }}>skipped (duplicate)</span></div>}
-            {failedCount > 0 && <div style={{ fontSize: 13 }}><span style={{ color: 'var(--rose)', fontWeight: 600 }}>{failedCount}</span> <span style={{ color: 'var(--text-2)' }}>failed</span></div>}
+            {importedCount > 0 && <div style={{ fontSize: 13 }}><span style={{ color: '#22c55e', fontWeight: 600 }}>{importedCount}</span> <span style={{ color: 'var(--text-2)' }}>created</span></div>}
+            {patchedCount > 0  && <div style={{ fontSize: 13 }}><span style={{ color: '#6366f1', fontWeight: 600 }}>{patchedCount}</span> <span style={{ color: 'var(--text-2)' }}>patched (blank fields filled)</span></div>}
+            {skippedCount > 0  && <div style={{ fontSize: 13 }}><span style={{ color: 'var(--text-3)', fontWeight: 600 }}>{skippedCount}</span> <span style={{ color: 'var(--text-2)' }}>skipped (already complete)</span></div>}
+            {failedCount > 0   && <div style={{ fontSize: 13 }}><span style={{ color: 'var(--rose)', fontWeight: 600 }}>{failedCount}</span> <span style={{ color: 'var(--text-2)' }}>failed</span></div>}
           </div>
           <button onClick={() => { setStep('config'); setResults([]); setImportLog([]); }} style={{ marginTop: 14, fontSize: 12, fontWeight: 600, color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
             Start a new import
