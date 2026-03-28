@@ -470,7 +470,23 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
 
           {/* Stat bar — single surface with internal dividers */}
           <div className="company-modal-statbar" style={{ display:'flex', background:'var(--bg-2)', borderRadius:10, marginBottom:18, overflow:'hidden' }}>
-            {[\r\n              { label:'Entries',    value: company.entries,  accent: false },\r\n              { label:'Median TC',   value: company.avgTC,    accent: false },\r\n              { label:'TC Range',    value: hasTcRange ? `${fmtSalary(company.tcMin)} – ${fmtSalary(company.tcMax)}` : '—', accent: true },\r\n            ].map((s, i) => (\r\n              <div key={s.label} style={{\r\n                display:'flex', flexDirection:'column', padding:'10px 16px',\r\n                borderLeft: i === 0 ? 'none' : '0.5px solid var(--border)',\r\n                flex: i === 2 ? '2' : '1',\r\n              }}>\r\n                <div style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-3)', marginBottom:4 }}>{s.label}</div>\r\n                <div style={{ fontSize:15, fontWeight:500, fontFamily:"'IBM Plex Mono',monospace", color: s.accent ? '#3b82f6' : 'var(--text-1)', whiteSpace:'nowrap' }}>\r\n                  {s.value ?? '—'}\r\n                </div>\r\n              </div>\r\n            ))}\r\n          </div>
+            {[
+              { label:'Entries',  value: company.entries, accent: false },
+              { label:'Median TC', value: company.avgTC,   accent: false },
+              { label:'TC Range', value: hasTcRange ? `${fmtSalary(company.tcMin)} – ${fmtSalary(company.tcMax)}` : '—', accent: true },
+            ].map((s, i) => (
+              <div key={s.label} style={{
+                display:'flex', flexDirection:'column', padding:'10px 16px',
+                borderLeft: i === 0 ? 'none' : '0.5px solid var(--border)',
+                flex: i === 2 ? '2' : '1',
+              }}>
+                <div style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-3)', marginBottom:4 }}>{s.label}</div>
+                <div style={{ fontSize:15, fontWeight:500, fontFamily:"'IBM Plex Mono',monospace", color: s.accent ? '#3b82f6' : 'var(--text-1)', whiteSpace:'nowrap' }}>
+                  {s.value ?? '—'}
+                </div>
+              </div>
+            ))}
+          </div>
 
           {/* Tabs */}
           <div style={{ display:'flex' }}>
