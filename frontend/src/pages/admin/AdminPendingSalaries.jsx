@@ -277,6 +277,8 @@ export default function AdminPendingSalaries() {
     clearTimeout(infoTimerRef.current);
     infoTimerRef.current = setTimeout(() => fetchEnrichInfo(val), 600);
   }
+
+  function stopPolling() {
     clearInterval(pollRef.current);
     pollRef.current = null;
   }
