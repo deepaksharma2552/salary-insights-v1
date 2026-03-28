@@ -54,6 +54,8 @@ public class PublicCompanyController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) List<String> level,
             @RequestParam(required = false) List<String> location,
+            @RequestParam(required = false) UUID jobFunctionId,
+            @RequestParam(required = false) UUID functionLevelId,
             @RequestParam(defaultValue = "totalCompensation") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
 
@@ -67,7 +69,7 @@ public class PublicCompanyController {
             org.springframework.data.domain.PageRequest.of(page, size, Sort.by(direction, sortField));
 
         return ResponseEntity.ok(ApiResponse.success(
-                salaryService.getApprovedSalaries(id, null, null, location, null, level, pageable)));
+                salaryService.getApprovedSalaries(id, null, null, location, null, level, null, jobFunctionId, functionLevelId, pageable)));
     }
 
     /**
