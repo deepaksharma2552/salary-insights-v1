@@ -923,6 +923,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
                           <span style={getLevelBadgeStyle(s.internalLevel !== '—' ? s.internalLevel : null)}>
                             {s.internalLevel !== '—' ? s.internalLevel : '—'}
                           </span>
+                        </div>
                         <div style={{ fontSize:11, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.yoe}</div>
                         <div style={{ fontSize:13, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', fontWeight:500 }}>{s.base}</div>
                         <div style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.bonus}</div>
