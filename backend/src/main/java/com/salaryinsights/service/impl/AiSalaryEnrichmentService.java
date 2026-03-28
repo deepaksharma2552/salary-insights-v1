@@ -57,9 +57,26 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class AiSalaryEnrichmentService {
 
-    private static final int  MAX_ENTRIES       = 20;
-    private static final long RATE_LIMIT_MILLIS = 60 * 60 * 1_000L; // 1 hour
-    private static final long JOB_TTL_MILLIS    = 30 * 60 * 1_000L; // keep jobs for 30 min
+    @Value("${ai.enrichment.max-entries:30}")
+    private int maxEntries;
+
+    @Value("${ai.enrichment.rate-limit-millis:3600000}")
+    private long rateLimitMillis;
+
+    @Value("${ai.enrichment.job-ttl-millis:1800000}")
+    private long jobTtlMillis;
+
+    @Value("${ai.enrichment.max-tokens:8000}")
+    private int maxTokens;
+
+    @Value("${ai.enrichment.max-search-uses:5}")
+    private int maxSearchUses;
+
+    @Value("${ai.enrichment.salary-change-threshold:0.10}")
+    private double salaryChangeThresholdPct;
+
+    @Value("${ai.enrichment.stale-entry-days:90}")
+    private long staleEntryDays;
 
     // in-memory rate-limit store: companyNameLower -> lastEnrichmentEpochMs
     private final ConcurrentHashMap<String, Long> lastEnrichmentTime = new ConcurrentHashMap<>();
@@ -129,8 +146,8 @@ public class AiSalaryEnrichmentService {
 
         // Rate limit check
         Long last = lastEnrichmentTime.get(key);
-        if (last != null && (Instant.now().toEpochMilli() - last) < RATE_LIMIT_MILLIS) {
-            long minutesLeft = (RATE_LIMIT_MILLIS - (Instant.now().toEpochMilli() - last)) / 60_000;
+        if (last != null && (Instant.now().toEpochMilli() - last) < rateLimitMillis) {
+            long minutesLeft = (rateLimitMillis - (Instant.now().toEpochMilli() - last)) / 60_000;
             throw new IllegalStateException(
                 "Rate limit: already enriched \"" + companyName + "\" recently. "
                 + "Try again in ~" + minutesLeft + " minute(s).");
@@ -169,7 +186,7 @@ public class AiSalaryEnrichmentService {
     }
 
     private void evictStaleJobs() {
-        long cutoff = Instant.now().toEpochMilli() - JOB_TTL_MILLIS;
+        long cutoff = Instant.now().toEpochMilli() - jobTtlMillis;
         jobs.entrySet().removeIf(e -> e.getValue().getCreatedAt() < cutoff);
     }
 
@@ -262,11 +279,11 @@ public class AiSalaryEnrichmentService {
             return 0;
         }
 
-        // Cap at MAX_ENTRIES
+        // Cap at maxEntries
         List<AiSalaryEntry> entries = aiData.getEntries();
-        if (entries.size() > MAX_ENTRIES) {
-            log.info("[AI Enrich] Capping {} entries to {} for: {}", entries.size(), MAX_ENTRIES, companyName);
-            entries = entries.subList(0, MAX_ENTRIES);
+        if (entries.size() > maxEntries) {
+            log.info("[AI Enrich] Capping {} entries to {} for: {}", entries.size(), maxEntries, companyName);
+            entries = entries.subList(0, maxEntries);
         }
 
         // Resolve location per-entry from aiEntry.getLocation() — see mapToSalaryRequest()
@@ -322,14 +339,10 @@ public class AiSalaryEnrichmentService {
 
         Map<String, Object> requestBody = new LinkedHashMap<>();
         requestBody.put("model", CLAUDE_MODEL);
-        requestBody.put("max_tokens", 5000); // 20 entries × ~150-200 tokens each (notes, rupee symbols, city names) ≈ 3000-4000; 5000 gives safe headroom
+        requestBody.put("max_tokens", maxTokens);
         requestBody.put("system", systemPrompt);
-        // max_uses: 5 caps web searches so Claude doesn't over-search trying to reach 20 entries.
-        // 5 gives enough headroom for one refinement search per source (levels.fyi, glassdoor,
-        // ambitionbox) without the hard ceiling cutting off legitimate data on sparse companies.
-        // The prompt already instructs stopping at 15 confirmed points; this enforces it at the API layer.
         requestBody.put("tools", List.of(
-            Map.of("type", "web_search_20250305", "name", "web_search", "max_uses", 5)
+            Map.of("type", "web_search_20250305", "name", "web_search", "max_uses", maxSearchUses)
         ));
         requestBody.put("messages", List.of(
             Map.of("role", "user", "content", userPrompt)
@@ -426,6 +439,7 @@ public class AiSalaryEnrichmentService {
     // ── Prompt ─────────────────────────────────────────────────────────────────
 
     private String buildPrompt(String companyName) {
+        int stopSearchAt = Math.max(10, maxEntries - 5); // stop searching once enough data points found
         return """
             IMPORTANT: Your response must begin immediately with the character '{'. Do NOT write any text, commentary, or explanation before the JSON object.
 
@@ -436,11 +450,12 @@ public class AiSalaryEnrichmentService {
             2. Only search glassdoor.co.in if levels.fyi returned fewer than 10 entries.
             3. Only search ambitionbox.com if you still need more data after steps 1 and 2.
             Do NOT search linkedin, naukri, payscale, iimjobs unless the above 3 sources are all exhausted.
-            STOP SEARCHING as soon as you have 15 or more real data points — do not search all sources unnecessarily.
+            STOP SEARCHING as soon as you have %d or more real data points — do not search all sources unnecessarily.
 
-            TARGET — return UP TO 20 entries. Stop at whatever real data you have found — do NOT fabricate
-            or estimate salaries to pad to 20. Fewer real entries are always better than fabricated ones.
-
+            TARGET — return UP TO %d entries. Stop at whatever real data you have found — do NOT fabricate
+            or estimate salaries to pad to %d. Fewer real entries are always better than fabricated ones.
+            """.formatted(companyName, companyName, stopSearchAt, maxEntries, maxEntries)
+            + """
             DIVERSITY RULES — no two entries may share the same (jobTitle + experienceLevel + location):
             - Cover ALL seniority bands: INTERN, ENTRY, MID, SENIOR, LEAD, MANAGER, DIRECTOR
             - Cover at least 3 departments: Engineering, Product, Design, Data
@@ -479,7 +494,7 @@ public class AiSalaryEnrichmentService {
             - baseSalary must be a positive integer, never null or zero
             - Do NOT include any text, explanation, or markdown outside the JSON object
             - Do NOT repeat a (jobTitle + experienceLevel + location) combination across entries
-            """.formatted(companyName, companyName, companyName);
+            """.formatted(companyName);
     }
 
     // ── Vesting schedule ───────────────────────────────────────────────────────
@@ -539,21 +554,8 @@ public class AiSalaryEnrichmentService {
         return DEFAULT_VESTING_YEARS;
     }
 
-    // ── Dedup constants ────────────────────────────────────────────────────────
-
-    /**
-     * If the incoming base salary differs from the most recent existing entry
-     * by more than this percentage, treat it as a genuinely new observation
-     * and insert a fresh PENDING entry regardless of how recent the last one was.
-     */
-    private static final double SALARY_CHANGE_THRESHOLD_PCT = 0.10; // 10 %
-
-    /**
-     * If the most recent existing entry (for the same fingerprint) is older than
-     * this many days, insert a fresh entry even if the salary hasn't moved —
-     * market data ages out and should be periodically refreshed.
-     */
-    private static final long STALE_ENTRY_DAYS = 90;
+    // ── Dedup thresholds — injected from ai.enrichment.* properties ───────────
+    // (salary-change-threshold and stale-entry-days are declared as @Value fields above)
 
     // ── Upsert by fingerprint ──────────────────────────────────────────────────
 
@@ -615,7 +617,7 @@ public class AiSalaryEnrichmentService {
                                            .divide(existingBase, 4, RoundingMode.HALF_UP)
                                            .doubleValue();
 
-            if (changePct > SALARY_CHANGE_THRESHOLD_PCT) {
+            if (changePct > salaryChangeThresholdPct) {
                 salaryService.submitSalary(req, systemUser);
                 log.info("[AI Enrich] INSERTED (salary moved {:.1f}%): {} — was ₹{} now ₹{}",
                     changePct * 100, req.getJobTitle(),
@@ -634,10 +636,10 @@ public class AiSalaryEnrichmentService {
             long daysSinceCreated = java.time.temporal.ChronoUnit.DAYS.between(
                 latest.getCreatedAt(), java.time.LocalDateTime.now());
 
-            if (daysSinceCreated >= STALE_ENTRY_DAYS) {
+            if (daysSinceCreated >= staleEntryDays) {
                 salaryService.submitSalary(req, systemUser);
                 log.info("[AI Enrich] INSERTED (data aged {}d > {}d): {}",
-                    daysSinceCreated, STALE_ENTRY_DAYS, req.getJobTitle());
+                    daysSinceCreated, staleEntryDays, req.getJobTitle());
                 auditLogService.log("SalaryEntry", fingerprint, "AI_STALE_REFRESH",
                     String.format("[AI] %s at %s: previous entry was %d days old — refreshed",
                         req.getJobTitle(), req.getCompanyName(), daysSinceCreated));

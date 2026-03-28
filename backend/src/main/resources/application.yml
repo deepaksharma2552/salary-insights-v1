@@ -90,3 +90,33 @@ anthropic:
     # Set ANTHROPIC_API_KEY in your environment / Railway variables.
     # Get your key at: https://console.anthropic.com/settings/keys
     key: ${ANTHROPIC_API_KEY:}
+
+ai:
+  enrichment:
+    # Maximum salary entries accepted per enrichment run.
+    # 30 gives good coverage (levels.fyi has 25–35 data points for FAANG India);
+    # beyond 30 the data thins and fabrication risk rises sharply.
+    # To revert to previous behaviour set AI_ENRICHMENT_MAX_ENTRIES=20.
+    max-entries: ${AI_ENRICHMENT_MAX_ENTRIES:30}
+
+    # Token budget for the Claude API call.
+    # 30 entries × ~200 tokens each ≈ 6000; 8000 gives comfortable headroom.
+    # To revert to previous behaviour set AI_ENRICHMENT_MAX_TOKENS=5000.
+    max-tokens: ${AI_ENRICHMENT_MAX_TOKENS:8000}
+
+    # Maximum web searches Claude may perform per enrichment run.
+    # Caps API cost while still allowing one refinement search per source.
+    max-search-uses: ${AI_ENRICHMENT_MAX_SEARCH_USES:5}
+
+    # In-memory rate-limit window per company (milliseconds). Default 1 hour.
+    rate-limit-millis: ${AI_ENRICHMENT_RATE_LIMIT_MILLIS:3600000}
+
+    # How long completed/failed jobs are kept in the in-memory job store (milliseconds).
+    job-ttl-millis: ${AI_ENRICHMENT_JOB_TTL_MILLIS:1800000}
+
+    # Salary change threshold for upsert logic (0.10 = 10%).
+    # A new AI entry is inserted if the base salary differs by more than this fraction.
+    salary-change-threshold: ${AI_ENRICHMENT_SALARY_CHANGE_THRESHOLD:0.10}
+
+    # Number of days after which an existing entry is considered stale and refreshed.
+    stale-entry-days: ${AI_ENRICHMENT_STALE_ENTRY_DAYS:90}
