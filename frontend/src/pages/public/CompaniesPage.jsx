@@ -305,7 +305,7 @@ function BenefitsGrid({ benefits }) {
                   color: isGood ? '#16a34a' : isNo ? '#dc2626' : currentMeta.dot,
                   fontFamily: hasMoney ? "'IBM Plex Mono',monospace" : 'inherit',
                 }}>
-                  {isGood ? '✓ ' : isNo ? '✗ ' : ''}{amount}
+                  {isGood ? '✓ ' : isNo ? '✗ ' : hasMoney ? '₹' : ''}{amount}
                 </span>
               ) : (
                 <span style={{ fontSize:11, color:'var(--text-3)', fontStyle:'italic' }}>not specified</span>
@@ -919,7 +919,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
                         onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--bg-2)'}
                       >
                         <div style={{ minWidth:0 }}>
-                          <div title={s.role} style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.role}</div>
+                          <div style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.role}</div>
                         </div>
                         <div>
                           <span style={getLevelBadgeStyle(s.internalLevel !== '—' ? s.internalLevel : null)}>
