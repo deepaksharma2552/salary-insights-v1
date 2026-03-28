@@ -176,7 +176,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         ") " +
         "SELECT company_name, company_id_str, logo_url, website, internalLevel, " +
         "       avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt, " +
-        "       company_total_entries, most_recent_entry " +
+        "       company_total_entries, most_recent_entry, hierarchy_rank " +
         "FROM level_agg " +
         "ORDER BY weighted_score DESC, hierarchy_rank ASC",
         nativeQuery = true)
@@ -210,7 +210,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  WHERE s.review_status = 'APPROVED' " +
         "  GROUP BY s.location, lr.most_recent_entry, sl.id, sl.name, sl.hierarchy_rank " +
         ") " +
-        "SELECT location, internalLevel, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt " +
+        "SELECT location, internalLevel, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt, hierarchy_rank " +
         "FROM loc_lvl " +
         "ORDER BY most_recent_entry DESC, hierarchy_rank ASC",
         nativeQuery = true)
@@ -408,7 +408,7 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         ") " +
         "SELECT company_name, company_id_str, logo_url, website, internalLevel, " +
         "       avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt, " +
-        "       company_total_entries, most_recent_entry " +
+        "       company_total_entries, most_recent_entry, hierarchy_rank " +
         "FROM level_agg " +
         "ORDER BY weighted_score DESC, hierarchy_rank ASC",
         nativeQuery = true)

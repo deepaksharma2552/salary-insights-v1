@@ -455,7 +455,7 @@ public class SalaryService {
     @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'byLocationLevel'")
     public List<LocationLevelSalaryDTO> getAvgSalaryByLocationAndLevel() {
         return salaryEntryRepository.avgSalaryByLocationAndLevelRaw().stream().map(row -> {
-            // col: location[0], levelName[1], avgBaseSalary[2], avgBonus[3], avgEquity[4], avgTotalComp[5], cnt[6]
+            // col: location[0], levelName[1], avgBaseSalary[2], avgBonus[3], avgEquity[4], avgTotalComp[5], cnt[6], hierarchyRank[7]
             String enumName = row[0] != null ? row[0].toString() : null;
             String displayName = enumName;
             if (enumName != null) {
@@ -472,6 +472,7 @@ public class SalaryService {
             dto.setAvgEquity(row[4] != null ? ((Number) row[4]).doubleValue() : null);
             dto.setAvgTotalCompensation(row[5] != null ? ((Number) row[5]).doubleValue() : null);
             dto.setCount(row[6] != null ? ((Number) row[6]).longValue() : 0L);
+            dto.setHierarchyRank(row[7] != null ? ((Number) row[7]).intValue() : null);
             return dto;
         }).collect(Collectors.toList());
     }
@@ -598,6 +599,7 @@ public class SalaryService {
             dto.setMostRecentEntry(recent);
             dto.setConfidenceTier(conf[0]);
             dto.setConfidenceLabel(conf[1]);
+            dto.setHierarchyRank(row[12] != null ? ((Number) row[12]).intValue() : null);
             return dto;
         }).collect(Collectors.toList());
     }

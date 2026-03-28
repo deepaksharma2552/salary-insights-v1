@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 public class LocationLevelSalaryDTO {
     private String location;
     private String internalLevel;
+    private Integer hierarchyRank;
     private Double avgBaseSalary;
     private Double avgBonus;
     private Double avgEquity;

@@ -651,6 +651,15 @@ export default function DashboardPage() {
     }, {}),
   [byLocationLevel]);
 
+  // Sort each location's rows by hierarchyRank ascending after grouping
+  const locationGroupedSorted = useMemo(() => {
+    const result = {};
+    Object.entries(locationGrouped).forEach(([loc, rows]) => {
+      result[loc] = [...rows].sort((a, b) => (a.hierarchyRank ?? 9999) - (b.hierarchyRank ?? 9999));
+    });
+    return result;
+  }, [locationGrouped]);
+
   const companyGrouped = useMemo(() =>
     byCompanyLevel.reduce((acc, row) => {
       if (!acc[row.companyName]) acc[row.companyName] = [];
@@ -659,38 +668,44 @@ export default function DashboardPage() {
     }, {}),
   [byCompanyLevel]);
 
+  // Sort each company's rows by hierarchyRank ascending after grouping
+  const companyGroupedSorted = useMemo(() => {
+    const result = {};
+    Object.entries(companyGrouped).forEach(([company, rows]) => {
+      result[company] = [...rows].sort((a, b) => (a.hierarchyRank ?? 9999) - (b.hierarchyRank ?? 9999));
+    });
+    return result;
+  }, [companyGrouped]);
+
   const allLocations    = ALL_LOCATIONS;
   const allCompanyNames = useMemo(() => Object.keys(companyGrouped), [companyGrouped]);
   const allLevelNames   = useMemo(() => {
-    const seen = new Set();
-    byCompanyLevel.forEach(row => { if (row.internalLevel) seen.add(row.internalLevel); });
-    const ORDER = ['SDE 1','SDE 2','SDE 3','Staff Engineer','Principal Engineer','Architect',
-                   'Engineering Manager','Sr. Engineering Manager','Director','Sr. Director','VP'];
-    return [...seen].sort((a, b) => {
-      const ai = ORDER.indexOf(a); const bi = ORDER.indexOf(b);
-      if (ai !== -1 && bi !== -1) return ai - bi;
-      if (ai !== -1) return -1; if (bi !== -1) return 1;
-      return a.localeCompare(b);
+    // Build a rank lookup from the data itself — no hardcoded ORDER array needed
+    const rankMap = {};
+    byCompanyLevel.forEach(row => {
+      if (row.internalLevel && row.hierarchyRank != null) rankMap[row.internalLevel] = row.hierarchyRank;
     });
+    const seen = new Set(byCompanyLevel.map(r => r.internalLevel).filter(Boolean));
+    return [...seen].sort((a, b) => (rankMap[a] ?? 9999) - (rankMap[b] ?? 9999));
   }, [byCompanyLevel]);
 
   const visibleLocations = selLocations.length > 0
-    ? selLocations.filter(l => locationGrouped[l])
+    ? selLocations.filter(l => locationGroupedSorted[l])
     : allLocations;
 
   const visibleCompanies = selCompanies.length > 0
-    ? selCompanies.filter(c => companyGrouped[c])
+    ? selCompanies.filter(c => companyGroupedSorted[c])
     : allCompanyNames;
 
   const maxLocTotal = useMemo(() => {
-    const rows = visibleLocations.flatMap(l => locationGrouped[l] ?? []);
+    const rows = visibleLocations.flatMap(l => locationGroupedSorted[l] ?? []);
     return rows.length ? Math.max(...rows.map(r => r.avgTotalCompensation ?? 0), 1) : 1;
-  }, [visibleLocations, locationGrouped]);
+  }, [visibleLocations, locationGroupedSorted]);
 
   const maxCoTotal = useMemo(() => {
-    const rows = visibleCompanies.flatMap(c => companyGrouped[c] ?? []);
+    const rows = visibleCompanies.flatMap(c => companyGroupedSorted[c] ?? []);
     return rows.length ? Math.max(...rows.map(r => r.avgTotalCompensation ?? 0), 1) : 1;
-  }, [visibleCompanies, companyGrouped]);
+  }, [visibleCompanies, companyGroupedSorted]);
 
   /* ── Helpers ── */
   const fmtCount = n => {
@@ -902,7 +917,7 @@ export default function DashboardPage() {
                  visibleLocations.length === 0 ? <EmptyState filtered filterLabel={selLocations.join(', ')} /> : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                     {visibleLocations.map((loc, li) => {
-                      const rows  = locationGrouped[loc] ?? [];
+                      const rows  = locationGroupedSorted[loc] ?? [];
                       const color = BAR_COLORS[li % BAR_COLORS.length];
                       return (
                         <div key={loc}>
@@ -965,7 +980,7 @@ export default function DashboardPage() {
                  visibleCompanies.length === 0 ? <EmptyState filtered filterLabel={selLocationsForCompany.join(', ')} /> : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                     {visibleCompanies.map((company, ci) => {
-                      const allRows = companyGrouped[company] ?? [];
+                      const allRows = companyGroupedSorted[company] ?? [];
                       const rows    = selLevels.length > 0 ? allRows.filter(r => selLevels.includes(r.internalLevel)) : allRows;
                       if (rows.length === 0) return null;
                       const firstRow = rows[0];

@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 public class CompanyLevelSalaryDTO {
     private String companyName;
     private String internalLevel;
+    private Integer hierarchyRank;
     private Double avgBaseSalary;
     private Double avgBonus;
     private Double avgEquity;
