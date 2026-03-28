@@ -585,9 +585,9 @@ export default function AdminApprovedSalaries() {
                     </td>
                     <td style={{ fontSize:13, maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{e.jobTitle}</td>
                     <td>
-                      {e.experienceLevel && (
+                      {e.standardizedLevelName && (
                         <span style={{ fontSize:11, padding:'2px 7px', borderRadius:99, background:'var(--bg-3)', color:'var(--text-2)', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'0.04em' }}>
-                          {e.experienceLevel}
+                          {e.standardizedLevelName}
                         </span>
                       )}
                     </td>

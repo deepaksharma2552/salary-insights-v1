@@ -36,7 +36,6 @@ export default function SubmitSalaryPage() {
     bonus:           '',
     equity:          '',
     yearsOfExperience: '',
-    experienceLevel:   '',
     employmentType:    'FULL_TIME',
     notes: '',
   });
@@ -68,31 +67,6 @@ export default function SubmitSalaryPage() {
     if (usd >= 1000) return `$${(usd / 1000).toFixed(1).replace(/\.0$/, '')}K`;
     return `$${usd}`;
   }
-
-  // ── Experience level auto-populate ────────────────────────────────────────
-  const [levelAutoSet, setLevelAutoSet] = useState(false);
-
-  function deriveLevel(years) {
-    const y = Number(years);
-    if (isNaN(y) || years === '') return '';
-    if (y <= 1)  return 'INTERN';
-    if (y <= 2)  return 'ENTRY';
-    if (y <= 5)  return 'MID';
-    if (y <= 8)  return 'SENIOR';
-    if (y <= 12) return 'LEAD';
-    if (y <= 16) return 'MANAGER';
-    if (y <= 20) return 'DIRECTOR';
-    return 'VP';
-  }
-
-  useEffect(() => {
-    if (form.yearsOfExperience === '') return;
-    const derived = deriveLevel(form.yearsOfExperience);
-    if (derived) {
-      setForm(f => ({ ...f, experienceLevel: derived }));
-      setLevelAutoSet(true);
-    }
-  }, [form.yearsOfExperience]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Function → Level reactive dropdown ───────────────────────────────────
   const availableLevels = useMemo(
@@ -148,7 +122,6 @@ export default function SubmitSalaryPage() {
   // ── Generic field change ──────────────────────────────────────────────────
   function handleChange(e) {
     const { name, value } = e.target;
-    if (name === 'experienceLevel') setLevelAutoSet(false);
     if (name === 'jobFunctionId') {
       setForm(f => ({ ...f, jobFunctionId: value, functionLevelId: '' }));
       return;
@@ -162,7 +135,6 @@ export default function SubmitSalaryPage() {
     if (!form.companyId && !form.companyName) { setError('Please enter or select a company name.'); return; }
     if (!form.jobFunctionId)    { setError('Please select a function.'); return; }
     if (!form.functionLevelId)  { setError('Please select a level.'); return; }
-    if (!form.experienceLevel)  { setError('Please select an experience level.'); return; }
     if (!form.location)         { setError('Please select a location.'); return; }
 
     setSubmitting(true); setError('');
@@ -174,7 +146,6 @@ export default function SubmitSalaryPage() {
         jobFunctionId:     form.jobFunctionId     || null,
         functionLevelId:   form.functionLevelId   || null,
         location:          form.location,
-        experienceLevel:   form.experienceLevel,
         employmentType:    form.employmentType,
         baseSalary:        Number(form.baseSalary) || 0,
         bonus:             Number(form.bonus)       || null,
@@ -469,35 +440,6 @@ export default function SubmitSalaryPage() {
               <div className="form-group">
                 <label className="form-label">Years of Experience *</label>
                 <input className="form-input" name="yearsOfExperience" type="number" min="0" max="50" placeholder="e.g. 4" value={form.yearsOfExperience} onChange={handleChange} required />
-              </div>
-
-              {/* Experience Level — auto-populated from YOE, editable */}
-              <div className="form-group">
-                <label className="form-label">
-                  Experience Level
-                  {levelAutoSet && (
-                    <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--teal)', fontFamily: "'JetBrains Mono',monospace", fontWeight: 500 }}>
-                      ✓ auto-filled
-                    </span>
-                  )}
-                </label>
-                <select className="form-input" name="experienceLevel" value={form.experienceLevel} onChange={handleChange} style={{ cursor: 'pointer' }}>
-                  <option value="">Select level</option>
-                  <option value="INTERN">Intern (0–1 yr)</option>
-                  <option value="ENTRY">Junior / Entry (1–2 yrs)</option>
-                  <option value="MID">Mid-level (2–5 yrs)</option>
-                  <option value="SENIOR">Senior (5–8 yrs)</option>
-                  <option value="LEAD">Lead / Staff (8–12 yrs)</option>
-                  <option value="MANAGER">Manager (12–16 yrs)</option>
-                  <option value="DIRECTOR">Director (16–20 yrs)</option>
-                  <option value="VP">VP / SVP (20+ yrs)</option>
-                  <option value="C_LEVEL">C-Level (manual only)</option>
-                </select>
-                {levelAutoSet && (
-                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontFamily: "'JetBrains Mono',monospace" }}>
-                    Auto-filled from years of experience · you can override this
-                  </div>
-                )}
               </div>
 
               {/* Notes */}

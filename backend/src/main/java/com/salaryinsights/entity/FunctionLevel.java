@@ -32,4 +32,15 @@ public class FunctionLevel extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "standardized_level_id")
     private StandardizedLevel standardizedLevel;
+
+    /**
+     * YOE band for DB-driven level mapping.
+     * minYoe is inclusive, maxYoe is exclusive (e.g. minYoe=3, maxYoe=6 → 3 ≤ yoe < 6).
+     * Null means no band configured — fallback to hardcoded ladder applies.
+     */
+    @Column(name = "min_yoe")
+    private Integer minYoe;
+
+    @Column(name = "max_yoe")
+    private Integer maxYoe;
 }

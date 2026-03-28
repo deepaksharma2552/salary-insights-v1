@@ -348,18 +348,25 @@ public class SalaryService {
     /**
      * Derives ExperienceLevel from yearsOfExperience, then falls back to the
      * standardized level's explicit experienceLevel field (DB-driven — no rank ladder).
+     *
+     * Bands aligned to yoeToStandardizedLevelName() in AiSalaryEnrichmentService:
+     *   0 yoe  → INTERN   (Intern band)
+     *   1–3    → ENTRY    (SDE 1)
+     *   3–5    → MID      (SDE 2)
+     *   5–8    → SENIOR   (SDE 3)
+     *   8–15   → LEAD     (Staff / Principal Engineer)
+     *   16+    → MANAGER  (Architect / Engineering Manager)
+     * DIRECTOR / VP / C_LEVEL are set explicitly by the AI enrichment path only.
      */
     private ExperienceLevel deriveExperienceLevel(SalaryRequest request, StandardizedLevel resolvedLevel) {
         if (request.getYearsOfExperience() != null) {
             int y = request.getYearsOfExperience();
-            if (y <= 1)  return ExperienceLevel.INTERN;
-            if (y <= 2)  return ExperienceLevel.ENTRY;
+            if (y <= 0)  return ExperienceLevel.INTERN;
+            if (y <= 3)  return ExperienceLevel.ENTRY;
             if (y <= 5)  return ExperienceLevel.MID;
             if (y <= 8)  return ExperienceLevel.SENIOR;
-            if (y <= 12) return ExperienceLevel.LEAD;
-            if (y <= 16) return ExperienceLevel.MANAGER;
-            if (y <= 20) return ExperienceLevel.DIRECTOR;
-            return ExperienceLevel.VP;
+            if (y <= 15) return ExperienceLevel.LEAD;
+            return ExperienceLevel.MANAGER;
         }
         if (resolvedLevel != null && resolvedLevel.getExperienceLevel() != null) {
             return resolvedLevel.getExperienceLevel();

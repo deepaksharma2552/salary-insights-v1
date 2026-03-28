@@ -34,11 +34,9 @@ function fmtDate(iso) {
 }
 
 function mapSalary(s) {
-  const levelMap = { INTERN:'junior',ENTRY:'junior',MID:'mid',SENIOR:'senior',LEAD:'lead',MANAGER:'lead',DIRECTOR:'lead',VP:'lead',C_LEVEL:'lead' };
   const fmt = (v) => { if (!v && v !== 0) return '—'; const l = Number(v)/100000; return l>=100?`₹${(l/100).toFixed(1)}Cr`:`₹${l.toFixed(1)}L`; };
   return {
     id: s.id, role: s.jobTitle ?? '—',
-    level: levelMap[s.experienceLevel] ?? 'mid',
     internalLevel: s.standardizedLevelName ?? '—',
     location: s.location ?? '—',
     base: fmt(s.baseSalary), bonus: fmt(s.bonus),
@@ -923,10 +921,8 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
                         </div>
                         <div>
                           <span style={getLevelBadgeStyle(s.internalLevel !== '—' ? s.internalLevel : null)}>
-                            {s.internalLevel !== '—' ? s.internalLevel : s.level}
+                            {s.internalLevel !== '—' ? s.internalLevel : '—'}
                           </span>
-                        </div>
-                        <div style={{ fontSize:12, color:'var(--text-2)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.location}</div>
                         <div style={{ fontSize:11, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.yoe}</div>
                         <div style={{ fontSize:13, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', fontWeight:500 }}>{s.base}</div>
                         <div style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>{s.bonus}</div>
@@ -949,7 +945,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
                           <div style={{ minWidth:0, flex:1, marginRight:8 }}>
                             <div style={{ fontSize:14, fontWeight:600, color:'var(--text-1)', marginBottom:3 }}>{s.role}</div>
                             <span style={getLevelBadgeStyle(s.internalLevel !== '—' ? s.internalLevel : null)}>
-                              {s.internalLevel !== '—' ? s.internalLevel : s.level}
+                              {s.internalLevel !== '—' ? s.internalLevel : '—'}
                             </span>
                           </div>
                           <div style={{ textAlign:'right', flexShrink:0 }}>

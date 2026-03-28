@@ -90,6 +90,8 @@ public class JobFunctionService {
                 .name(req.getName().trim())
                 .sortOrder(req.getSortOrder())
                 .standardizedLevel(sl)
+                .minYoe(req.getMinYoe())
+                .maxYoe(req.getMaxYoe())
                 .build();
         return toLevelResponse(levelRepo.save(fl));
     }
@@ -102,6 +104,8 @@ public class JobFunctionService {
         fl.setName(req.getName().trim());
         fl.setSortOrder(req.getSortOrder());
         fl.setStandardizedLevel(resolveStandardizedLevel(req.getStandardizedLevelId()));
+        fl.setMinYoe(req.getMinYoe());
+        fl.setMaxYoe(req.getMaxYoe());
         return toLevelResponse(levelRepo.save(fl));
     }
 
@@ -145,6 +149,8 @@ public class JobFunctionService {
             r.setStandardizedLevelId(fl.getStandardizedLevel().getId());
             r.setStandardizedLevelName(fl.getStandardizedLevel().getName());
         }
+        r.setMinYoe(fl.getMinYoe());
+        r.setMaxYoe(fl.getMaxYoe());
         return r;
     }
 }

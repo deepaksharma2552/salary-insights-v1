@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SalaryDetailDrawer from './SalaryDetailDrawer';
-import { LEVEL_BADGE_CLASS, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../utils/salaryMapper';
+import { stdLevelBadgeClass, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../utils/salaryMapper';
 import CompanyLogo from '../shared/CompanyLogo';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useSalaryEnrichment } from '../../hooks/useSalaryEnrichment';
@@ -77,10 +77,9 @@ export default function SalaryTable({ rows, openEntryId = null, onEntryClose }) 
       <>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {rows.map(s => {
-            const lvlClass  = LEVEL_BADGE_CLASS[s.level] ?? 'badge';
+            const lvlClass  = stdLevelBadgeClass(s.internalLevel);
             const stClass   = STATUS_BADGE_CLASS[s.status] ?? 'status-badge';
             const stLabel   = STATUS_LABEL[s.status] ?? s.status;
-            const capLevel  = s.level ? s.level.charAt(0).toUpperCase() + s.level.slice(1) : '—';
             const compIdStr = s.companyId ? String(s.companyId) : null;
             const trend     = compIdStr ? trendMap.get(compIdStr)  : undefined;
 
@@ -114,10 +113,7 @@ export default function SalaryTable({ rows, openEntryId = null, onEntryClose }) 
                 </div>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                  <span className={lvlClass}>{capLevel}</span>
-                  {s.internalLevel && s.internalLevel !== '—' && (
-                    <span style={{ fontSize: 10, color: 'var(--text-3)', background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px', fontFamily: "'IBM Plex Mono',monospace" }}>{s.internalLevel}</span>
-                  )}
+                  <span className={lvlClass}>{s.internalLevel !== '—' ? s.internalLevel : '—'}</span>
                   {s.exp && s.exp !== '—' && <span className="badge badge-exp">{s.exp}</span>}
                   <span style={{ fontSize: 11, color: 'var(--text-3)', background: 'var(--bg-3)', borderRadius: 4, padding: '2px 6px' }}>📍 {s.location}</span>
                 </div>
@@ -160,10 +156,9 @@ export default function SalaryTable({ rows, openEntryId = null, onEntryClose }) 
           </thead>
           <tbody>
             {rows.map(s => {
-              const lvlClass  = LEVEL_BADGE_CLASS[s.level] ?? 'badge';
+              const lvlClass  = stdLevelBadgeClass(s.internalLevel);
               const stClass   = STATUS_BADGE_CLASS[s.status] ?? 'status-badge';
               const stLabel   = STATUS_LABEL[s.status] ?? s.status;
-              const capLevel  = s.level ? s.level.charAt(0).toUpperCase() + s.level.slice(1) : '—';
               const compIdStr = s.companyId ? String(s.companyId) : null;
               const trend     = compIdStr ? trendMap.get(compIdStr)  : undefined;
 
@@ -181,10 +176,7 @@ export default function SalaryTable({ rows, openEntryId = null, onEntryClose }) 
                   <td>{s.role}</td>
 
                   <td>
-                    <span className={lvlClass}>{capLevel}</span>
-                    {s.internalLevel && s.internalLevel !== '—' && (
-                      <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3, fontFamily: "'JetBrains Mono',monospace" }}>{s.internalLevel}</div>
-                    )}
+                    <span className={lvlClass}>{s.internalLevel !== '—' ? s.internalLevel : '—'}</span>
                   </td>
 
                   <td>{s.location}</td>

@@ -117,7 +117,6 @@ function ExpandedDetails({ e, onApprove, onReject, actioning }) {
             )}
             <DetailRow label="Total Comp"        value={fmt(e.totalCompensation)} highlight mono />
             <DetailRow label="Department"        value={e.department} />
-            <DetailRow label="Experience Level"  value={e.experienceLevel} />
             <DetailRow label="Years of Exp"      value={e.yearsOfExperience != null ? `${e.yearsOfExperience} yrs` : null} />
             <DetailRow label="Employment Type"   value={e.employmentType} />
             <DetailRow label="Level"             value={e.standardizedLevelName ?? e.functionLevelName} />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LEVEL_BADGE_CLASS, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../utils/salaryMapper';
+import { stdLevelBadgeClass, STATUS_BADGE_CLASS, STATUS_LABEL } from '../../utils/salaryMapper';
 import api from '../../services/api';
 import { mapSalary } from '../../utils/salaryMapper';
 
@@ -12,9 +12,23 @@ import { mapSalary } from '../../utils/salaryMapper';
  *   salaryId  {string}    - UUID to fetch full details from API
  *   onClose   {function}  - called when user dismisses the drawer
  */
+
+// Helper — renders a detail cell only when the value is meaningful
+function DetailItem({ label, value }) {
+  if (!value || value === '—' || value === '') return null;
+  return (
+    <div className="detail-item">
+      <span className="detail-label">{label}</span>
+      <span className="detail-val">{value}</span>
+    </div>
+  );
+}
+
 export default function SalaryDetailDrawer({ open, salary: rowSalary, salaryId, onClose }) {
   const [salary,  setSalary]  = useState(null);
   const [loading, setLoading] = useState(false);
+  // Raw API response for fields not in the mapped object
+  const [raw, setRaw] = useState(null);
 
   // Fetch full details from API when drawer opens
   useEffect(() => {
@@ -27,11 +41,14 @@ export default function SalaryDetailDrawer({ open, salary: rowSalary, salaryId, 
       .then(res => {
         const s = res.data?.data;
         if (!s) return;
+        setRaw(s);
         // Use shared mapper, then layer in the extra fields the drawer needs
         const base = mapSalary(s);
         setSalary({
           ...base,
-          standardized: s.standardizedLevelName ?? '—',
+          standardized: s.standardizedLevelName ?? null,
+          dataSource:   s.dataSource ?? null,
+          equityTotalGrant: s.equityTotalGrant ?? null,
         });
       })
       .catch(console.error)
@@ -40,7 +57,7 @@ export default function SalaryDetailDrawer({ open, salary: rowSalary, salaryId, 
 
   // Clear salary when drawer closes
   useEffect(() => {
-    if (!open) setSalary(null);
+    if (!open) { setSalary(null); setRaw(null); }
   }, [open]);
 
   // Lock body scroll while open
@@ -56,12 +73,19 @@ export default function SalaryDetailDrawer({ open, salary: rowSalary, salaryId, 
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const lvlClass = LEVEL_BADGE_CLASS[salary?.level] ?? 'badge';
+  const lvlClass = stdLevelBadgeClass(salary?.internalLevel);
   const stClass  = STATUS_BADGE_CLASS[salary?.status] ?? 'status-badge';
   const stLabel  = STATUS_LABEL[salary?.status] ?? salary?.status;
-  const capLevel = salary?.level
-    ? salary.level.charAt(0).toUpperCase() + salary.level.slice(1)
-    : '—';
+
+  // Determine if this is an AI-sourced entry and what the source is
+  const isAI      = salary?.dataSource && salary.dataSource !== 'User';
+  const aiSource  = isAI ? salary.dataSource : null;
+
+  // Equity: show both per-year and total grant if available
+  const equityPerYr    = salary?.equity && salary.equity !== '—' ? salary.equity : null;
+  const equityTotal    = salary?.equityTotalGrant
+    ? `₹${(salary.equityTotalGrant / 100000).toFixed(1)}L`
+    : null;
 
   return (
     <>
@@ -93,7 +117,7 @@ export default function SalaryDetailDrawer({ open, salary: rowSalary, salaryId, 
                 </div>
               </div>
               <div className="drawer-badges">
-                <span className={lvlClass}>{capLevel}</span>
+                <span className={lvlClass}>{salary?.internalLevel && salary.internalLevel !== '—' ? salary.internalLevel : '—'}</span>
                 {salary.exp && salary.exp !== '—' && (
                   <span className="badge badge-exp">{salary.exp}</span>
                 )}
@@ -111,6 +135,21 @@ export default function SalaryDetailDrawer({ open, salary: rowSalary, salaryId, 
         {salary && (
           <div className="drawer-body">
 
+            {/* AI source callout */}
+            {isAI && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px 12px', marginBottom: 16, borderRadius: 8,
+                background: 'rgba(139,92,246,0.08)',
+                border: '0.5px solid rgba(139,92,246,0.25)',
+                fontSize: 12, color: 'rgba(167,139,250,0.9)',
+                fontFamily: "'JetBrains Mono',monospace",
+              }}>
+                <span>✦</span>
+                <span>AI-sourced · {aiSource}</span>
+              </div>
+            )}
+
             {/* Compensation breakdown */}
             <div className="drawer-section-title">Compensation Breakdown</div>
             <div className="comp-breakdown">
@@ -126,39 +165,35 @@ export default function SalaryDetailDrawer({ open, salary: rowSalary, salaryId, 
                 <div className="comp-item-label">Annual Bonus</div>
                 <div className="comp-item-val">{salary.bonus}</div>
               </div>
-              <div className="comp-item" style={{ gridColumn: 'span 2' }}>
-                <div className="comp-item-label">Equity / RSU (annualised)</div>
-                <div className="comp-item-val">{salary.equity}</div>
-              </div>
+              {/* Equity — show per-year + total grant if we have both */}
+              {equityTotal && equityTotal !== equityPerYr ? (
+                <>
+                  <div className="comp-item">
+                    <div className="comp-item-label">Equity / yr (annualised)</div>
+                    <div className="comp-item-val">{equityPerYr ?? '—'}</div>
+                  </div>
+                  <div className="comp-item">
+                    <div className="comp-item-label">Total RSU Grant</div>
+                    <div className="comp-item-val">{equityTotal}</div>
+                  </div>
+                </>
+              ) : (
+                <div className="comp-item" style={{ gridColumn: 'span 2' }}>
+                  <div className="comp-item-label">Equity / RSU (annualised)</div>
+                  <div className="comp-item-val">{equityPerYr ?? '—'}</div>
+                </div>
+              )}
             </div>
 
             {/* Role & Experience */}
             <div className="drawer-section-title">Role & Experience</div>
             <div className="detail-grid">
-              <div className="detail-item">
-                <span className="detail-label">Job Title</span>
-                <span className="detail-val">{salary.role}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Internal Level</span>
-                <span className="detail-val">{salary.internalLevel}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Standardised Level</span>
-                <span className="detail-val">{salary.standardized}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Years of Experience</span>
-                <span className="detail-val">{salary.yoe}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Employment Type</span>
-                <span className="detail-val">{salary.empType}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Location</span>
-                <span className="detail-val">{salary.location}</span>
-              </div>
+              <DetailItem label="Job Title"           value={salary.role} />
+              <DetailItem label="Internal Level"      value={salary.internalLevel !== '—' ? salary.internalLevel : null} />
+              <DetailItem label="Standardised Level"  value={salary.standardized} />
+              <DetailItem label="Years of Experience" value={salary.yoe !== '—' ? salary.yoe : null} />
+              <DetailItem label="Employment Type"     value={salary.empType} />
+              <DetailItem label="Location"            value={salary.location} />
             </div>
 
             {/* Recorded date */}

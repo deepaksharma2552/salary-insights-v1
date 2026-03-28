@@ -5,26 +5,26 @@
 
 const VIZ_COLORS = ['#3b82f6', '#8b5cf6', '#06b6d4', '#6366f1', '#a78bfa', '#818cf8'];
 
-const LEVEL_MAP = {
-  INTERN:   'junior',
-  ENTRY:    'junior',
-  MID:      'mid',
-  SENIOR:   'senior',
-  LEAD:     'lead',
-  MANAGER:  'lead',
-  DIRECTOR: 'lead',
-  VP:       'lead',
-  C_LEVEL:  'lead',
-};
-
 // ── Badge / status helpers (previously in salaryData.js) ─────────────────────
 
-export const LEVEL_BADGE_CLASS = {
-  junior: 'badge badge-level-junior',
-  mid:    'badge badge-level-mid',
-  senior: 'badge badge-level-senior',
-  lead:   'badge badge-level-lead',
-};
+/**
+ * Derives a CSS badge class from a standardized level name.
+ * Groups by seniority tier so badges are colour-coded consistently
+ * regardless of which track (Engineering, Product, Design, etc.) the level belongs to.
+ */
+export function stdLevelBadgeClass(levelName) {
+  if (!levelName || levelName === '—') return 'badge badge-level-mid';
+  const n = levelName.toLowerCase();
+  if (n.includes('intern'))                                          return 'badge badge-level-junior';
+  if (n.includes('sde 1') || n.includes('1') && n.match(/\b1\b/))   return 'badge badge-level-junior';
+  if (n === 'sde 1' || n === 'associate' || n === 'pm i' || n.endsWith(' i') || n.endsWith(' 1')) return 'badge badge-level-junior';
+  if (n.includes('senior') || n.includes('sde 2') || n.includes('sde 3') || n.includes('pm ii') || n.includes('ii')) return 'badge badge-level-senior';
+  if (n.includes('staff') || n.includes('principal') || n.includes('lead') || n.includes('group')) return 'badge badge-level-lead';
+  if (n.includes('architect') || n.includes('director') || n.includes('vp') || n.includes('c-level') || n.includes('head of')) return 'badge badge-level-lead';
+  if (n.includes('manager'))                                         return 'badge badge-level-lead';
+  // mid-tier fallback (SDE 2 without "senior", PM I without roman numeral match, etc.)
+  return 'badge badge-level-mid';
+}
 
 export const STATUS_BADGE_CLASS = {
   approved: 'status-badge status-approved',
@@ -78,7 +78,6 @@ export function mapSalary(s) {
     compInd:       '',
     role:          s.jobTitle       ?? '—',
     internalLevel: s.standardizedLevelName ?? '—',
-    level:         LEVEL_MAP[s.experienceLevel] ?? 'mid',
     location:      s.location       ?? '—',
     exp:           s.yearsOfExperience != null ? `${s.yearsOfExperience} yr`  : '—',
     yoe:           s.yearsOfExperience != null

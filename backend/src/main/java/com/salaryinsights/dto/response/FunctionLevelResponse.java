@@ -15,4 +15,8 @@ public class FunctionLevelResponse {
 
     /** Display name of the mapped standardized level (e.g. "SDE 2") — null if not mapped. */
     private String standardizedLevelName;
+
+    /** YOE band for DB-driven level mapping (minYoe inclusive, maxYoe exclusive). Null if not configured. */
+    private Integer minYoe;
+    private Integer maxYoe;
 }

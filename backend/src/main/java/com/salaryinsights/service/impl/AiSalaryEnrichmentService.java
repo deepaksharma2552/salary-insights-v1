@@ -826,18 +826,19 @@ public class AiSalaryEnrichmentService {
         req.setEmploymentType(empType);
 
         // Resolve job function using keyword matching
+        JobFunction resolvedFn = null;
         try {
-            JobFunction fn = resolveJobFunction(aiEntry.getDepartment(), aiEntry.getJobTitle(), allJobFunctions);
-            if (fn != null) {
-                req.setJobFunctionId(fn.getId());
-                FunctionLevel fl = resolveFunctionLevel(fn, aiEntry.getJobTitle(), req.getExperienceLevel());
+            resolvedFn = resolveJobFunction(aiEntry.getDepartment(), aiEntry.getJobTitle(), allJobFunctions);
+            if (resolvedFn != null) {
+                req.setJobFunctionId(resolvedFn.getId());
+                FunctionLevel fl = resolveFunctionLevel(resolvedFn, aiEntry.getJobTitle(), req.getExperienceLevel());
                 if (fl != null) {
                     req.setFunctionLevelId(fl.getId());
                     log.debug("[AI Enrich] Resolved '{}' → function='{}' level='{}'",
-                        aiEntry.getJobTitle(), fn.getDisplayName(), fl.getName());
+                        aiEntry.getJobTitle(), resolvedFn.getDisplayName(), fl.getName());
                 } else {
                     log.debug("[AI Enrich] Function '{}' found but no level match for '{}'",
-                        fn.getDisplayName(), aiEntry.getJobTitle());
+                        resolvedFn.getDisplayName(), aiEntry.getJobTitle());
                 }
             }
         } catch (Exception e) {
@@ -845,29 +846,54 @@ public class AiSalaryEnrichmentService {
                 aiEntry.getJobTitle(), e.getMessage());
         }
 
-        // Map YOE → standardized level directly using the defined bands.
-        // This is more reliable than keyword-scoring FunctionLevel names, which
-        // caused all "Software Engineer" entries to resolve to "Staff Engineer".
-        //   SDE 1:             1–3 yoe  (ENTRY)
-        //   SDE 2:             3–5 yoe  (MID)
-        //   SDE 3:             5–8 yoe  (SENIOR)
-        //   Staff Engineer:    8–12 yoe (LEAD)
-        //   Principal Engineer:12–16 yoe(LEAD)
-        //   Architect:         15–20 yoe(LEAD / senior IC)
-        //   Engineering Manager: MANAGER band
-        //   Director+:         DIRECTOR / VP band
+        // Map YOE → standardized level.
+        //
+        // PRIMARY PATH (DB-driven): if the resolved job function has levels with YOE bands
+        // configured by the admin, find the matching band and use its linked standardized level.
+        // This makes the mapping fully controllable from the Admin UI with no code deploys.
+        //
+        // FALLBACK (hardcoded): if no YOE bands are configured for this function (e.g. a newly
+        // added function, or a function whose admin has not set bands yet), fall back to the
+        // Engineering IC ladder in yoeToStandardizedLevelName().
         try {
-            String stdLevelName = yoeToStandardizedLevelName(req.getYearsOfExperience(), req.getExperienceLevel());
-            if (stdLevelName != null) {
-                standardizedLevelRepository.findByNameIgnoreCase(stdLevelName).ifPresent(sl -> {
-                    req.setStandardizedLevelId(sl.getId());
-                    log.debug("[AI Enrich] YOE-mapped '{}' ({}y, {}) → standardized level '{}'",
-                        req.getJobTitle(), req.getYearsOfExperience(), req.getExperienceLevel(), stdLevelName);
-                });
+            boolean resolvedViaDb = false;
+
+            if (resolvedFn != null && req.getYearsOfExperience() != null) {
+                List<FunctionLevel> bandsConfigured = resolvedFn.getLevels().stream()
+                    .filter(fl -> fl.getMinYoe() != null && fl.getMaxYoe() != null
+                                  && fl.getStandardizedLevel() != null)
+                    .sorted(Comparator.comparingInt(FunctionLevel::getMinYoe))
+                    .toList();
+
+                if (!bandsConfigured.isEmpty()) {
+                    int yoe = req.getYearsOfExperience();
+                    FunctionLevel matched = bandsConfigured.stream()
+                        .filter(fl -> yoe >= fl.getMinYoe() && yoe < fl.getMaxYoe())
+                        .findFirst()
+                        .orElse(bandsConfigured.get(bandsConfigured.size() - 1));
+
+                    req.setStandardizedLevelId(matched.getStandardizedLevel().getId());
+                    resolvedViaDb = true;
+                    log.debug("[AI Enrich] DB-band mapped '{}' ({}y) → '{}' via function '{}'",
+                        req.getJobTitle(), yoe,
+                        matched.getStandardizedLevel().getName(), resolvedFn.getDisplayName());
+                }
+            }
+
+            if (!resolvedViaDb) {
+                String stdLevelName = yoeToStandardizedLevelName(req.getYearsOfExperience(), req.getExperienceLevel());
+                if (stdLevelName != null) {
+                    standardizedLevelRepository.findByNameIgnoreCase(stdLevelName).ifPresent(sl -> {
+                        req.setStandardizedLevelId(sl.getId());
+                        log.debug("[AI Enrich] Fallback YOE-mapped '{}' ({}y, {}) → '{}'",
+                            req.getJobTitle(), req.getYearsOfExperience(),
+                            req.getExperienceLevel(), stdLevelName);
+                    });
+                }
             }
         } catch (Exception e) {
             log.warn("[AI Enrich] Standardized level mapping failed for '{}': {}",
-                req.getJobTitle(), e.getMessage());
+                aiEntry.getJobTitle(), e.getMessage());
         }
 
         // Audit log — use the resolved per-entry source (not the raw batch-level dataSource param)
@@ -1118,11 +1144,11 @@ public class AiSalaryEnrichmentService {
         // Non-IC tracks — route by experienceLevel regardless of YOE
         if (experienceLevel != null) {
             switch (experienceLevel) {
-                case INTERN   -> { return "SDE 1"; }
+                case INTERN   -> { return "Intern"; }          // Fix 1: own band, not SDE 1
                 case MANAGER  -> { return "Engineering Manager"; }
-                case DIRECTOR -> { return "Director"; }
+                case DIRECTOR -> { return "Director"; }        // Fix 5: explicit, not collapsed
                 case VP       -> { return "VP"; }
-                case C_LEVEL  -> { return "VP"; }
+                case C_LEVEL  -> { return "C-Level"; }        // Fix 4: own band, not VP
                 default       -> {} // fall through to YOE-based IC logic
             }
         }
@@ -1140,13 +1166,13 @@ public class AiSalaryEnrichmentService {
         }
 
         // IC track: map by YOE band
-        if (yoe <= 0)  return "SDE 1";           // intern / fresh grad
-        if (yoe <= 3)  return "SDE 1";           // 1–3y
-        if (yoe <= 5)  return "SDE 2";           // 3–5y
-        if (yoe <= 8)  return "SDE 3";           // 5–8y
-        if (yoe <= 12) return "Staff Engineer";   // 8–12y
-        if (yoe <= 16) return "Principal Engineer"; // 12–16y
-        return "Architect";                        // 15–20y+
+        if (yoe <= 0)  return "Intern";             // Fix 2: 0 YOE → Intern, not SDE 1
+        if (yoe <= 3)  return "SDE 1";              // 1–3y
+        if (yoe <= 5)  return "SDE 2";              // 3–5y
+        if (yoe <= 8)  return "SDE 3";              // 5–8y
+        if (yoe <= 12) return "Staff Engineer";      // 8–12y
+        if (yoe < 16)  return "Principal Engineer";  // Fix 3: strict <16, so yoe=16 → Architect
+        return "Architect";                          // 16+y
     }
 
         /**

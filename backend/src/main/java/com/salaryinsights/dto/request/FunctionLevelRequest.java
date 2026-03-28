@@ -24,4 +24,11 @@ public class FunctionLevelRequest {
      * Replaces the old InternalLevel enum field.
      */
     private UUID standardizedLevelId;
+
+    /**
+     * YOE band for DB-driven level mapping (minYoe inclusive, maxYoe exclusive).
+     * Null means no band configured for this level.
+     */
+    private Integer minYoe;
+    private Integer maxYoe;
 }

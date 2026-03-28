@@ -120,7 +120,7 @@ export default function AdminJobFunctions() {
 
   /* ── Level CRUD ── */
   function openAddLevel(fn) {
-    setLvForm({ name: '', sortOrder: (fn.levels?.length ?? 0) + 1, standardizedLevelId: null });
+    setLvForm({ name: '', sortOrder: (fn.levels?.length ?? 0) + 1, standardizedLevelId: null, minYoe: '', maxYoe: '' });
     setLvModal({ fn }); setLvError('');
   }
   function openEditLevel(fn, level) {
@@ -128,6 +128,8 @@ export default function AdminJobFunctions() {
       name: level.name,
       sortOrder: level.sortOrder,
       standardizedLevelId: level.standardizedLevelId ?? null,
+      minYoe: level.minYoe ?? '',
+      maxYoe: level.maxYoe ?? '',
     });
     setLvModal({ fn, level }); setLvError('');
   }
@@ -141,6 +143,8 @@ export default function AdminJobFunctions() {
         name: lvForm.name.trim(),
         sortOrder: Number(lvForm.sortOrder),
         standardizedLevelId: lvForm.standardizedLevelId || null,
+        minYoe: lvForm.minYoe !== '' ? Number(lvForm.minYoe) : null,
+        maxYoe: lvForm.maxYoe !== '' ? Number(lvForm.maxYoe) : null,
       };
       if (lvModal.level) await api.put(`/admin/job-functions/levels/${lvModal.level.id}`, payload);
       else               await api.post('/admin/job-functions/levels', payload);
@@ -231,6 +235,11 @@ export default function AdminJobFunctions() {
                         <div key={lv.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--bg-2)', borderRadius: 8, border: '1px solid var(--border)' }}>
                           <span style={{ fontSize: 11, fontFamily: "'IBM Plex Mono',monospace", color: '#3b82f6', fontWeight: 700, minWidth: 28 }}>#{lv.sortOrder}</span>
                           <span style={{ flex: 1, fontSize: 13, color: 'var(--text-1)', fontWeight: 500 }}>{lv.name}</span>
+                          {lv.minYoe != null && lv.maxYoe != null && (
+                            <span style={{ fontSize: 10, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--text-3)', background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
+                              {lv.minYoe}–{lv.maxYoe}y
+                            </span>
+                          )}
                           {lv.standardizedLevelName && (
                             <span style={{ fontSize: 10, fontFamily: "'IBM Plex Mono',monospace", color: '#3b82f6', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
                               {lv.standardizedLevelName}
@@ -309,6 +318,37 @@ export default function AdminJobFunctions() {
               <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontFamily: "'IBM Plex Mono',monospace" }}>
                 Used to group salaries in analytics charts. Levels are managed under Admin → Levels.
               </div>
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label className="form-label">
+                  Min YOE
+                  <span style={{ fontWeight: 400, color: 'var(--text-3)', fontSize: 11, marginLeft: 6 }}>(inclusive)</span>
+                </label>
+                <input
+                  className="form-input"
+                  type="number" min={0} max={50}
+                  placeholder="e.g. 3"
+                  value={lvForm.minYoe}
+                  onChange={e => setLvForm(f => ({ ...f, minYoe: e.target.value }))}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="form-label">
+                  Max YOE
+                  <span style={{ fontWeight: 400, color: 'var(--text-3)', fontSize: 11, marginLeft: 6 }}>(exclusive)</span>
+                </label>
+                <input
+                  className="form-input"
+                  type="number" min={0} max={50}
+                  placeholder="e.g. 6"
+                  value={lvForm.maxYoe}
+                  onChange={e => setLvForm(f => ({ ...f, maxYoe: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: -8, fontFamily: "'IBM Plex Mono',monospace" }}>
+              YOE band used for AI enrichment level mapping. e.g. Min 3, Max 6 → matches 3 ≤ yoe &lt; 6.
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
               <button type="button" className="btn-ghost" onClick={() => setLvModal(null)}>Cancel</button>
