@@ -275,9 +275,46 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
   const [sortBy,         setSortBy]         = useState('totalCompensation');
 
   // Unique level/location options derived from already-loaded level data + company entries
-  const levelOptions    = levels ? levels.map(l => l.internalLevel).filter(Boolean) : [];
+  const levelOptions    = levels ? [...new Set(levels.map(l => l.internalLevel))].filter(Boolean) : [];
   const locationOptions = ['BENGALURU','HYDERABAD','PUNE','DELHI_NCR','MUMBAI','CHENNAI','KOLKATA','REMOTE'];
   const locationLabels  = { BENGALURU:'Bengaluru', HYDERABAD:'Hyderabad', PUNE:'Pune', DELHI_NCR:'Delhi NCR', MUMBAI:'Mumbai', CHENNAI:'Chennai', KOLKATA:'Kolkata', REMOTE:'Remote' };
+
+  // ── Function breakdown state ───────────────────────────────────────────────
+  const [selectedFn,    setSelectedFn]    = useState(null);
+  const [popoverOpen,   setPopoverOpen]   = useState(false);
+  const [popoverSearch, setPopoverSearch] = useState('');
+
+  // Derive ordered function list — sorted by total entry count desc
+  const fnMap = {};
+  (levels ?? []).forEach(l => {
+    const fn = l.functionName ?? 'Other';
+    if (!fnMap[fn]) fnMap[fn] = { name: fn, count: 0 };
+    fnMap[fn].count += Number(l.count ?? 0);
+  });
+  const allFunctions = Object.values(fnMap).sort((a, b) => b.count - a.count);
+  const top3Fns      = allFunctions.slice(0, 3);
+  const moreFns      = allFunctions.slice(3);
+
+  const FN_PALETTE = [
+    { bg:'#E6F1FB', color:'#185FA5', bar:'#185FA5' },
+    { bg:'#EEEDFE', color:'#534AB7', bar:'#534AB7' },
+    { bg:'#E1F5EE', color:'#0F6E56', bar:'#0F6E56' },
+    { bg:'#FAEEDA', color:'#854F0B', bar:'#854F0B' },
+    { bg:'#EAF3DE', color:'#3B6D11', bar:'#3B6D11' },
+    { bg:'#FCEBEB', color:'#A32D2D', bar:'#A32D2D' },
+  ];
+  const fnPaletteMap = {};
+  allFunctions.forEach((fn, i) => { fnPaletteMap[fn.name] = FN_PALETTE[i % FN_PALETTE.length]; });
+
+  const activeFnLevels = selectedFn
+    ? (levels ?? []).filter(l => (l.functionName ?? 'Other') === selectedFn)
+    : [];
+  const maxActivTC = activeFnLevels.length > 0
+    ? Math.max(...activeFnLevels.map(l => l.avgTC ?? 0), 1)
+    : 1;
+  const filteredMoreFns = moreFns.filter(f =>
+    f.name.toLowerCase().includes(popoverSearch.toLowerCase())
+  );
 
   // Badge colour per internal level
   const LEVEL_BADGE = {
@@ -313,6 +350,16 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
+
+  // Close popover on outside click
+  useEffect(() => {
+    if (!popoverOpen) return;
+    const handler = (e) => {
+      if (!e.target.closest('.fn-more-popover-wrap')) setPopoverOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [popoverOpen]);
 
   // Load level breakdown on mount
   useEffect(() => {
@@ -428,81 +475,186 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
           {/* TC by level */}
           {tab === 'levels' && (
             <>
+              <style>{`
+                @keyframes lvlSpin { to { transform: rotate(360deg); } }
+                .fn-chip:hover { opacity: 0.85; }
+                .fn-more-chip:hover { border-color: #3b82f6 !important; color: #3b82f6 !important; }
+                .pop-item:hover { background: var(--bg-2); }
+                .lvl-bar-row:hover .lvl-bar-sub { opacity: 1 !important; }
+              `}</style>
+
+              {/* Loading */}
               {loadingLvl && (
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'48px 0', gap:14 }}>
-                  <div style={{
-                    width:28, height:28, borderRadius:'50%',
-                    border:'2.5px solid var(--border)',
-                    borderTopColor:'#3b82f6',
-                    animation:'lvlSpin 0.7s linear infinite',
-                  }} />
+                  <div style={{ width:28, height:28, borderRadius:'50%', border:'2.5px solid var(--border)', borderTopColor:'#3b82f6', animation:'lvlSpin 0.7s linear infinite' }} />
                   <span style={{ fontSize:12, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>Loading breakdown…</span>
-                  <style>{`@keyframes lvlSpin { to { transform: rotate(360deg); } }`}</style>
                 </div>
               )}
+
+              {/* Empty */}
               {!loadingLvl && levels && levels.length === 0 && (
                 <div style={{ textAlign:'center', padding:'40px 0', color:'var(--text-3)', fontSize:13, fontStyle:'italic' }}>
                   No level breakdown available yet.
                 </div>
               )}
+
               {!loadingLvl && levels && levels.length > 0 && (
-                <div style={{ display:'flex', flexDirection:'column', gap:8, paddingTop:4 }}>
-                  <div style={{ fontSize:11, color:'var(--text-3)', marginBottom:6 }}>
-                    Median TC per internal level · {company.entries} approved {company.entries === 1 ? 'entry' : 'entries'}
-                  </div>
-                  {levels.map(l => {
-                    const pct = Math.round(((l.avgTC ?? 0) / maxTC) * 100);
-                    const basePct  = l.avgBase  ? Math.round((l.avgBase  / (l.avgTC ?? 1)) * 100) : null;
-                    const bonusPct = l.avgBonus ? Math.round((l.avgBonus / (l.avgTC ?? 1)) * 100) : null;
-                    const equityPct= l.avgEquity? Math.round((l.avgEquity/ (l.avgTC ?? 1)) * 100) : null;
-                    return (
-                      <div key={l.internalLevel} style={{ marginBottom:4 }}>
-                        {/* Bar row — label always in fixed column, never inside/overlapping the bar */}
-                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                          <span style={{ fontSize:12, color:'var(--text-2)', width:120, flexShrink:0 }}>{l.internalLevel}</span>
-                          {/* Track — overflow:hidden safe since label is outside */}
-                          <div style={{ flex:1, height:22, background:'var(--bg-2)', borderRadius:6, overflow:'hidden' }}>
-                            <div style={{
-                              height:'100%', width:`${pct}%`,
-                              background:'linear-gradient(90deg,#1e40af,#3b82f6)',
-                              borderRadius:6, transition:'width 0.4s ease',
-                            }} />
-                          </div>
-                          {/* TC value — always in its own fixed column, never inside bar */}
-                          <span style={{ fontSize:11, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', minWidth:56, textAlign:'right', flexShrink:0 }}>
-                            {fmtSalary(l.avgTC)}
-                          </span>
-                          <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", minWidth:48, textAlign:'right', flexShrink:0 }}>
-                            {l.count != null ? `${l.count} entr${l.count === 1 ? 'y' : 'ies'}` : ''}
-                          </span>
-                        </div>
-                        {/* Base + Bonus + RSU breakdown */}
-                        {(basePct || bonusPct || equityPct) && (
-                          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:4 }}>
-                            <span style={{ width:120, flexShrink:0 }} />
-                            <div style={{ flex:1, display:'flex', gap:12 }}>
-                              {l.avgBase && (
-                                <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>
-                                  Base <span style={{ color:'var(--text-2)', fontWeight:500 }}>{fmtSalary(l.avgBase)}</span>
-                                </span>
-                              )}
-                              {l.avgBonus && (
-                                <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>
-                                  Bonus <span style={{ color:'var(--text-2)', fontWeight:500 }}>{fmtSalary(l.avgBonus)}</span>
-                                </span>
-                              )}
-                              {l.avgEquity && (
-                                <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>
-                                  RSU <span style={{ color:'var(--text-2)', fontWeight:500 }}>{fmtSalary(l.avgEquity)}</span>
-                                </span>
-                              )}
-                            </div>
-                            <span style={{ minWidth:48, flexShrink:0 }} />
+                <div style={{ paddingTop:4 }}>
+
+                  {/* Function selector row */}
+                  <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:14, flexWrap:'wrap', position:'relative' }}>
+                    <span style={{ fontSize:10, color:'var(--text-3)', fontWeight:500, textTransform:'uppercase', letterSpacing:'0.06em', flexShrink:0 }}>Function</span>
+
+                    {/* Top 3 chips */}
+                    {top3Fns.map(fn => {
+                      const pal     = fnPaletteMap[fn.name] ?? FN_PALETTE[0];
+                      const isActive = selectedFn === fn.name;
+                      return (
+                        <button
+                          key={fn.name}
+                          className="fn-chip"
+                          onClick={() => { setSelectedFn(isActive ? null : fn.name); setPopoverOpen(false); }}
+                          style={{
+                            display:'inline-flex', alignItems:'center', gap:5,
+                            fontSize:12, fontWeight:500, padding:'5px 12px', borderRadius:6,
+                            border:'none', cursor:'pointer', transition:'opacity 0.15s',
+                            background: isActive ? pal.bar   : pal.bg,
+                            color:      isActive ? '#fff'    : pal.color,
+                          }}
+                        >
+                          <span style={{ width:6, height:6, borderRadius:'50%', background: isActive ? 'rgba(255,255,255,0.6)' : pal.bar, flexShrink:0 }} />
+                          {fn.name}
+                          <span style={{ fontSize:10, opacity:0.7 }}>{fn.count}</span>
+                        </button>
+                      );
+                    })}
+
+                    {/* + More chip + popover */}
+                    {moreFns.length > 0 && (
+                      <div className="fn-more-popover-wrap" style={{ position:'relative' }}>
+                        <button
+                          className="fn-more-chip"
+                          onClick={() => { setPopoverOpen(o => !o); setPopoverSearch(''); }}
+                          style={{
+                            fontSize:12, fontWeight:500, padding:'5px 12px', borderRadius:6,
+                            background:'var(--bg-2)', color: popoverOpen ? '#3b82f6' : 'var(--text-2)',
+                            border:`1px solid ${popoverOpen ? '#3b82f6' : 'var(--border)'}`,
+                            cursor:'pointer', transition:'all 0.15s',
+                          }}
+                        >
+                          + {moreFns.length} more {popoverOpen ? '▴' : '▾'}
+                        </button>
+
+                        {popoverOpen && (
+                          <div style={{
+                            position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:20,
+                            background:'var(--panel)', border:'1px solid var(--border)',
+                            borderRadius:10, padding:8, minWidth:190,
+                            boxShadow:'0 8px 24px rgba(0,0,0,0.12)',
+                          }}>
+                            {moreFns.length > 4 && (
+                              <input
+                                autoFocus
+                                placeholder="Search functions…"
+                                value={popoverSearch}
+                                onChange={e => setPopoverSearch(e.target.value)}
+                                style={{
+                                  width:'100%', fontSize:12, padding:'6px 10px',
+                                  border:'1px solid var(--border)', borderRadius:6,
+                                  background:'var(--bg-2)', color:'var(--text-1)',
+                                  outline:'none', marginBottom:6, boxSizing:'border-box',
+                                }}
+                              />
+                            )}
+                            {filteredMoreFns.length === 0 && (
+                              <div style={{ fontSize:12, color:'var(--text-3)', padding:'8px 10px', fontStyle:'italic' }}>No match</div>
+                            )}
+                            {filteredMoreFns.map(fn => {
+                              const pal = fnPaletteMap[fn.name] ?? FN_PALETTE[0];
+                              const isActive = selectedFn === fn.name;
+                              return (
+                                <div
+                                  key={fn.name}
+                                  className="pop-item"
+                                  onClick={() => { setSelectedFn(fn.name); setPopoverOpen(false); setPopoverSearch(''); }}
+                                  style={{
+                                    display:'flex', alignItems:'center', gap:8,
+                                    padding:'7px 10px', borderRadius:6, cursor:'pointer',
+                                    background: isActive ? pal.bg : 'transparent',
+                                    fontSize:12, color: isActive ? pal.color : 'var(--text-1)',
+                                    fontWeight: isActive ? 500 : 400,
+                                  }}
+                                >
+                                  <span style={{ width:7, height:7, borderRadius:'50%', background:pal.bar, flexShrink:0 }} />
+                                  <span style={{ flex:1 }}>{fn.name}</span>
+                                  <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>{fn.count}</span>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
-                    );
-                  })}
+                    )}
+                  </div>
+
+                  {/* No function selected — prompt */}
+                  {!selectedFn && (
+                    <div style={{ textAlign:'center', padding:'36px 0', color:'var(--text-3)', fontSize:13, fontStyle:'italic' }}>
+                      Select a function above to view the level breakdown
+                    </div>
+                  )}
+
+                  {/* Level bars for selected function */}
+                  {selectedFn && (
+                    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                      <div style={{ fontSize:11, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", marginBottom:4 }}>
+                        {selectedFn} · {activeFnLevels.length} level{activeFnLevels.length !== 1 ? 's' : ''} · median TC
+                      </div>
+                      {activeFnLevels.map(l => {
+                        const pal = fnPaletteMap[selectedFn] ?? FN_PALETTE[0];
+                        const pct = Math.round(((l.avgTC ?? 0) / maxActivTC) * 100);
+                        return (
+                          <div key={l.internalLevel} className="lvl-bar-row" style={{ marginBottom:2 }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                              <span style={{ fontSize:12, color:'var(--text-2)', width:110, flexShrink:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                                {l.internalLevel}
+                              </span>
+                              <div style={{ flex:1, height:8, background:'var(--bg-2)', borderRadius:4, overflow:'hidden' }}>
+                                <div style={{ height:'100%', width:`${pct}%`, background:pal.bar, borderRadius:4, transition:'width 0.35s ease' }} />
+                              </div>
+                              <span style={{ fontSize:12, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', minWidth:52, textAlign:'right', flexShrink:0 }}>
+                                {fmtSalary(l.avgTC)}
+                              </span>
+                              <span className="lvl-bar-sub" style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace", minWidth:44, textAlign:'right', flexShrink:0, opacity:0.7, transition:'opacity 0.15s' }}>
+                                {l.count} {l.count === 1 ? 'entry' : 'entries'}
+                              </span>
+                            </div>
+                            {/* Comp breakdown sub-row */}
+                            {(l.avgBase || l.avgBonus || l.avgEquity) && (
+                              <div style={{ display:'flex', gap:12, marginTop:3, paddingLeft:120 }}>
+                                {l.avgBase && (
+                                  <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>
+                                    Base <span style={{ color:'var(--text-2)', fontWeight:500 }}>{fmtSalary(l.avgBase)}</span>
+                                  </span>
+                                )}
+                                {l.avgBonus && (
+                                  <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>
+                                    Bonus <span style={{ color:'var(--text-2)', fontWeight:500 }}>{fmtSalary(l.avgBonus)}</span>
+                                  </span>
+                                )}
+                                {l.avgEquity && (
+                                  <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>
+                                    RSU <span style={{ color:'var(--text-2)', fontWeight:500 }}>{fmtSalary(l.avgEquity)}</span>
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
                 </div>
               )}
             </>
@@ -658,28 +810,10 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
 
 // ── Company Card ──────────────────────────────────────────────────────────────
 function CompanyCard({ c, onViewDetails, openRoles }) {
-  const [expanded,   setExpanded]   = useState(false);
-  const [levels,     setLevels]     = useState(null);
-  const [loadingLvl, setLoadingLvl] = useState(false);
-
   const hasTcRange     = c.tcMin != null && c.tcMax != null;
   const tcRangeStr     = hasTcRange ? `${fmtSalary(c.tcMin)} – ${fmtSalary(c.tcMax)}` : c.avgTC !== '—' ? c.avgTC : '—';
   const previewBenefits= (c.benefits ?? []).slice(0, BENEFITS_PREVIEW);
   const extraBenefits  = (c.benefits ?? []).length - BENEFITS_PREVIEW;
-
-  function toggleExpand(e) {
-    e.stopPropagation();
-    if (expanded) { setExpanded(false); return; }
-    setExpanded(true);
-    if (levels !== null) return;
-    setLoadingLvl(true);
-    api.get(`/public/companies/${c.id}/salary-summary`)
-      .then(r => setLevels(r.data?.data?.levels ?? []))
-      .catch(() => setLevels([]))
-      .finally(() => setLoadingLvl(false));
-  }
-
-  const maxTC = levels ? Math.max(...levels.map(l => l.avgTC ?? 0), 1) : 1;
 
   return (
     <div
@@ -731,9 +865,9 @@ function CompanyCard({ c, onViewDetails, openRoles }) {
       )}
       <style>{`@keyframes roleRipple { 0%{transform:scale(1);opacity:0.4} 100%{transform:scale(2.5);opacity:0} }`}</style>
 
-      {/* TC range pill — entire block clickable, two-row layout */}
+      {/* TC range pill — opens modal on click */}
       <button
-        onClick={toggleExpand}
+        onClick={e => { e.stopPropagation(); onViewDetails('levels'); }}
         style={{
           display:'flex', flexDirection:'column', gap:5,
           width:'100%', background:'var(--bg-2)', border:'0.5px solid var(--border)',
@@ -743,51 +877,21 @@ function CompanyCard({ c, onViewDetails, openRoles }) {
         onMouseEnter={e => e.currentTarget.style.borderColor = '#3b82f6'}
         onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
       >
-        {/* Top row: label */}
         <span style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.07em', color:'var(--text-3)' }}>
           {hasTcRange ? 'TC range' : 'Median TC'}
         </span>
-        {/* Bottom row: value left, breakdown right — each on own line if narrow */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, flexWrap:'wrap' }}>
           <span className="tc-range-value" style={{ fontSize:13, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', whiteSpace:'nowrap', minWidth:0 }}>
             {tcRangeStr}
           </span>
           <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:11, fontWeight:500, color:'#3b82f6', whiteSpace:'nowrap', flexShrink:0 }}>
             View breakdown
-            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"
-              style={{ transition:'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <polyline points="6 9 12 15 18 9"/>
             </svg>
           </span>
         </div>
       </button>
-
-      {/* Loading shimmer */}
-      {loadingLvl && (
-        <div style={{ height:3, background:'rgba(59,130,246,0.12)', borderRadius:99, overflow:'hidden', margin:'-4px 0' }}>
-          <div style={{ height:'100%', background:'#3b82f6', borderRadius:99, animation:'companyCrawl 1.2s ease-in-out infinite' }} />
-        </div>
-      )}
-
-      {/* Level breakdown panel */}
-      {expanded && levels && levels.length > 0 && (
-        <div style={{ display:'flex', flexDirection:'column', gap:6, animation:'companyFadeIn 0.2s ease', background:'var(--bg-2)', borderRadius:8, padding:'10px 12px' }}>
-          {levels.map(l => (
-            <div key={l.internalLevel} style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:11, color:'var(--text-2)', width:110, flexShrink:0 }}>{l.internalLevel}</span>
-              <div style={{ flex:1, height:4, background:'var(--bg-3)', borderRadius:99, overflow:'hidden' }}>
-                <div style={{ height:'100%', borderRadius:99, background:'#3b82f6', width:`${Math.round(((l.avgTC ?? 0) / maxTC) * 100)}%` }} />
-              </div>
-              <span style={{ fontSize:11, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', minWidth:52, textAlign:'right' }}>
-                {fmtSalary(l.avgTC)}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-      {expanded && levels && levels.length === 0 && !loadingLvl && (
-        <div style={{ fontSize:11, color:'var(--text-3)', fontStyle:'italic' }}>No level breakdown available yet.</div>
-      )}
 
       <div style={{ height:'0.5px', background:'var(--border)' }} />
 

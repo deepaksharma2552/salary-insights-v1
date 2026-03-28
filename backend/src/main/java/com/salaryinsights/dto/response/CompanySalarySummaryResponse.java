@@ -27,6 +27,7 @@ public class CompanySalarySummaryResponse {
     @Data
     @Builder
     public static class LevelRow {
+        private String functionName;
         private String internalLevel;
         private Double avgBase;
         private Double avgBonus;

@@ -236,21 +236,24 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
     @Query("SELECT MAX(s.totalCompensation) FROM SalaryEntry s WHERE s.company.id = :companyId AND s.reviewStatus = com.salaryinsights.enums.ReviewStatus.APPROVED AND s.totalCompensation IS NOT NULL")
     java.math.BigDecimal maxTCByCompany(@Param("companyId") UUID companyId);
 
-    // Salary summary by standardized level for a single company (lazy card expand).
-    // Old CASE+ORDER BY enum block replaced by JOIN + ORDER BY hierarchy_rank.
+    // Salary summary by function + standardized level for a single company.
+    // Returns one row per (job_function, standardized_level) pair so the frontend
+    // can group by function and show a chip-based breakdown.
     @Query(value =
-        "SELECT sl.name                    AS internalLevel, " +
-        "       AVG(s.base_salary)         AS avgBase, " +
-        "       AVG(s.bonus)               AS avgBonus, " +
-        "       AVG(s.equity)              AS avgEquity, " +
-        "       AVG(s.total_compensation)  AS avgTC, " +
-        "       COUNT(*)                   AS cnt " +
+        "SELECT COALESCE(jf.display_name, 'Other') AS functionName, " +
+        "       sl.name                             AS internalLevel, " +
+        "       AVG(s.base_salary)                 AS avgBase, " +
+        "       AVG(s.bonus)                       AS avgBonus, " +
+        "       AVG(s.equity)                      AS avgEquity, " +
+        "       AVG(s.total_compensation)           AS avgTC, " +
+        "       COUNT(*)                            AS cnt " +
         "FROM salary_entries s " +
         "JOIN standardized_levels sl ON sl.id = s.standardized_level_id " +
+        "LEFT JOIN job_functions jf  ON jf.id = s.job_function_id " +
         "WHERE s.company_id = CAST(:companyId AS uuid) " +
         "  AND s.review_status = 'APPROVED' " +
-        "GROUP BY sl.id, sl.name, sl.hierarchy_rank " +
-        "ORDER BY sl.hierarchy_rank ASC",
+        "GROUP BY jf.id, jf.display_name, jf.sort_order, sl.id, sl.name, sl.hierarchy_rank " +
+        "ORDER BY jf.sort_order ASC NULLS LAST, sl.hierarchy_rank ASC",
         nativeQuery = true)
     List<Object[]> salarySummaryByLevel(@Param("companyId") UUID companyId);
 

@@ -143,12 +143,13 @@ public class CompanyService {
 
         List<com.salaryinsights.dto.response.CompanySalarySummaryResponse.LevelRow> levels =
             rows.stream().map(row -> com.salaryinsights.dto.response.CompanySalarySummaryResponse.LevelRow.builder()
-                .internalLevel(row[0] != null ? row[0].toString() : "Other")
-                .avgBase(row[1]  != null ? ((Number) row[1]).doubleValue()  : null)
-                .avgBonus(row[2] != null ? ((Number) row[2]).doubleValue()  : null)
-                .avgEquity(row[3]!= null ? ((Number) row[3]).doubleValue()  : null)
-                .avgTC(row[4]    != null ? ((Number) row[4]).doubleValue()  : null)
-                .count(row[5]    != null ? ((Number) row[5]).longValue()    : 0L)
+                .functionName(row[0]  != null ? row[0].toString()             : "Other")
+                .internalLevel(row[1] != null ? row[1].toString()             : "Other")
+                .avgBase(row[2]       != null ? ((Number) row[2]).doubleValue() : null)
+                .avgBonus(row[3]      != null ? ((Number) row[3]).doubleValue() : null)
+                .avgEquity(row[4]     != null ? ((Number) row[4]).doubleValue() : null)
+                .avgTC(row[5]         != null ? ((Number) row[5]).doubleValue() : null)
+                .count(row[6]         != null ? ((Number) row[6]).longValue()   : 0L)
                 .build()
             ).collect(java.util.stream.Collectors.toList());
 
