@@ -245,6 +245,11 @@ export default function AdminJobFunctions() {
                               {lv.standardizedLevelName}
                             </span>
                           )}
+                          {lv.standardizedLevelName && (lv.minYoe == null || lv.maxYoe == null) && (
+                            <span title="No YOE bands configured — AI enrichment won't assign this level automatically" style={{ fontSize: 10, fontFamily: "'IBM Plex Mono',monospace", color: '#7A5800', background: '#FEF9EC', border: '1px solid #F5C842', borderRadius: 4, padding: '2px 6px', flexShrink: 0, cursor: 'help' }}>
+                              ⚠ no bands
+                            </span>
+                          )}
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button onClick={() => openEditLevel(fn, lv)} style={{ padding: '3px 10px', fontSize: 11, fontWeight: 600, background: 'rgba(59,130,246,0.08)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 5, cursor: 'pointer' }}>Edit</button>
                             <button onClick={() => deleteLevel(lv)} style={{ padding: '3px 10px', fontSize: 11, fontWeight: 600, background: 'var(--rose-dim)', color: 'var(--rose)', border: '1px solid rgba(224,92,122,0.15)', borderRadius: 5, cursor: 'pointer' }}>Del</button>
@@ -350,6 +355,14 @@ export default function AdminJobFunctions() {
             <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: -8, fontFamily: "'IBM Plex Mono',monospace" }}>
               YOE band used for AI enrichment level mapping. e.g. Min 3, Max 6 → matches 3 ≤ yoe &lt; 6.
             </div>
+            {lvForm.standardizedLevelId && (lvForm.minYoe === '' || lvForm.maxYoe === '') && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: '#FEF9EC', border: '1px solid #F5C842', borderRadius: 8, padding: '10px 12px' }}>
+                <span style={{ fontSize: 14, lineHeight: 1, marginTop: 1 }}>⚠️</span>
+                <span style={{ fontSize: 12, color: '#7A5800', lineHeight: 1.5 }}>
+                  This level maps to a standardized level but has no YOE bands set. Without bands, the AI enrichment pipeline cannot assign this level automatically — entries will be left without a standardized level in analytics. Set both Min YOE and Max YOE to fix this.
+                </span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
               <button type="button" className="btn-ghost" onClick={() => setLvModal(null)}>Cancel</button>
               <SaveBtn saving={lvSaving} disabled={!lvForm.name.trim()} />

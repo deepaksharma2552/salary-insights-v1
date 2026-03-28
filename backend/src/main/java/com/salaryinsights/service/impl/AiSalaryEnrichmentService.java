@@ -881,15 +881,19 @@ public class AiSalaryEnrichmentService {
             }
 
             if (!resolvedViaDb) {
-                String stdLevelName = yoeToStandardizedLevelName(req.getYearsOfExperience(), req.getExperienceLevel());
-                if (stdLevelName != null) {
-                    standardizedLevelRepository.findByNameIgnoreCase(stdLevelName).ifPresent(sl -> {
-                        req.setStandardizedLevelId(sl.getId());
-                        log.debug("[AI Enrich] Fallback YOE-mapped '{}' ({}y, {}) → '{}'",
-                            req.getJobTitle(), req.getYearsOfExperience(),
-                            req.getExperienceLevel(), stdLevelName);
-                    });
-                }
+                // Do NOT fall back to the hardcoded yoeToStandardizedLevelName() ladder.
+                // That method returns SDE-tier names ("SDE 1", "SDE 2" …) which belong to
+                // one naming convention, while function levels set up by admins for
+                // non-Engineering functions (e.g. "Junior", "Senior") belong to another.
+                // Mixing both causes duplicate level rows in analytics charts.
+                //
+                // Instead: leave standardizedLevelId unset and log a warning so the admin
+                // knows to configure YOE bands for this job function.
+                String jobFn = resolvedFn != null ? resolvedFn.getDisplayName() : "unknown";
+                log.warn("[AI Enrich] No YOE bands configured for job function '{}' — " +
+                         "standardized level NOT set for entry '{}' ({}y, {}). " +
+                         "Configure YOE bands in Admin → Job Functions to fix this.",
+                    jobFn, req.getJobTitle(), req.getYearsOfExperience(), req.getExperienceLevel());
             }
         } catch (Exception e) {
             log.warn("[AI Enrich] Standardized level mapping failed for '{}': {}",
