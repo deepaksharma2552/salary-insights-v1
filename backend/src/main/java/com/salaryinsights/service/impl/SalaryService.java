@@ -303,6 +303,15 @@ public class SalaryService {
                     });
         }
 
+        // AI enrichment sets standardizedLevelId directly via YOE-band mapping.
+        // This overrides the functionLevel propagation above so entries land in
+        // the correct SDE 1/2/3/Staff/Principal/Architect band regardless of
+        // how the function level keyword scoring resolved.
+        if (request.getStandardizedLevelId() != null) {
+            standardizedLevelRepository.findById(request.getStandardizedLevelId())
+                    .ifPresent(entryRef::setStandardizedLevel);
+        }
+
         // Auto-derive experienceLevel when not provided — DB column is NOT NULL
         if (entry.getExperienceLevel() == null) {
             entry.setExperienceLevel(deriveExperienceLevel(request, entry.getStandardizedLevel()));

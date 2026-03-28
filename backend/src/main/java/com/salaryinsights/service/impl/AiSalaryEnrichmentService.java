@@ -36,6 +36,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -199,6 +200,7 @@ public class AiSalaryEnrichmentService {
     private final FunctionLevelRepository  functionLevelRepository;
     private final UserRepository           userRepository;
     private final com.salaryinsights.repository.SalaryEntryRepository salaryEntryRepository;
+    private final com.salaryinsights.repository.StandardizedLevelRepository standardizedLevelRepository;
 
     @Value("${anthropic.api.key}")
     private String anthropicApiKey;
@@ -823,7 +825,7 @@ public class AiSalaryEnrichmentService {
         }
         req.setEmploymentType(empType);
 
-        // Resolve job function + level using the pre-loaded list (not a fresh DB query per entry)
+        // Resolve job function using keyword matching
         try {
             JobFunction fn = resolveJobFunction(aiEntry.getDepartment(), aiEntry.getJobTitle(), allJobFunctions);
             if (fn != null) {
@@ -839,9 +841,33 @@ public class AiSalaryEnrichmentService {
                 }
             }
         } catch (Exception e) {
-            // Non-fatal — entry saves without function mapping, admin can set it manually
             log.warn("[AI Enrich] Function/level resolution failed for '{}': {}",
                 aiEntry.getJobTitle(), e.getMessage());
+        }
+
+        // Map YOE → standardized level directly using the defined bands.
+        // This is more reliable than keyword-scoring FunctionLevel names, which
+        // caused all "Software Engineer" entries to resolve to "Staff Engineer".
+        //   SDE 1:             1–3 yoe  (ENTRY)
+        //   SDE 2:             3–5 yoe  (MID)
+        //   SDE 3:             5–8 yoe  (SENIOR)
+        //   Staff Engineer:    8–12 yoe (LEAD)
+        //   Principal Engineer:12–16 yoe(LEAD)
+        //   Architect:         15–20 yoe(LEAD / senior IC)
+        //   Engineering Manager: MANAGER band
+        //   Director+:         DIRECTOR / VP band
+        try {
+            String stdLevelName = yoeToStandardizedLevelName(req.getYearsOfExperience(), req.getExperienceLevel());
+            if (stdLevelName != null) {
+                standardizedLevelRepository.findByNameIgnoreCase(stdLevelName).ifPresent(sl -> {
+                    req.setStandardizedLevelId(sl.getId());
+                    log.debug("[AI Enrich] YOE-mapped '{}' ({}y, {}) → standardized level '{}'",
+                        req.getJobTitle(), req.getYearsOfExperience(), req.getExperienceLevel(), stdLevelName);
+                });
+            }
+        } catch (Exception e) {
+            log.warn("[AI Enrich] Standardized level mapping failed for '{}': {}",
+                req.getJobTitle(), e.getMessage());
         }
 
         // Audit log — use the resolved per-entry source (not the raw batch-level dataSource param)
@@ -1021,10 +1047,19 @@ public class AiSalaryEnrichmentService {
             String lvlLower = fl.getName().toLowerCase();
             int score = 0;
 
-            // Title keyword match (e.g. "Product Designer" → prefers level named "Designer")
+            // Title keyword match (e.g. "Product Designer" → prefers level named "Designer").
+            // Skip generic role nouns that are already captured by seniority keywords — matching
+            // "engineer" in "Software Engineer" against a level named "Staff Engineer" would
+            // score +2 for every experience level, drowning out the seniority signal and causing
+            // all Software Engineer entries to resolve to Staff Engineer regardless of level.
+            Set<String> GENERIC_ROLE_WORDS = Set.of(
+                "engineer", "manager", "designer", "analyst", "scientist",
+                "developer", "architect", "lead", "director", "associate",
+                "specialist", "consultant", "intern", "executive"
+            );
             String[] titleWords = titleLower.split("\\s+");
             for (String word : titleWords) {
-                if (word.length() > 3 && lvlLower.contains(word)) score += 2;
+                if (word.length() > 3 && !GENERIC_ROLE_WORDS.contains(word) && lvlLower.contains(word)) score += 2;
             }
 
             // Seniority match — map ExperienceLevel to seniority keywords
@@ -1060,17 +1095,80 @@ public class AiSalaryEnrichmentService {
      * Returns a representative midpoint YOE for a given experience level.
      * Used to populate yearsOfExperience for AI entries so the drawer doesn't show '—'.
      */
+    /**
+     * Maps years-of-experience (and experience level as tiebreaker) to a
+     * standardized_levels.name value using the canonical bands:
+     *
+     *   SDE 1              1–3  yoe   ENTRY
+     *   SDE 2              3–5  yoe   MID
+     *   SDE 3              5–8  yoe   SENIOR
+     *   Staff Engineer     8–12 yoe   LEAD  (IC track)
+     *   Principal Engineer 12–16 yoe  LEAD  (IC track)
+     *   Architect          15–20 yoe  LEAD  (senior IC / systems track)
+     *   Engineering Manager        MANAGER band (any yoe)
+     *   Sr. Engineering Manager    MANAGER band (senior)
+     *   Director                   DIRECTOR band
+     *   VP                         VP band
+     *
+     * Overlapping ranges (Architect 15-20 vs Principal 12-16) are disambiguated
+     * by experienceLevel — MANAGER/DIRECTOR/VP route to their own tracks regardless of YOE.
+     * Returns null if yoe is null and experienceLevel provides no useful signal.
+     */
+    private String yoeToStandardizedLevelName(Integer yoe, ExperienceLevel experienceLevel) {
+        // Non-IC tracks — route by experienceLevel regardless of YOE
+        if (experienceLevel != null) {
+            switch (experienceLevel) {
+                case INTERN   -> { return "SDE 1"; }
+                case MANAGER  -> { return "Engineering Manager"; }
+                case DIRECTOR -> { return "Director"; }
+                case VP       -> { return "VP"; }
+                case C_LEVEL  -> { return "VP"; }
+                default       -> {} // fall through to YOE-based IC logic
+            }
+        }
+
+        if (yoe == null) {
+            // No YOE — fall back to experienceLevel alone
+            if (experienceLevel == null) return null;
+            return switch (experienceLevel) {
+                case ENTRY  -> "SDE 1";
+                case MID    -> "SDE 2";
+                case SENIOR -> "SDE 3";
+                case LEAD   -> "Staff Engineer";
+                default     -> null;
+            };
+        }
+
+        // IC track: map by YOE band
+        if (yoe <= 0)  return "SDE 1";           // intern / fresh grad
+        if (yoe <= 3)  return "SDE 1";           // 1–3y
+        if (yoe <= 5)  return "SDE 2";           // 3–5y
+        if (yoe <= 8)  return "SDE 3";           // 5–8y
+        if (yoe <= 12) return "Staff Engineer";   // 8–12y
+        if (yoe <= 16) return "Principal Engineer"; // 12–16y
+        return "Architect";                        // 15–20y+
+    }
+
+        /**
+     * YOE midpoints aligned to the standardized level bands:
+     *   SDE 1: 1-3y  → ENTRY  midpoint 2
+     *   SDE 2: 3-5y  → MID    midpoint 4
+     *   SDE 3: 5-8y  → SENIOR midpoint 6
+     *   Staff:  8-12y → LEAD   midpoint 10
+     *   Principal: 12-16y → LEAD midpoint 14
+     *   Architect: 15-20y → LEAD midpoint 17
+     */
     private int deriveYoeFromLevel(ExperienceLevel level) {
         return switch (level) {
             case INTERN   -> 0;
-            case ENTRY    -> 1;
-            case MID      -> 3;
-            case SENIOR   -> 6;
-            case LEAD     -> 9;
-            case MANAGER  -> 8;
-            case DIRECTOR -> 12;
-            case VP       -> 15;
-            case C_LEVEL  -> 18;
+            case ENTRY    -> 2;   // SDE 1 midpoint (1–3y)
+            case MID      -> 4;   // SDE 2 midpoint (3–5y)
+            case SENIOR   -> 6;   // SDE 3 midpoint (5–8y)
+            case LEAD     -> 10;  // Staff/Principal midpoint (8–12y)
+            case MANAGER  -> 9;
+            case DIRECTOR -> 13;
+            case VP       -> 17;
+            case C_LEVEL  -> 20;
         };
     }
 }

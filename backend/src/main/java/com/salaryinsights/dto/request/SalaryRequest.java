@@ -58,6 +58,13 @@ public class SalaryRequest {
     private UUID jobFunctionId;
     private UUID functionLevelId;
 
+    /**
+     * Standardized level override — set by AI enrichment via YOE-band mapping.
+     * Takes precedence over the functionLevel → standardizedLevel propagation
+     * so AI entries land in the correct SDE 1/2/3/Staff/Principal/Architect band.
+     */
+    private UUID standardizedLevelId;
+
     @NotNull
     private EmploymentType employmentType;
 }
