@@ -800,9 +800,10 @@ body {
   }
 
   /* Admin sidebar hidden by default on mobile, toggle shows it */
+  /* Use transform instead of display:none so the JS inline style can override it */
   .admin-sidebar {
-    display: none;
     transform: translateX(-100%);
+    pointer-events: none;
     z-index: 90;
   }
   .admin-mobile-toggle { display: flex; }

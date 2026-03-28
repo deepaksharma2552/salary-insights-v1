@@ -257,6 +257,7 @@ public class SalaryService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "analytics", allEntries = true)
     private SalaryResponse submitSalaryInternal(SalaryRequest request, User submitter) {
         Company company;
         if (request.getCompanyId() != null) {
