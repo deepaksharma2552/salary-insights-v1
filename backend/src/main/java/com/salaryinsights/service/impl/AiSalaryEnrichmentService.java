@@ -200,8 +200,8 @@ public class AiSalaryEnrichmentService {
             entries = entries.subList(0, MAX_ENTRIES);
         }
 
-        // Resolve the location reported at the top level of the AI response
-        Location parentLocation = resolveLocationFromString(aiData.getLocation());
+        // Resolve location per-entry from aiEntry.getLocation() — see mapToSalaryRequest()
+        // The old top-level aiData.getLocation() is deprecated and no longer used here.
 
         // Fetch an admin user to act as submitter — background threads have no security context
         User systemUser = userRepository.findFirstByRole(com.salaryinsights.enums.Role.ADMIN)
@@ -212,7 +212,7 @@ public class AiSalaryEnrichmentService {
         int skipped  = 0;
         for (AiSalaryEntry aiEntry : entries) {
             try {
-                SalaryRequest req = mapToSalaryRequest(aiEntry, companyName, aiData.getDataSource(), parentLocation);
+                SalaryRequest req = mapToSalaryRequest(aiEntry, companyName, aiData.getDataSource());
                 UpsertResult result = upsertAiEntry(req, systemUser);
                 switch (result) {
                     case INSERTED -> inserted++;
@@ -240,7 +240,7 @@ public class AiSalaryEnrichmentService {
 
         Map<String, Object> requestBody = new LinkedHashMap<>();
         requestBody.put("model", CLAUDE_MODEL);
-        requestBody.put("max_tokens", 4096);
+        requestBody.put("max_tokens", 2500); // 20 entries × ~80 tokens each ≈ 1600 max; 2500 gives headroom
         requestBody.put("tools", List.of(
             Map.of("type", "web_search_20250305", "name", "web_search")
         ));
@@ -317,11 +317,12 @@ public class AiSalaryEnrichmentService {
             You are a salary data researcher for an Indian salary transparency platform.
             Your goal is to return REAL, VERIFIED salary data for "%s" employees in India.
 
-            SEARCH STRATEGY — follow this order, stop when you have enough data:
-            1. Search levels.fyi for "%s India" first — this is the most reliable source for total comp breakdown.
+            SEARCH STRATEGY — follow this order, stop as soon as you have enough data:
+            1. Search levels.fyi for "%s India" first — most reliable source for total comp breakdown.
             2. Only search glassdoor.co.in if levels.fyi returned fewer than 10 entries.
             3. Only search ambitionbox.com if you still need more data after steps 1 and 2.
             Do NOT search linkedin, naukri, payscale, iimjobs unless the above 3 sources are all exhausted.
+            STOP SEARCHING as soon as you have 15 or more real data points — do not search all sources unnecessarily.
 
             TARGET — return EXACTLY 20 entries. If you cannot find 20 real data points, return fewer.
             Do NOT fabricate or estimate salaries to reach 20 — real data only.
@@ -329,19 +330,19 @@ public class AiSalaryEnrichmentService {
             DIVERSITY RULES — no two entries may share the same (jobTitle + experienceLevel + location):
             - Cover ALL seniority bands: INTERN, ENTRY, MID, SENIOR, LEAD, MANAGER, DIRECTOR
             - Cover at least 3 departments: Engineering, Product, Design, Data
-            - Cover at least 3 cities: Bengaluru, Hyderabad, Delhi NCR
+            - Cover at least 3 cities: Bengaluru, Hyderabad, Delhi NCR — each entry must record its own city
 
             Return ONLY valid JSON — no prose, no markdown code fences, no explanation before or after.
             The JSON must exactly match this shape:
 
             {
               "companyName": "%s",
-              "location": "<primary Indian city where most data was found>",
               "dataSource": "<comma-separated sources actually used, e.g. levels.fyi, glassdoor>",
               "entries": [
                 {
                   "jobTitle": "<e.g. Software Engineer>",
                   "department": "<e.g. Engineering, Data Science, Product>",
+                  "location": "<MUST be the actual city for this specific entry: Bengaluru, Hyderabad, Delhi NCR, Mumbai, Pune, Chennai, or other Indian city>",
                   "internalLevel": "<company-specific level e.g. L4, SDE-II, IC3, or null if unknown>",
                   "experienceLevel": "<MUST be exactly one of: INTERN, ENTRY, MID, SENIOR, LEAD, MANAGER, DIRECTOR, VP, C_LEVEL>",
                   "yearsOfExperience": <typical years of experience as integer, e.g. 1 for ENTRY, 3 for MID, 6 for SENIOR, 9 for LEAD>,
@@ -357,6 +358,7 @@ public class AiSalaryEnrichmentService {
 
             Critical rules:
             - ALL salary values MUST be in INR (Indian Rupees), annual amounts
+            - location MUST be the actual city for that specific data point — do not default every entry to one city
             - experienceLevel MUST be exactly one of the listed enum values — no other values
             - employmentType MUST be exactly one of the listed enum values — no other values
             - baseSalary must be a positive integer, never null or zero
@@ -567,8 +569,7 @@ public class AiSalaryEnrichmentService {
 
     private SalaryRequest mapToSalaryRequest(AiSalaryEntry aiEntry,
                                               String companyName,
-                                              String dataSource,
-                                              Location parentLocation) {
+                                              String dataSource) {
         SalaryRequest req = new SalaryRequest();
 
         req.setCompanyName(companyName);
@@ -586,8 +587,10 @@ public class AiSalaryEnrichmentService {
             }
         }
 
-        // Location comes from the top-level AiSalaryData field
-        req.setLocation(parentLocation);
+        // Resolve location from the per-entry field — each entry now carries its own city
+        // so multi-city batches (Bengaluru + Hyderabad + Delhi NCR) are stored correctly.
+        // Falls back to BENGALURU if the entry omits the field.
+        req.setLocation(resolveLocationFromString(aiEntry.getLocation()));
 
         // Salary (INR annual). Apply a floor of ₹1L as a basic sanity check.
         BigDecimal base = aiEntry.getBaseSalary();
