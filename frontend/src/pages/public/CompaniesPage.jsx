@@ -1020,6 +1020,7 @@ function CompanyModal({ company, initialTab = 'levels', onClose }) {
 
 // ── Company Card ──────────────────────────────────────────────────────────────
 function CompanyCard({ c, onViewDetails, openRoles }) {
+  const hasData        = c.entries > 0;
   const hasTcRange     = c.tcMin != null && c.tcMax != null;
   const tcRangeStr     = hasTcRange ? `${fmtSalary(c.tcMin)} – ${fmtSalary(c.tcMax)}` : c.avgTC !== '—' ? c.avgTC : '—';
   const previewBenefits= (c.benefits ?? []).slice(0, BENEFITS_PREVIEW);
@@ -1028,9 +1029,25 @@ function CompanyCard({ c, onViewDetails, openRoles }) {
   return (
     <div
       className="company-card fade-up"
-      style={{ cursor:'default', display:'flex', flexDirection:'column', gap:12, transition:'transform 0.15s, box-shadow 0.15s', position:'relative' }}
-      onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 6px 24px rgba(0,0,0,0.18)'; }}
-      onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=''; }}
+      style={{
+        cursor: 'default',
+        display: 'flex', flexDirection: 'column', gap: 12,
+        transition: 'transform 0.15s, box-shadow 0.15s',
+        position: 'relative',
+        // Dim empty cards so verified ones stand out
+        opacity: hasData ? 1 : 0.6,
+        background: hasData ? undefined : 'var(--bg-1)',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.18)';
+        if (!hasData) e.currentTarget.style.opacity = '0.85';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform = '';
+        e.currentTarget.style.boxShadow = '';
+        if (!hasData) e.currentTarget.style.opacity = '0.6';
+      }}
     >
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
@@ -1041,10 +1058,26 @@ function CompanyCard({ c, onViewDetails, openRoles }) {
             <div className="company-card-industry">{c.industry}</div>
           </div>
         </div>
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0, marginTop:2 }}>
-          <span className="entries-badge-mono" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color: c.entries > 0 ? "var(--text-3)" : "var(--text-3)", background:"var(--bg-2)", padding:"2px 7px", borderRadius:6, border:"1px solid var(--border)", whiteSpace:"nowrap", opacity: c.entries === 0 ? 0.5 : 1 }}>
-            {c.entries === 0 ? 'no data yet' : `${c.entries} ${c.entries === 1 ? 'entry' : 'entries'}`}
-          </span>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4, flexShrink:0, marginTop:2 }}>
+          {hasData ? (
+            <span style={{
+              fontFamily:"'IBM Plex Mono',monospace", fontSize:10,
+              color:'#3B6D11', background:'rgba(99,153,34,0.12)',
+              padding:'2px 7px', borderRadius:6,
+              border:'1px solid rgba(99,153,34,0.25)', whiteSpace:'nowrap',
+            }}>
+              {c.entries} {c.entries === 1 ? 'entry' : 'entries'}
+            </span>
+          ) : (
+            <span style={{
+              fontFamily:"'IBM Plex Mono',monospace", fontSize:10,
+              color:'var(--text-3)', background:'var(--bg-2)',
+              padding:'2px 7px', borderRadius:6,
+              border:'1px solid var(--border)', whiteSpace:'nowrap',
+            }}>
+              no data yet
+            </span>
+          )}
         </div>
       </div>
 
@@ -1075,71 +1108,119 @@ function CompanyCard({ c, onViewDetails, openRoles }) {
       )}
       <style>{`@keyframes roleRipple { 0%{transform:scale(1);opacity:0.4} 100%{transform:scale(2.5);opacity:0} }`}</style>
 
-      {/* TC range pill — opens modal on click */}
-      <button
-        onClick={e => { e.stopPropagation(); onViewDetails('levels'); }}
-        style={{
-          display:'flex', flexDirection:'column', gap:5,
-          width:'100%', background:'var(--bg-2)', border:'0.5px solid var(--border)',
-          borderRadius:10, padding:'10px 14px', cursor:'pointer', textAlign:'left',
-          transition:'border-color 0.15s',
-        }}
-        onMouseEnter={e => e.currentTarget.style.borderColor = '#3b82f6'}
-        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-      >
-        <span style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.07em', color:'var(--text-3)' }}>
-          {hasTcRange ? 'TC range' : 'Median TC'}
-        </span>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, flexWrap:'wrap' }}>
-          <span className="tc-range-value" style={{ fontSize:13, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', whiteSpace:'nowrap', minWidth:0 }}>
-            {tcRangeStr}
-          </span>
-          <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:11, fontWeight:500, color:'#3b82f6', whiteSpace:'nowrap', flexShrink:0 }}>
-            View breakdown
-            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="6 9 12 15 18 9"/>
-            </svg>
-          </span>
-        </div>
-      </button>
+      {hasData ? (
+        <>
+          {/* TC range pill — opens modal on click */}
+          <button
+            onClick={e => { e.stopPropagation(); onViewDetails('levels'); }}
+            style={{
+              display:'flex', flexDirection:'column', gap:5,
+              width:'100%', background:'var(--bg-2)', border:'0.5px solid var(--border)',
+              borderRadius:10, padding:'10px 14px', cursor:'pointer', textAlign:'left',
+              transition:'border-color 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = '#3b82f6'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+          >
+            <span style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.07em', color:'var(--text-3)' }}>
+              {hasTcRange ? 'TC range' : 'Median TC'}
+            </span>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, flexWrap:'wrap' }}>
+              <span className="tc-range-value" style={{ fontSize:13, fontWeight:600, fontFamily:"'IBM Plex Mono',monospace", color:'var(--text-1)', whiteSpace:'nowrap', minWidth:0 }}>
+                {tcRangeStr}
+              </span>
+              <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:11, fontWeight:500, color:'#3b82f6', whiteSpace:'nowrap', flexShrink:0 }}>
+                View breakdown
+                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </span>
+            </div>
+          </button>
 
-      <div style={{ height:'0.5px', background:'var(--border)' }} />
+          <div style={{ height:'0.5px', background:'var(--border)' }} />
 
-      {/* Benefits preview */}
-      <div>
-        <div style={{ fontSize:10, fontWeight:500, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:6 }}>Benefits</div>
-        {previewBenefits.length > 0 ? (
-          <div className="benefits-row" style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
-            {previewBenefits.map((b, i) => {
-              const name = typeof b === 'string' ? b : b.name;
-              return (
-                <span key={i} style={{ fontSize:10, color:'var(--text-2)', background:'var(--bg-2)', border:'0.5px solid var(--border)', borderRadius:6, padding:'3px 8px', display:'flex', alignItems:'center', gap:4 }}>
-                  <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="#3b82f6" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                  {name}
-                </span>
-              );
-            })}
-            {extraBenefits > 0 && (
-              <button onClick={e => { e.stopPropagation(); onViewDetails('benefits'); }} style={{ fontSize:10, color:'#3b82f6', fontWeight:500, background:'none', border:'none', cursor:'pointer', padding:0 }}>
-                +{extraBenefits} more
-              </button>
+          {/* Benefits preview */}
+          <div>
+            <div style={{ fontSize:10, fontWeight:500, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:6 }}>Benefits</div>
+            {previewBenefits.length > 0 ? (
+              <div className="benefits-row" style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
+                {previewBenefits.map((b, i) => {
+                  const name = typeof b === 'string' ? b : b.name;
+                  return (
+                    <span key={i} style={{ fontSize:10, color:'var(--text-2)', background:'var(--bg-2)', border:'0.5px solid var(--border)', borderRadius:6, padding:'3px 8px', display:'flex', alignItems:'center', gap:4 }}>
+                      <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="#3b82f6" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      {name}
+                    </span>
+                  );
+                })}
+                {extraBenefits > 0 && (
+                  <button onClick={e => { e.stopPropagation(); onViewDetails('benefits'); }} style={{ fontSize:10, color:'#3b82f6', fontWeight:500, background:'none', border:'none', cursor:'pointer', padding:0 }}>
+                    +{extraBenefits} more
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize:11, color:'var(--text-3)', fontStyle:'italic' }}>Not added yet</div>
             )}
           </div>
-        ) : (
-          <div style={{ fontSize:11, color:'var(--text-3)', fontStyle:'italic' }}>Not added yet</div>
-        )}
-      </div>
 
-      {/* Footer */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'auto' }}>
-        <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:'var(--text-3)' }}>Updated {c.updatedLabel}</span>
-        <button
-          onClick={e => { e.stopPropagation(); onViewDetails('levels'); }}
-          style={{ fontSize:11, fontWeight:500, color:'#3b82f6', background:'rgba(59,130,246,0.08)', border:'none', borderRadius:6, padding:'5px 12px', cursor:'pointer' }}
-        >
-          View details →
-        </button>
-      </div>
+          {/* Footer */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'auto' }}>
+            <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:'var(--text-3)' }}>Updated {c.updatedLabel}</span>
+            <button
+              onClick={e => { e.stopPropagation(); onViewDetails('levels'); }}
+              style={{ fontSize:11, fontWeight:500, color:'#3b82f6', background:'rgba(59,130,246,0.08)', border:'none', borderRadius:6, padding:'5px 12px', cursor:'pointer' }}
+            >
+              View details →
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Empty state — CTA to contribute */}
+          <div style={{
+            flex:1, display:'flex', flexDirection:'column',
+            alignItems:'center', justifyContent:'center',
+            gap:10, padding:'16px 8px',
+            textAlign:'center',
+          }}>
+            <div style={{ fontSize:11, color:'var(--text-3)', fontStyle:'italic', lineHeight:1.5 }}>
+              Be the first to share salary data for {c.name}
+            </div>
+            <Link
+              to="/submit-salary"
+              onClick={e => e.stopPropagation()}
+              style={{
+                display:'inline-flex', alignItems:'center', gap:5,
+                fontSize:11, fontWeight:600,
+                color:'#3b82f6',
+                background:'rgba(59,130,246,0.08)',
+                border:'1px solid rgba(59,130,246,0.25)',
+                borderRadius:8, padding:'6px 14px',
+                textDecoration:'none',
+                transition:'background 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background='rgba(59,130,246,0.15)'}
+              onMouseLeave={e => e.currentTarget.style.background='rgba(59,130,246,0.08)'}
+            >
+              <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add salary data
+            </Link>
+          </div>
+
+          {/* Footer */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'auto' }}>
+            <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:'var(--text-3)' }}>Updated {c.updatedLabel}</span>
+            <button
+              onClick={e => { e.stopPropagation(); onViewDetails('levels'); }}
+              style={{ fontSize:11, fontWeight:500, color:'var(--text-3)', background:'var(--bg-2)', border:'0.5px solid var(--border)', borderRadius:6, padding:'5px 12px', cursor:'pointer' }}
+            >
+              View details →
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1353,7 +1434,7 @@ export default function CompaniesPage() {
           <h2 className="section-title">Browse <em>Companies</em></h2>
         </div>
         <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:12, color:'var(--text-3)', padding:'6px 14px', background:'var(--ink-3)', border:'1px solid var(--border)', borderRadius:8 }}>
-          {loading ? 'Loading…' : `${totalElements} compan${totalElements !== 1 ? 'ies' : 'y'}${!showAll && !search ? ' with data' : ''}`}
+          {loading ? 'Loading…' : (!showAll && !search) ? `${totalElements} compan${totalElements !== 1 ? 'ies' : 'y'} with data` : `${items.filter(c => c.entries > 0).length} with data · ${totalElements} total`}
         </div>
       </div>
 
