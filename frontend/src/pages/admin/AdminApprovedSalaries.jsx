@@ -231,9 +231,10 @@ function EditDrawer({ entry, onClose, onSaved }) {
   }, []);
 
   // Update available function levels when job function changes
+  // Coerce both sides to String — API returns UUID objects, form stores strings
   useEffect(() => {
     if (!form.jobFunctionId) { setFunctionLevels([]); return; }
-    const fn = jobFunctions.find(f => f.id === form.jobFunctionId);
+    const fn = jobFunctions.find(f => String(f.id) === String(form.jobFunctionId));
     setFunctionLevels(fn?.levels ?? []);
   }, [form.jobFunctionId, jobFunctions]);
 
@@ -272,21 +273,16 @@ function EditDrawer({ entry, onClose, onSaved }) {
   }
 
   const field = (label, key, type = 'text') => (
-    <div style={styles.fieldRow}>
-      <label style={styles.fieldLabel}>{label}</label>
-      <input
-        type={type}
-        value={form[key]}
-        onChange={e => set(key, e.target.value)}
-        style={styles.fieldInput}
-      />
+    <div className='apr-field-row'>
+      <label className='apr-field-label'>{label}</label>
+      <input type={type} value={form[key]} onChange={e => set(key, e.target.value)} className='apr-field-input' />
     </div>
   );
 
   const select = (label, key, options) => (
-    <div style={styles.fieldRow}>
-      <label style={styles.fieldLabel}>{label}</label>
-      <select value={form[key]} onChange={e => set(key, e.target.value)} style={styles.fieldInput}>
+    <div className='apr-field-row'>
+      <label className='apr-field-label'>{label}</label>
+      <select value={form[key]} onChange={e => set(key, e.target.value)} className='apr-field-input'>
         <option value=''>— unchanged —</option>
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
@@ -294,55 +290,67 @@ function EditDrawer({ entry, onClose, onSaved }) {
   );
 
   return (
-    <div style={styles.overlay} onClick={onClose}>
-      <div style={styles.drawer} onClick={e => e.stopPropagation()}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:28 }}>
+    <div className='apr-modal-overlay' onClick={onClose}>
+      <div className='apr-modal' onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className='apr-modal-header'>
           <div>
-            <div style={styles.drawerEyebrow}>Edit Entry</div>
-            <div style={styles.drawerTitle}>{entry.companyName}</div>
-            <div style={{ color:'var(--text-3)', fontSize:13, marginTop:2 }}>{entry.jobTitle}</div>
+            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:'var(--blue)', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:4 }}>Edit Entry</div>
+            <div style={{ fontSize:20, fontWeight:700, color:'var(--text-1)', letterSpacing:'-0.02em' }}>{entry.companyName}</div>
+            <div style={{ color:'var(--text-3)', fontSize:13, marginTop:3 }}>{entry.jobTitle}</div>
           </div>
-          <button onClick={onClose} style={styles.closeBtn}>✕</button>
+          <button onClick={onClose} className='btn-ghost' style={{ padding:'6px 10px', fontSize:15, lineHeight:1, flexShrink:0 }}>✕</button>
         </div>
 
-        {error && <div style={styles.errorBox}>{error}</div>}
+        {/* Scrollable body */}
+        <div className='apr-modal-body'>
+          {error && <div style={{ padding:'10px 14px', background:'var(--rose-dim)', border:'1px solid rgba(224,92,122,0.2)', borderRadius:8, color:'var(--rose)', fontSize:13, marginBottom:16 }}>{error}</div>}
 
-        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-          {field('Job Title',           'jobTitle')}
-          {field('Department',          'department')}
-          {select('Experience Level',   'experienceLevel',      EXPERIENCE_LEVELS)}
-          {select('Employment Type',    'employmentType',       EMPLOYMENT_TYPES)}
-          <div style={styles.fieldRow}>
-            <label style={styles.fieldLabel}>Job Function</label>
-            <select value={form.jobFunctionId} onChange={e => set('jobFunctionId', e.target.value)} style={styles.fieldInput}>
+          <div className='apr-section-title'>Role</div>
+          {field('Job Title', 'jobTitle')}
+          {field('Department', 'department')}
+          {select('Experience Level', 'experienceLevel', EXPERIENCE_LEVELS)}
+          {select('Employment Type',  'employmentType',  EMPLOYMENT_TYPES)}
+
+          <div className='apr-section-title'>Classification</div>
+          <div className='apr-field-row'>
+            <label className='apr-field-label'>Job Function</label>
+            <select value={form.jobFunctionId} onChange={e => set('jobFunctionId', e.target.value)} className='apr-field-input'>
               <option value=''>— unchanged —</option>
               {jobFunctions.map(fn => (
-                <option key={fn.id} value={fn.id}>{fn.displayName || fn.name}</option>
+                <option key={fn.id} value={String(fn.id)}>{fn.displayName || fn.name}</option>
               ))}
             </select>
           </div>
-          <div style={styles.fieldRow}>
-            <label style={styles.fieldLabel}>Function Level (STD. Level)</label>
-            <select value={form.functionLevelId} onChange={e => set('functionLevelId', e.target.value)} style={styles.fieldInput} disabled={!form.jobFunctionId}>
+          <div className='apr-field-row'>
+            <label className='apr-field-label'>Function Level (STD. Level)</label>
+            <select value={form.functionLevelId} onChange={e => set('functionLevelId', e.target.value)} className='apr-field-input' disabled={!form.jobFunctionId}>
               <option value=''>— unchanged —</option>
               {functionLevels.map(lvl => (
-                <option key={lvl.id} value={lvl.id}>{lvl.name}</option>
+                <option key={lvl.id} value={String(lvl.id)}>{lvl.name}</option>
               ))}
             </select>
           </div>
-          {select('Location',           'location',             LOCATION_OPTIONS)}
-          {field('Years of Experience', 'yearsOfExperience',    'number')}
-          {field('Base Salary (₹)',     'baseSalary',           'number')}
-          {field('Bonus (₹)',           'bonus',                'number')}
-          {field('Equity (₹)',          'equity',               'number')}
+
+          <div className='apr-section-title'>Details</div>
+          {select('Location', 'location', LOCATION_OPTIONS)}
+          {field('Years of Experience', 'yearsOfExperience', 'number')}
+
+          <div className='apr-section-title'>Compensation</div>
+          {field('Base Salary (₹)', 'baseSalary', 'number')}
+          {field('Bonus (₹)',       'bonus',       'number')}
+          {field('Equity (₹)',      'equity',      'number')}
         </div>
 
-        <div style={{ display:'flex', gap:10, marginTop:28, justifyContent:'flex-end' }}>
-          <button style={styles.btnGhost} onClick={onClose} disabled={saving}>Cancel</button>
-          <button style={{ ...styles.btnPrimary, opacity: saving ? 0.65 : 1 }} onClick={handleSave} disabled={saving}>
+        {/* Footer */}
+        <div className='apr-modal-footer'>
+          <button className='btn-ghost' onClick={onClose} disabled={saving}>Cancel</button>
+          <button className='btn-primary' onClick={handleSave} disabled={saving} style={{ opacity: saving ? 0.65 : 1 }}>
             {saving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
+
       </div>
     </div>
   );
@@ -367,27 +375,34 @@ function DeleteModal({ entry, onClose, onDeleted }) {
   }
 
   return (
-    <div style={styles.overlay} onClick={onClose}>
-      <div style={{ ...styles.drawer, maxWidth:440, padding:36 }} onClick={e => e.stopPropagation()}>
-        <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-1)', marginBottom: 10 }}>
-          Delete Entry?
-        </h3>
-        <p style={{ color:'var(--text-2)', fontSize:14, marginBottom:6 }}>
-          This will permanently remove the approved salary entry for
-          <strong style={{ color:'var(--text-1)' }}> {entry.companyName}</strong> — <em>{entry.jobTitle}</em>.
-        </p>
-        <p style={{ color:'var(--text-3)', fontSize:13, marginBottom:20 }}>
-          Analytics caches will be invalidated automatically. This action is audited but cannot be undone.
-        </p>
-        {error && <div style={{ ...styles.errorBox, marginBottom:16 }}>{error}</div>}
-        <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
-          <button style={styles.btnGhost} onClick={onClose} disabled={deleting}>Cancel</button>
+    <div className='apr-modal-overlay' onClick={onClose}>
+      <div className='apr-modal' style={{ maxWidth:440 }} onClick={e => e.stopPropagation()}>
+        <div className='apr-modal-header'>
+          <div>
+            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:'var(--rose)', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:4 }}>Confirm Deletion</div>
+            <div style={{ fontSize:20, fontWeight:700, color:'var(--text-1)', letterSpacing:'-0.02em' }}>Delete Entry?</div>
+          </div>
+          <button onClick={onClose} className='btn-ghost' style={{ padding:'6px 10px', fontSize:15, lineHeight:1, flexShrink:0 }}>✕</button>
+        </div>
+        <div className='apr-modal-body'>
+          <p style={{ color:'var(--text-2)', fontSize:14, marginBottom:8, lineHeight:1.6 }}>
+            This will permanently remove the approved salary entry for
+            <strong style={{ color:'var(--text-1)' }}> {entry.companyName}</strong> — <em>{entry.jobTitle}</em>.
+          </p>
+          <p style={{ color:'var(--text-3)', fontSize:13, lineHeight:1.6 }}>
+            Analytics caches will be invalidated automatically. This action is audited but cannot be undone.
+          </p>
+          {error && <div style={{ padding:'10px 14px', background:'var(--rose-dim)', border:'1px solid rgba(224,92,122,0.2)', borderRadius:8, color:'var(--rose)', fontSize:13, marginTop:14 }}>{error}</div>}
+        </div>
+        <div className='apr-modal-footer'>
+          <button className='btn-ghost' onClick={onClose} disabled={deleting}>Cancel</button>
           <button
             onClick={handleDelete}
             disabled={deleting}
-            style={{ padding:'9px 22px', fontSize:13, fontWeight:600, background:'var(--rose-dim)', color:'var(--rose)', border:'1px solid rgba(224,92,122,0.3)', borderRadius:8, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.65 : 1, fontFamily:"Inter,sans-serif" }}
+            className='btn-primary'
+            style={{ background:'var(--rose)', opacity: deleting ? 0.65 : 1, cursor: deleting ? 'not-allowed' : 'pointer' }}
           >
-            {deleting ? 'Deleting…' : 'Confirm Delete'}
+            {deleting ? 'Deleting…' : 'Delete Entry'}
           </button>
         </div>
       </div>
@@ -543,6 +558,21 @@ export default function AdminApprovedSalaries() {
         @keyframes spin { to { transform: rotate(360deg); } }
         .apr-row:hover { background: var(--bg-2) !important; }
         .apr-row td { transition: background 0.15s; }
+        .apr-edit-btn { display:inline-flex; align-items:center; gap:4px; padding:4px 12px; font-size:12px; font-weight:500; color:#3b82f6; background:#f0f9ff; border:1px solid #bfdbfe; border-radius:7px; cursor:pointer; transition:all 0.15s; font-family:Inter,sans-serif; white-space:nowrap; }
+        .apr-edit-btn:hover { background:#dbeafe; border-color:#93c5fd; }
+        .apr-del-btn  { display:inline-flex; align-items:center; gap:4px; padding:4px 12px; font-size:12px; font-weight:500; color:var(--rose); background:var(--rose-dim); border:1px solid rgba(224,92,122,0.25); border-radius:7px; cursor:pointer; transition:all 0.15s; font-family:Inter,sans-serif; white-space:nowrap; }
+        .apr-del-btn:hover  { background:rgba(224,92,122,0.18); border-color:rgba(224,92,122,0.4); }
+        .apr-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); z-index:400; display:flex; align-items:center; justify-content:center; padding:20px; }
+        .apr-modal { background:var(--panel); border:1px solid var(--border); border-radius:20px; width:520px; max-width:100%; max-height:88vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 24px 64px rgba(0,0,0,0.28); }
+        .apr-modal-header { padding:28px 32px 20px; border-bottom:1px solid var(--border); flex-shrink:0; display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+        .apr-modal-body   { flex:1; overflow-y:auto; padding:24px 32px; }
+        .apr-modal-footer { padding:16px 32px 24px; border-top:1px solid var(--border); flex-shrink:0; display:flex; gap:10px; justify-content:flex-end; background:var(--panel); }
+        .apr-field-label  { display:block; font-size:10px; font-weight:600; color:var(--text-3); letter-spacing:0.07em; text-transform:uppercase; font-family:'IBM Plex Mono',monospace; margin-bottom:5px; }
+        .apr-field-input  { width:100%; padding:9px 13px; font-size:13px; background:var(--bg-2); border:1px solid var(--border); border-radius:8px; color:var(--text-1); font-family:Inter,sans-serif; outline:none; box-sizing:border-box; transition:border-color 0.15s; }
+        .apr-field-input:focus { border-color:var(--blue); }
+        .apr-field-input:disabled { opacity:0.45; cursor:not-allowed; }
+        .apr-field-row    { margin-bottom:14px; }
+        .apr-section-title { font-size:10px; font-weight:700; color:var(--text-4,var(--text-3)); letter-spacing:0.1em; text-transform:uppercase; font-family:'IBM Plex Mono',monospace; margin:20px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--border); }
       `}</style>
 
       {/* Page header */}
@@ -629,11 +659,24 @@ export default function AdminApprovedSalaries() {
                     </td>
                     <td style={{ fontSize:13, maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{e.jobTitle}</td>
                     <td>
-                      {e.standardizedLevelName && (
-                        <span style={{ fontSize:11, padding:'2px 7px', borderRadius:99, background:'var(--bg-3)', color:'var(--text-2)', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'0.04em' }}>
-                          {e.standardizedLevelName}
-                        </span>
-                      )}
+                      <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                        {e.functionLevelName ? (
+                          <span style={{ fontSize:11, padding:'2px 7px', borderRadius:99, background:'var(--bg-3)', color:'var(--text-2)', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'0.04em', width:'fit-content' }}>
+                            {e.functionLevelName}
+                          </span>
+                        ) : e.standardizedLevelName ? (
+                          <span style={{ fontSize:11, padding:'2px 7px', borderRadius:99, background:'var(--bg-3)', color:'var(--text-2)', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'0.04em', width:'fit-content' }}>
+                            {e.standardizedLevelName}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize:11, color:'var(--rose)', fontFamily:"'IBM Plex Mono',monospace" }}>—</span>
+                        )}
+                        {e.jobFunctionName && (
+                          <span style={{ fontSize:10, color:'var(--text-3)', fontFamily:"'IBM Plex Mono',monospace" }}>
+                            {e.jobFunctionName}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ fontSize:13, color:'var(--text-2)' }}>{e.location ?? '—'}</td>
                     <td><div className='salary-amount' style={{ fontSize:14 }}>{fmt(e.baseSalary)}</div></td>
@@ -647,33 +690,14 @@ export default function AdminApprovedSalaries() {
                       {fmtDate(e.createdAt)}
                     </td>
                     <td>
-                      {/* FIX: buttons always visible, styled like Pending Salaries */}
                       <div style={{ display:'flex', gap:6, justifyContent:'center' }}>
-                        <button
-                          onClick={() => setEditing(e)}
-                          title='Edit'
-                          style={{
-                            padding: '5px 14px', fontSize: 12, fontWeight: 600,
-                            background: 'rgba(59,130,246,0.1)', color: 'var(--blue)',
-                            border: '1px solid rgba(59,130,246,0.25)', borderRadius: 7,
-                            cursor: 'pointer', fontFamily: "Inter,sans-serif",
-                            transition: 'opacity 0.2s ease',
-                          }}
-                        >
-                          ✎ Edit
+                        <button className='apr-edit-btn' onClick={() => setEditing(e)}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          Edit
                         </button>
-                        <button
-                          onClick={() => setDeleting(e)}
-                          title='Delete'
-                          style={{
-                            padding: '5px 14px', fontSize: 12, fontWeight: 600,
-                            background: 'var(--rose-dim)', color: 'var(--rose)',
-                            border: '1px solid rgba(224,92,122,0.2)', borderRadius: 7,
-                            cursor: 'pointer', fontFamily: "Inter,sans-serif",
-                            transition: 'opacity 0.2s ease',
-                          }}
-                        >
-                          ✕ Delete
+                        <button className='apr-del-btn' onClick={() => setDeleting(e)}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                          Delete
                         </button>
                       </div>
                     </td>
@@ -794,18 +818,19 @@ const styles = {
     backdropFilter: 'blur(6px)',
     zIndex: 400,
     display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   drawer: {
     background: 'var(--panel)',
     border: '1px solid var(--border)',
-    borderRadius: '20px 0 0 20px',
-    padding: '40px 36px',
-    width: 480,
-    maxWidth: '92vw',
-    minHeight: '100vh',
-    overflowY: 'auto',
+    borderRadius: 20,
+    width: 500,
+    maxWidth: '94vw',
+    maxHeight: '90vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
   },
   drawerEyebrow: {
     fontFamily: "'IBM Plex Mono',monospace",
