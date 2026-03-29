@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useContext, useState, useEffect, useRef } from 'react';
 import { AuthContext } from '../../context/AuthContext';
+import BrandLogo from './BrandLogo';
 
 /* ── SVG icon helpers ─────────────────────────────────────────── */
 const Icon = {
@@ -483,10 +484,7 @@ export default function Navbar() {
       <nav className={`nb-pill${scrolled ? ' scrolled' : ''}`} style={{ justifyContent: 'space-between' }}>
 
         {/* ── Logo ── */}
-        <Link to="/" className="nb-logo">
-          <div className="nb-logo-icon"><Icon.logo /></div>
-          <span className="nb-logo-text">Salary<em>Insights</em></span>
-        </Link>
+        <BrandLogo size={30} fontSize={14.5} gap={9} />
 
         {/* ── Nav links ── */}
         <ul className="nb-links">
@@ -656,10 +654,7 @@ export default function Navbar() {
       <div className={`nb-drawer${mobileOpen ? ' open' : ''}`}>
 
         <div className="nb-drawer-header">
-          <Link to="/" className="nb-logo" onClick={() => setMobileOpen(false)}>
-            <div className="nb-logo-icon"><Icon.logo /></div>
-            <span className="nb-logo-text">Salary<em>Insights</em></span>
-          </Link>
+          <BrandLogo size={30} fontSize={14.5} gap={9} linkTo="/" style={{ textDecoration: 'none' }} />
           <button className="nb-drawer-close" onClick={() => setMobileOpen(false)} aria-label="Close menu">
             <Icon.close />
           </button>
