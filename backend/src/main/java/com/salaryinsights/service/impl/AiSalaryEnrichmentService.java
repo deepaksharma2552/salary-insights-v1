@@ -865,7 +865,17 @@ public class AiSalaryEnrichmentService {
                     .sorted(Comparator.comparingInt(FunctionLevel::getMinYoe))
                     .toList();
 
-                if (!bandsConfigured.isEmpty()) {
+                // Skip YOE-band mapping for management tracks — their experienceLevel
+                    // already encodes the right tier (MANAGER/DIRECTOR/VP/C_LEVEL), and
+                    // a YOE band would incorrectly map e.g. a 15-yoe Director to
+                    // "Principal Engineer" just because 15 falls in the IC band.
+                    ExperienceLevel el = req.getExperienceLevel();
+                    boolean isMgmtTrack = el == ExperienceLevel.MANAGER
+                        || el == ExperienceLevel.DIRECTOR
+                        || el == ExperienceLevel.VP
+                        || el == ExperienceLevel.C_LEVEL;
+
+                    if (!bandsConfigured.isEmpty() && !isMgmtTrack) {
                     int yoe = req.getYearsOfExperience();
                     FunctionLevel matched = bandsConfigured.stream()
                         .filter(fl -> yoe >= fl.getMinYoe() && yoe < fl.getMaxYoe())
@@ -877,7 +887,10 @@ public class AiSalaryEnrichmentService {
                     log.debug("[AI Enrich] DB-band mapped '{}' ({}y) → '{}' via function '{}'",
                         req.getJobTitle(), yoe,
                         matched.getStandardizedLevel().getName(), resolvedFn.getDisplayName());
-                }
+                    } else if (isMgmtTrack) {
+                        log.debug("[AI Enrich] Skipping YOE-band for mgmt track '{}' ({}), will use experienceLevel",
+                            req.getJobTitle(), el);
+                    }
             }
 
             if (!resolvedViaDb) {
@@ -1071,6 +1084,34 @@ public class AiSalaryEnrichmentService {
         if (levels == null || levels.isEmpty()) return null;
 
         String titleLower = jobTitle != null ? jobTitle.toLowerCase() : "";
+
+        // Fast-path for management tracks: these have clear level names in the DB
+        // and should never be resolved by keyword scoring (which can mis-score them).
+        // Match by exact seniority keyword in level name, bypassing the generic scoring.
+        if (experienceLevel != null) {
+            List<String> mgmtKeywords = switch (experienceLevel) {
+                case DIRECTOR -> List.of("director");
+                case VP       -> List.of("vp", "vice president");
+                case C_LEVEL  -> List.of("chief", "cto", "cpo", "ceo", "c-level");
+                case MANAGER  -> List.of("engineering manager", "sr. engineering manager",
+                                         "product manager", "group product manager",
+                                         "program manager", "manager");
+                default       -> List.of();
+            };
+            if (!mgmtKeywords.isEmpty()) {
+                // Find the best level whose name contains a management keyword
+                for (String kw : mgmtKeywords) {
+                    Optional<FunctionLevel> match = levels.stream()
+                        .filter(fl -> fl.getName().toLowerCase().contains(kw))
+                        .findFirst();
+                    if (match.isPresent()) {
+                        log.debug("[AI Enrich] Fast-path mgmt match: '{}' ({}) → level '{}' in fn '{}'",
+                            jobTitle, experienceLevel, match.get().getName(), function.getDisplayName());
+                        return match.get();
+                    }
+                }
+            }
+        }
 
         // Score each level: +2 for title keyword match, +1 for seniority keyword match
         record Scored(FunctionLevel level, int score) {}
