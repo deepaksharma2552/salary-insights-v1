@@ -35,6 +35,12 @@ public class AdminSalaryUpdateRequest {
      */
     private UUID standardizedLevelId;
 
+    /** Reassign job function (e.g. Engineering → Program). */
+    private UUID jobFunctionId;
+
+    /** Reassign function-specific level within the job function. */
+    private UUID functionLevelId;
+
     private com.salaryinsights.enums.Location location;
 
     @Min(0) @Max(60)

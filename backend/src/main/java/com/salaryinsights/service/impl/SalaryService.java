@@ -762,8 +762,9 @@ public class SalaryService {
         SalaryEntry entry = salaryEntryRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Salary entry not found: " + id));
 
-        if (entry.getReviewStatus() != com.salaryinsights.enums.ReviewStatus.APPROVED) {
-            throw new BadRequestException("Only APPROVED entries can be edited via this endpoint");
+        if (entry.getReviewStatus() != com.salaryinsights.enums.ReviewStatus.APPROVED
+                && entry.getReviewStatus() != com.salaryinsights.enums.ReviewStatus.PENDING) {
+            throw new BadRequestException("Only APPROVED or PENDING entries can be edited via this endpoint");
         }
 
         if (req.getCompanyId()        != null) {
@@ -785,6 +786,20 @@ public class SalaryService {
             standardizedLevelRepository.findById(req.getStandardizedLevelId())
                     .ifPresent(entry::setStandardizedLevel);
         }
+        // Reassign job function and function level if provided
+        if (req.getJobFunctionId() != null) {
+            jobFunctionRepository.findById(req.getJobFunctionId())
+                    .ifPresent(entry::setJobFunction);
+        }
+        if (req.getFunctionLevelId() != null) {
+            functionLevelRepository.findById(req.getFunctionLevelId()).ifPresent(fl -> {
+                entry.setFunctionLevel(fl);
+                // Auto-sync standardized level from the function level mapping
+                if (fl.getStandardizedLevel() != null) {
+                    entry.setStandardizedLevel(fl.getStandardizedLevel());
+                }
+            });
+        }
 
         entry = salaryEntryRepository.save(entry);
 
@@ -796,7 +811,8 @@ public class SalaryService {
         });
 
         auditLogService.log("SalaryEntry", id.toString(), "ADMIN_UPDATED",
-                "Admin updated approved salary for company: " + entry.getCompany().getName());
+                "Admin updated " + entry.getReviewStatus().name().toLowerCase()
+                + " salary for company: " + entry.getCompany().getName());
 
         return salaryMapper.toResponse(entry);
     }

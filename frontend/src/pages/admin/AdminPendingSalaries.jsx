@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
+import { useLocations } from '../../hooks/useLocations';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const fmt     = (val) => val != null ? `₹${(val / 100000).toFixed(1)}L` : '—';
@@ -69,19 +70,255 @@ function DetailRow({ label, value, mono = false, highlight = false }) {
   );
 }
 
-function ExpandedDetails({ e, onApprove, onReject, actioning }) {
+const EXPERIENCE_LEVELS = [
+  'INTERN','ENTRY','MID','SENIOR','LEAD','MANAGER','DIRECTOR','VP','C_LEVEL',
+];
+const EMPLOYMENT_TYPES = ['FULL_TIME','PART_TIME','CONTRACT','INTERNSHIP','FREELANCE'];
+
+function EditPanel({ e, onSaved }) {
+  const { locations } = useLocations();
+  const [jobFunctions, setJobFunctions] = useState([]);
+  const [functionLevels, setFunctionLevels] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [saveOk, setSaveOk] = useState(false);
+
+  // Form state — initialise from the entry
+  const [form, setForm] = useState({
+    jobTitle:         e.jobTitle         ?? '',
+    department:       e.department       ?? '',
+    experienceLevel:  e.experienceLevel  ?? '',
+    employmentType:   e.employmentType   ?? '',
+    location:         e.location         ?? '',
+    yearsOfExperience: e.yearsOfExperience ?? '',
+    baseSalary:       e.baseSalary  != null ? (e.baseSalary  / 100000).toFixed(2) : '',
+    bonus:            e.bonus       != null ? (e.bonus       / 100000).toFixed(2) : '',
+    equity:           e.equity      != null ? (e.equity      / 100000).toFixed(2) : '',
+    jobFunctionId:    e.jobFunctionId    ?? '',
+    functionLevelId:  e.functionLevelId  ?? '',
+  });
+
+  // Load job functions once
+  useEffect(() => {
+    api.get('/public/job-functions').then(r => {
+      setJobFunctions(r.data?.data ?? []);
+    }).catch(() => {});
+  }, []);
+
+  // Load function levels when job function changes
+  useEffect(() => {
+    if (!form.jobFunctionId) { setFunctionLevels([]); return; }
+    const fn = jobFunctions.find(f => f.id === form.jobFunctionId);
+    setFunctionLevels(fn?.levels ?? []);
+  }, [form.jobFunctionId, jobFunctions]);
+
+  function set(field, val) {
+    setSaveOk(false);
+    setSaveError(null);
+    if (field === 'jobFunctionId') {
+      setForm(f => ({ ...f, jobFunctionId: val, functionLevelId: '' }));
+    } else {
+      setForm(f => ({ ...f, [field]: val }));
+    }
+  }
+
+  async function handleSave() {
+    setSaving(true); setSaveError(null); setSaveOk(false);
+    try {
+      const toLakh = v => v !== '' && v != null ? Math.round(parseFloat(v) * 100000) : null;
+      const payload = {};
+      if (form.jobTitle)         payload.jobTitle         = form.jobTitle;
+      if (form.department)       payload.department       = form.department;
+      if (form.experienceLevel)  payload.experienceLevel  = form.experienceLevel;
+      if (form.employmentType)   payload.employmentType   = form.employmentType;
+      if (form.location)         payload.location         = form.location;
+      if (form.yearsOfExperience !== '') payload.yearsOfExperience = parseInt(form.yearsOfExperience);
+      if (form.baseSalary !== '') payload.baseSalary = toLakh(form.baseSalary);
+      if (form.bonus      !== '') payload.bonus      = toLakh(form.bonus);
+      if (form.equity     !== '') payload.equity     = toLakh(form.equity);
+      if (form.jobFunctionId)    payload.jobFunctionId   = form.jobFunctionId;
+      if (form.functionLevelId)  payload.functionLevelId = form.functionLevelId;
+
+      const res = await api.patch(`/admin/salaries/${e.id}`, payload);
+      setSaveOk(true);
+      onSaved(res.data?.data ?? null);
+    } catch (err) {
+      setSaveError(err.response?.data?.message ?? err.message ?? 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputStyle = {
+    width: '100%', padding: '6px 10px', fontSize: 12,
+    background: 'var(--bg-1)', border: '1px solid var(--border)',
+    borderRadius: 7, color: 'var(--text-1)', outline: 'none',
+    fontFamily: "Inter,sans-serif",
+  };
+  const labelStyle = {
+    fontSize: 10, fontFamily: "'IBM Plex Mono',monospace",
+    color: 'var(--text-3)', textTransform: 'uppercase',
+    letterSpacing: '0.08em', display: 'block', marginBottom: 4,
+  };
+
+  return (
+    <div style={{
+      marginTop: 20, padding: '18px 20px',
+      background: 'var(--bg-1)',
+      border: '1px solid var(--border)',
+      borderRadius: 10,
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          ✎ Edit Entry
+        </span>
+        <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+      </div>
+
+      {/* Grid of fields */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px 20px', marginBottom: 16 }}>
+
+        {/* Job Title */}
+        <div style={{ gridColumn: 'span 2' }}>
+          <label style={labelStyle}>Job Title</label>
+          <input style={inputStyle} value={form.jobTitle} onChange={ev => set('jobTitle', ev.target.value)} placeholder="e.g. Technical Program Manager" />
+        </div>
+
+        {/* Department */}
+        <div>
+          <label style={labelStyle}>Department</label>
+          <input style={inputStyle} value={form.department} onChange={ev => set('department', ev.target.value)} placeholder="e.g. Engineering" />
+        </div>
+
+        {/* Job Function */}
+        <div>
+          <label style={labelStyle}>Job Function</label>
+          <select style={inputStyle} value={form.jobFunctionId} onChange={ev => set('jobFunctionId', ev.target.value)}>
+            <option value="">— select —</option>
+            {jobFunctions.map(f => (
+              <option key={f.id} value={f.id}>{f.displayName}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Function Level */}
+        <div>
+          <label style={labelStyle}>Level</label>
+          <select style={inputStyle} value={form.functionLevelId} onChange={ev => set('functionLevelId', ev.target.value)} disabled={!form.jobFunctionId}>
+            <option value="">— select —</option>
+            {functionLevels.map(l => (
+              <option key={l.id} value={l.id}>{l.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Experience Level */}
+        <div>
+          <label style={labelStyle}>Experience Level</label>
+          <select style={inputStyle} value={form.experienceLevel} onChange={ev => set('experienceLevel', ev.target.value)}>
+            <option value="">— select —</option>
+            {EXPERIENCE_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </div>
+
+        {/* Location */}
+        <div>
+          <label style={labelStyle}>Location</label>
+          <select style={inputStyle} value={form.location} onChange={ev => set('location', ev.target.value)}>
+            <option value="">— select —</option>
+            {locations.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+          </select>
+        </div>
+
+        {/* Employment Type */}
+        <div>
+          <label style={labelStyle}>Employment Type</label>
+          <select style={inputStyle} value={form.employmentType} onChange={ev => set('employmentType', ev.target.value)}>
+            <option value="">— select —</option>
+            {EMPLOYMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+
+        {/* YOE */}
+        <div>
+          <label style={labelStyle}>Years of Experience</label>
+          <input style={inputStyle} type="number" min={0} max={60} value={form.yearsOfExperience}
+            onChange={ev => set('yearsOfExperience', ev.target.value)} placeholder="e.g. 7" />
+        </div>
+
+        {/* Salary fields */}
+        <div>
+          <label style={labelStyle}>Base Salary (₹L)</label>
+          <input style={inputStyle} type="number" step="0.01" value={form.baseSalary}
+            onChange={ev => set('baseSalary', ev.target.value)} placeholder="e.g. 68.5" />
+        </div>
+        <div>
+          <label style={labelStyle}>Bonus (₹L)</label>
+          <input style={inputStyle} type="number" step="0.01" value={form.bonus}
+            onChange={ev => set('bonus', ev.target.value)} placeholder="e.g. 9.5" />
+        </div>
+        <div>
+          <label style={labelStyle}>Equity / yr (₹L)</label>
+          <input style={inputStyle} type="number" step="0.01" value={form.equity}
+            onChange={ev => set('equity', ev.target.value)} placeholder="e.g. 4.7" />
+        </div>
+      </div>
+
+      {/* Save row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          style={{
+            padding: '7px 20px', fontSize: 12, fontWeight: 600,
+            background: 'rgba(59,130,246,0.12)', color: 'var(--blue)',
+            border: '1px solid rgba(59,130,246,0.3)', borderRadius: 7,
+            cursor: saving ? 'not-allowed' : 'pointer',
+            opacity: saving ? 0.6 : 1,
+            display: 'flex', alignItems: 'center', gap: 6,
+            fontFamily: "Inter,sans-serif",
+            transition: 'opacity 0.2s',
+          }}
+        >
+          {saving ? (
+            <><div style={{ width: 11, height: 11, borderRadius: '50%', border: '1.5px solid rgba(59,130,246,0.3)', borderTopColor: 'var(--blue)', animation: 'spin 0.7s linear infinite' }} /> Saving…</>
+          ) : '💾 Save Changes'}
+        </button>
+
+        {saveOk && (
+          <span style={{ fontSize: 12, color: 'var(--green)', fontWeight: 600 }}>✓ Saved</span>
+        )}
+        {saveError && (
+          <span style={{ fontSize: 12, color: 'var(--rose)' }}>⚠ {saveError}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ExpandedDetails({ e, onApprove, onReject, actioning, onEntryUpdated }) {
   const isAI  = !e.submittedByEmail;
   const source = resolveSource(e);
+  const [showEdit, setShowEdit] = useState(false);
+  const [entry, setEntry] = useState(e);
+
+  // Keep local entry in sync if parent passes a fresh one
+  useEffect(() => { setEntry(e); }, [e]);
+
+  function handleSaved(updated) {
+    if (updated) setEntry(updated);
+    if (onEntryUpdated) onEntryUpdated(updated);
+  }
 
   // Equity display: derive per-year and total grant values separately
-  const equityPerYear    = e.equity           != null ? fmt(e.equity)           : null;
-  const equityTotalGrant = e.equityTotalGrant != null ? fmt(e.equityTotalGrant) : null;
+  const equityPerYear    = entry.equity           != null ? fmt(entry.equity)           : null;
+  const equityTotalGrant = entry.equityTotalGrant != null ? fmt(entry.equityTotalGrant) : null;
 
-  // Vesting period label — infer from ratio if both values exist
   const vestingLabel = (() => {
     if (!equityPerYear || !equityTotalGrant || equityTotalGrant === equityPerYear) return null;
-    const perYr = e.equity;
-    const total = e.equityTotalGrant;
+    const perYr = entry.equity;
+    const total = entry.equityTotalGrant;
     if (!perYr || !total || perYr === 0) return null;
     const yrs = Math.round(total / perYr);
     return yrs >= 2 && yrs <= 6 ? `${yrs}-yr vesting` : null;
@@ -105,8 +342,8 @@ function ExpandedDetails({ e, onApprove, onReject, actioning }) {
             gap: '16px 24px',
             marginBottom: 20,
           }}>
-            <DetailRow label="Base Salary"      value={fmt(e.baseSalary)}        highlight mono />
-            <DetailRow label="Bonus"             value={fmt(e.bonus)}             mono />
+            <DetailRow label="Base Salary"      value={fmt(entry.baseSalary)}        highlight mono />
+            <DetailRow label="Bonus"             value={fmt(entry.bonus)}             mono />
             <DetailRow
               label={vestingLabel ? `Equity / yr  ·  ${vestingLabel}` : 'Equity / yr'}
               value={equityPerYear}
@@ -115,33 +352,36 @@ function ExpandedDetails({ e, onApprove, onReject, actioning }) {
             {equityTotalGrant && equityTotalGrant !== equityPerYear && (
               <DetailRow label="Total RSU Grant"   value={equityTotalGrant}         mono />
             )}
-            <DetailRow label="Total Comp"        value={fmt(e.totalCompensation)} highlight mono />
-            <DetailRow label="Department"        value={e.department} />
-            <DetailRow label="Years of Exp"      value={e.yearsOfExperience != null ? `${e.yearsOfExperience} yrs` : null} />
-            <DetailRow label="Employment Type"   value={e.employmentType} />
-            <DetailRow label="Level"             value={e.standardizedLevelName ?? e.functionLevelName} />
-            <DetailRow label="Job Function"      value={e.jobFunctionName} />
-            <DetailRow label="Submitted"         value={fmtDate(e.createdAt)}     mono />
-            <DetailRow label="Source"            value={e.submittedByEmail ?? source} />
+            <DetailRow label="Total Comp"        value={fmt(entry.totalCompensation)} highlight mono />
+            <DetailRow label="Department"        value={entry.department} />
+            <DetailRow label="Years of Exp"      value={entry.yearsOfExperience != null ? `${entry.yearsOfExperience} yrs` : null} />
+            <DetailRow label="Employment Type"   value={entry.employmentType} />
+            <DetailRow label="Level"             value={entry.standardizedLevelName ?? entry.functionLevelName} />
+            <DetailRow label="Job Function"      value={entry.jobFunctionName} />
+            <DetailRow label="Submitted"         value={fmtDate(entry.createdAt)}     mono />
+            <DetailRow label="Source"            value={entry.submittedByEmail ?? source} />
           </div>
 
+          {/* Inline edit panel */}
+          {showEdit && <EditPanel e={entry} onSaved={handleSaved} />}
+
           {/* Action row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: showEdit ? 16 : 0 }}>
             <button
-              onClick={() => onApprove(e.id)}
-              disabled={actioning === e.id}
+              onClick={() => onApprove(entry.id)}
+              disabled={actioning === entry.id}
               style={{
                 padding: '6px 18px', fontSize: 12, fontWeight: 600,
                 background: 'var(--green-dim)', color: 'var(--green)',
                 border: '1px solid rgba(22,163,74,0.25)', borderRadius: 7,
-                cursor: actioning === e.id ? 'not-allowed' : 'pointer',
-                opacity: actioning === e.id ? 0.65 : 1,
+                cursor: actioning === entry.id ? 'not-allowed' : 'pointer',
+                opacity: actioning === entry.id ? 0.65 : 1,
                 fontFamily: "Inter,sans-serif",
                 display: 'flex', alignItems: 'center', gap: 6,
                 transition: 'opacity 0.2s ease',
               }}
             >
-              {actioning === e.id ? (
+              {actioning === entry.id ? (
                 <>
                   <div style={{ width: 11, height: 11, borderRadius: '50%', border: '1.5px solid rgba(22,163,74,0.25)', borderTopColor: 'var(--green)', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
                   Approving…
@@ -149,7 +389,7 @@ function ExpandedDetails({ e, onApprove, onReject, actioning }) {
               ) : '✓ Approve'}
             </button>
             <button
-              onClick={() => onReject(e.id)}
+              onClick={() => onReject(entry.id)}
               disabled={!!actioning}
               style={{
                 padding: '6px 18px', fontSize: 12, fontWeight: 600,
@@ -164,7 +404,22 @@ function ExpandedDetails({ e, onApprove, onReject, actioning }) {
               ✕ Reject
             </button>
 
-            {actioning === e.id && (
+            {/* Edit toggle */}
+            <button
+              onClick={() => setShowEdit(v => !v)}
+              style={{
+                padding: '6px 14px', fontSize: 12, fontWeight: 600,
+                background: showEdit ? 'var(--bg-3)' : 'transparent',
+                color: showEdit ? 'var(--text-1)' : 'var(--text-3)',
+                border: '1px solid var(--border)', borderRadius: 7,
+                cursor: 'pointer', fontFamily: "Inter,sans-serif",
+                transition: 'all 0.15s',
+              }}
+            >
+              {showEdit ? '✕ Close Edit' : '✎ Edit'}
+            </button>
+
+            {actioning === entry.id && (
               <div style={{ flex: 1, height: 3, background: 'rgba(22,163,74,0.12)', borderRadius: 99, overflow: 'hidden', maxWidth: 160 }}>
                 <div style={{ height: '100%', background: 'linear-gradient(90deg, var(--green), #16a34a)', borderRadius: 99, animation: 'progressCrawl 2s cubic-bezier(0.05,0.6,0.4,1) forwards' }} />
               </div>
@@ -263,6 +518,11 @@ export default function AdminPendingSalaries() {
 
   function toggleExpand(id) {
     setExpanded(prev => prev === id ? null : id);
+  }
+
+  function updateEntry(updatedEntry) {
+    if (!updatedEntry) return;
+    setEntries(prev => prev.map(e => e.id === updatedEntry.id ? updatedEntry : e));
   }
 
   // ── Bulk selection helpers ─────────────────────────────────────────────────
