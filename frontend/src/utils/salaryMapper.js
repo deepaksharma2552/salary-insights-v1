@@ -60,7 +60,8 @@ function formatDate(iso) {
 
 /**
  * Maps a raw API salary entry to the shape expected by SalaryTable / drawers.
- * internalLevel is always populated from standardizedLevelName (the DB-driven field).
+ * internalLevel prefers functionLevelName (function-specific, e.g. "PM2", "IC3") and
+ * falls back to standardizedLevelName (the cross-function STD level).
  */
 export function mapSalary(s) {
   const colorIdx = s.companyName ? s.companyName.charCodeAt(0) % VIZ_COLORS.length : 0;
@@ -77,14 +78,12 @@ export function mapSalary(s) {
     compBg:        `${color}26`,
     compInd:       '',
     role:          s.jobTitle       ?? '—',
-    internalLevel: s.standardizedLevelName ?? '—',
+    internalLevel: s.functionLevelName ?? s.standardizedLevelName ?? '—',
     location:      s.location       ?? '—',
     exp:           s.yearsOfExperience != null ? `${s.yearsOfExperience} yr`  : '—',
     yoe:           s.yearsOfExperience != null
       ? `${s.yearsOfExperience} year${s.yearsOfExperience !== 1 ? 's' : ''}`
       : '—',
-    jobFunctionName:  s.jobFunctionName  ?? '—',
-    functionLevelName: s.functionLevelName ?? '—',
     empType:       s.employmentType ?? 'Full-time',
     base:          fmtSalary(s.baseSalary),
     bonus:         fmtSalary(s.bonus),
