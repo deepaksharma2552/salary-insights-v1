@@ -21,6 +21,7 @@ const PAGE_SIZE = 20;
 
 const TYPE_OPTIONS = ['REFERRAL','INTERNSHIP','FULL_TIME','CONTRACT','DRIVE'];
 const MODE_OPTIONS = ['REMOTE','HYBRID','ONSITE'];
+const fmtMode = m => m ? m.charAt(0).toUpperCase() + m.slice(1).toLowerCase() : '';
 
 const TYPE_LABEL = {
   REFERRAL:   'Referral',
@@ -189,7 +190,7 @@ export default function OpportunitiesPage() {
         <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch', margin: '0 4px' }} />
         <select className="select-field" value={modeFilter} onChange={e => handleMode(e.target.value)}>
           <option value="">Work mode</option>
-          {MODE_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
+          {MODE_OPTIONS.map(m => <option key={m} value={m}>{fmtMode(m)}</option>)}
         </select>
         <ScrollableSelect
           value={locationFilter}
@@ -292,7 +293,7 @@ export default function OpportunitiesPage() {
                   )}
                   {opp.workMode && (
                     <span style={{ fontSize: 11, color: 'var(--text-3)', background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px' }}>
-                      {opp.workMode}
+                      {fmtMode(opp.workMode)}
                     </span>
                   )}
                   {opp.experienceRequired && (
@@ -394,7 +395,7 @@ export default function OpportunitiesPage() {
                     {opp.stipendOrSalary ?? <span style={{ color: 'var(--text-4)' }}>—</span>}
                   </td>
                   <td style={{ fontSize: 12 }}>{opp.location ?? '—'}</td>
-                  <td style={{ fontSize: 12 }}>{opp.workMode ?? '—'}</td>
+                  <td style={{ fontSize: 12 }}>{opp.workMode ? fmtMode(opp.workMode) : '—'}</td>
                   <td><DeadlineChip expiresAt={opp.expiresAt} /></td>
                   <td style={{ fontSize: 11, color: 'var(--text-3)' }}>{opp.postedByName?.trim() || '—'}</td>
                   <td>
