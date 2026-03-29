@@ -7,7 +7,7 @@ import { useAppData } from '../../context/AppDataContext';
 const VIZ_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#6366f1','#a78bfa','#818cf8'];
 const SEARCH_MIN_CHARS = 3;
 const SEARCH_DEBOUNCE  = 600;
-const PAGE_SIZE        = 10;
+const PAGE_SIZE        = 20;
 const BENEFITS_PREVIEW = 3;
 
 function fmtSalary(val) {
@@ -1236,6 +1236,9 @@ export default function CompaniesPage() {
   const [page,          setPage]          = useState(0);
   const [totalPages,    setTotalPages]    = useState(1);
   const [totalElements, setTotalElements] = useState(0);
+  const [pageSize,      setPageSize]      = useState(PAGE_SIZE);
+  const [gotoValue,     setGotoValue]     = useState('');
+  const [gotoError,     setGotoError]     = useState('');
   const [selected,      setSelected]      = useState(null); // { company, initialTab }
   const [hiringMap,     setHiringMap]     = useState(new Map());
   const [sortBy,        setSortBy]        = useState('entries'); // entries | name | recent
@@ -1275,7 +1278,7 @@ export default function CompaniesPage() {
   const fetchCompanies = useCallback(() => {
     setLoading(true); setError(null);
     api.get('/public/companies', { params: {
-      page, size: PAGE_SIZE,
+      page, size: pageSize,
       ...(search && { name: search }),
       ...(location && { location }),
       sortBy,
@@ -1299,10 +1302,11 @@ export default function CompaniesPage() {
       })
       .catch(err => setError(`Failed to load companies (${err.response?.status ?? 'network error'})`))
       .finally(() => setLoading(false));
-  }, [page, search, location, sortBy, showAll]);
+  }, [page, search, location, sortBy, showAll, pageSize]);
 
   useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
   useEffect(() => { setPage(0); }, [sortBy, showAll, location]);
+  useEffect(() => { setPage(0); }, [pageSize]);
 
   return (
     <section className="section">
@@ -1563,15 +1567,67 @@ export default function CompaniesPage() {
               </button>
             </div>
           )}
-          {totalPages > 1 && (
-            <div className="pagination">
-              <span className="page-info">Showing {page*PAGE_SIZE+1}–{Math.min((page+1)*PAGE_SIZE, totalElements)} of {totalElements}</span>
-              <div className="page-btns">
-                <button className="page-btn" disabled={page===0} onClick={() => setPage(p=>p-1)}>←</button>
-                {Array.from({ length: totalPages }, (_,i) => i).map(p => (
-                  <button key={p} className={`page-btn${p===page?' active':''}`} onClick={() => setPage(p)}>{p+1}</button>
-                ))}
-                <button className="page-btn" disabled={page===totalPages-1} onClick={() => setPage(p=>p+1)}>→</button>
+          {totalPages >= 1 && (
+            <div className="pagination" style={{ flexWrap: 'wrap', gap: 8 }}>
+              <span className="page-info">Showing {Math.min(page*pageSize+1, totalElements)}–{Math.min((page+1)*pageSize, totalElements)} of {totalElements}</span>
+              <div className="page-btns" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <button className="page-btn" disabled={page===0} onClick={() => setPage(p=>p-1)}>← Prev</button>
+                <span className="page-info" style={{ padding: '0 8px', fontWeight: 500 }}>Page {page+1} of {totalPages}</span>
+                <button className="page-btn" disabled={page===totalPages-1} onClick={() => setPage(p=>p+1)}>Next →</button>
+
+                <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
+
+                {/* Rows per page */}
+                <span style={{ fontSize: 13, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>Rows per page</span>
+                <select
+                  value={pageSize}
+                  onChange={e => setPageSize(Number(e.target.value))}
+                  style={{
+                    fontSize: 13, padding: '4px 8px', borderRadius: 7,
+                    border: '1px solid var(--border)', background: 'var(--bg-2)',
+                    color: 'var(--text-1)', cursor: 'pointer',
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+
+                <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
+
+                {/* Go to page */}
+                <span style={{ fontSize: 13, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>Go to</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={totalPages}
+                  value={gotoValue}
+                  onChange={e => { setGotoValue(e.target.value); setGotoError(''); }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const n = parseInt(gotoValue, 10);
+                      if (!n || n < 1 || n > totalPages) { setGotoError(`1–${totalPages}`); return; }
+                      setPage(n - 1); setGotoValue(''); setGotoError('');
+                    }
+                  }}
+                  placeholder="—"
+                  style={{
+                    width: 52, fontSize: 13, padding: '4px 6px', borderRadius: 7,
+                    border: `1px solid ${gotoError ? 'var(--rose)' : 'var(--border)'}`,
+                    background: 'var(--bg-2)', color: 'var(--text-1)', textAlign: 'center',
+                  }}
+                />
+                <button
+                  className="page-btn"
+                  onClick={() => {
+                    const n = parseInt(gotoValue, 10);
+                    if (!n || n < 1 || n > totalPages) { setGotoError(`1–${totalPages}`); return; }
+                    setPage(n - 1); setGotoValue(''); setGotoError('');
+                  }}
+                >
+                  Go
+                </button>
+                {gotoError && <span style={{ fontSize: 12, color: 'var(--rose)' }}>Enter {gotoError}</span>}
               </div>
             </div>
           )}
