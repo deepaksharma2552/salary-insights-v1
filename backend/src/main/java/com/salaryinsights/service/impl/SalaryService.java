@@ -787,16 +787,18 @@ public class SalaryService {
                     .ifPresent(entry::setStandardizedLevel);
         }
         // Reassign job function and function level if provided
+        // Use a final alias so lambdas can capture it (entry is reassigned after save())
+        final SalaryEntry entryRef = entry;
         if (req.getJobFunctionId() != null) {
             jobFunctionRepository.findById(req.getJobFunctionId())
-                    .ifPresent(entry::setJobFunction);
+                    .ifPresent(entryRef::setJobFunction);
         }
         if (req.getFunctionLevelId() != null) {
             functionLevelRepository.findById(req.getFunctionLevelId()).ifPresent(fl -> {
-                entry.setFunctionLevel(fl);
+                entryRef.setFunctionLevel(fl);
                 // Auto-sync standardized level from the function level mapping
                 if (fl.getStandardizedLevel() != null) {
-                    entry.setStandardizedLevel(fl.getStandardizedLevel());
+                    entryRef.setStandardizedLevel(fl.getStandardizedLevel());
                 }
             });
         }
