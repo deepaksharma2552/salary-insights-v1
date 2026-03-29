@@ -33,7 +33,7 @@ public class CompanyService {
 
     @org.springframework.cache.annotation.Cacheable(
         value = "companyList",
-        key = "'page:' + #pageable.pageNumber + ':size:' + #pageable.pageSize + ':name:' + #name + ':industry:' + #industry + ':location:' + #location"
+        key = "'page:' + #pageable.pageNumber + ':size:' + #pageable.pageSize + ':name:' + #name + ':industry:' + #industry + ':location:' + #location + ':showAll:' + #showAll + ':sortBy:' + #sortBy"
     )
     public PagedResponse<CompanyResponse> getAllCompanies(String name, String industry, String location, String sortBy, boolean showAll, Pageable pageable) {
         // Validate sortBy — default to "entries" if unrecognised
