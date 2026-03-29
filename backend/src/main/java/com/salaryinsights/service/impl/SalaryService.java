@@ -568,7 +568,31 @@ public class SalaryService {
         key = "'byCompanyLevel_' + T(java.util.Arrays).toString(new java.util.ArrayList(new java.util.TreeSet(#locationDisplayNames)).toArray())"
     )
     public List<CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevelFiltered(List<String> locationDisplayNames) {
-        List<String> locationEnumNames = locationDisplayNames.stream()
+        List<String> locationEnumNames = toEnumNames(locationDisplayNames);
+        return mapCompanyLevelRows(salaryEntryRepository.avgSalaryByCompanyAndLevelFilteredRaw(locationEnumNames));
+    }
+
+    @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(
+        value = "analytics",
+        key = "'byCompanyLevelFn_' + #jobFunctionId"
+    )
+    public List<CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevelByFunction(String jobFunctionId) {
+        return mapCompanyLevelRows(salaryEntryRepository.avgSalaryByCompanyAndLevelByFunctionRaw(jobFunctionId));
+    }
+
+    @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(
+        value = "analytics",
+        key = "'byCompanyLevelFnLoc_' + #jobFunctionId + '_' + T(java.util.Arrays).toString(new java.util.ArrayList(new java.util.TreeSet(#locationDisplayNames)).toArray())"
+    )
+    public List<CompanyLevelSalaryDTO> getAvgSalaryByCompanyAndLevelByFunctionFiltered(String jobFunctionId, List<String> locationDisplayNames) {
+        List<String> locationEnumNames = toEnumNames(locationDisplayNames);
+        return mapCompanyLevelRows(salaryEntryRepository.avgSalaryByCompanyAndLevelByFunctionFilteredRaw(jobFunctionId, locationEnumNames));
+    }
+
+    private List<String> toEnumNames(List<String> displayNames) {
+        return displayNames.stream()
             .map(name -> {
                 for (com.salaryinsights.enums.Location loc : com.salaryinsights.enums.Location.values()) {
                     if (loc.getDisplayName().equalsIgnoreCase(name) || loc.name().equalsIgnoreCase(name)) return loc.name();
@@ -576,7 +600,6 @@ public class SalaryService {
                 return name;
             })
             .collect(Collectors.toList());
-        return mapCompanyLevelRows(salaryEntryRepository.avgSalaryByCompanyAndLevelFilteredRaw(locationEnumNames));
     }
 
     private List<CompanyLevelSalaryDTO> mapCompanyLevelRows(List<Object[]> rows) {

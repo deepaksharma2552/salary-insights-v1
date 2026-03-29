@@ -4,6 +4,7 @@ import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useLocations } from '../../hooks/useLocations';
+import { useAppData } from '../../context/AppDataContext';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    DESIGN TOKENS
@@ -616,6 +617,7 @@ export default function DashboardPage() {
   const isMobile = useIsMobile();
   const { locations: ALL_LOCATIONS_RAW } = useLocations();
   const ALL_LOCATIONS = ALL_LOCATIONS_RAW.map(l => l.label);
+  const { functions, functionsReady } = useAppData();
 
   /* ── Data state ── */
   const [byLocationLevel, setByLocationLevel] = useState([]);
@@ -631,12 +633,15 @@ export default function DashboardPage() {
   const [selCompanies,           setSelCompanies]           = useState([]);
   const [selLocationsForCompany, setSelLocationsForCompany] = useState([]);
   const [selLevels,              setSelLevels]              = useState([]);
+  const [selJobFunctionId,       setSelJobFunctionId]       = useState('');
 
   /* ── Company filter fetch ── */
   const fetchCompanyLevel = React.useCallback(() => {
-    const params = selLocationsForCompany.length > 0 ? { locations: selLocationsForCompany } : {};
+    const params = {};
+    if (selLocationsForCompany.length > 0) params.locations = selLocationsForCompany;
+    if (selJobFunctionId)                  params.jobFunctionId = selJobFunctionId;
     return api.get('/public/salaries/analytics/by-company-level', { params });
-  }, [selLocationsForCompany]);
+  }, [selLocationsForCompany, selJobFunctionId]);
 
   /* ── Initial load — all data + header stats in parallel ── */
   useEffect(() => {
@@ -656,7 +661,7 @@ export default function DashboardPage() {
       .finally(() => setInitialLoading(false));
   }, []);
 
-  /* ── Re-fetch company chart on location filter change ── */
+  /* ── Re-fetch company chart on location or function filter change ── */
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return; }
@@ -708,6 +713,9 @@ export default function DashboardPage() {
   );
   const allCompanyNames = useMemo(() => Object.keys(companyGrouped), [companyGrouped]);
   const allLevelNames   = useMemo(() => {
+    // When a job function is selected the API already scopes to that function's
+    // function_levels (ordered by sort_order).  We just read names in the order
+    // they arrive — hierarchy_rank IS sort_order in the function-filtered query.
     const rankMap = {};
     byCompanyLevel.forEach(row => {
       if (row.internalLevel && row.hierarchyRank != null) rankMap[row.internalLevel] = row.hierarchyRank;
@@ -1014,19 +1022,41 @@ export default function DashboardPage() {
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div className="chart-title">Salary by Company &amp; Level</div>
                     <div className="chart-subtitle">
-                      {selLocationsForCompany.length > 0 || selLevels.length > 0
-                        ? `${selLocationsForCompany.length > 0 ? selLocationsForCompany.length + ' loc · ' : ''}${selCompanies.length > 0 ? selCompanies.length + ' companies' : 'all companies'}${selLevels.length > 0 ? ' · ' + selLevels.length + ' level' + (selLevels.length > 1 ? 's' : '') : ''}`
-                        : `${isMobile ? 'Tap a bar' : 'Hover each bar'} for Base · Bonus · Equity breakdown`}
+                      {selJobFunctionId
+                        ? `${functions.find(f => String(f.id) === selJobFunctionId)?.displayName ?? ''} · ${isMobile ? 'Tap' : 'Hover'} a bar for Base · Bonus · Equity`
+                        : `Select a Job Function to see role-specific levels`}
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, width: isMobile ? '100%' : undefined, flexShrink: 0 }}>
+                    {/* Job Function — primary filter, always visible */}
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end', width: '100%' }}>
-                      <MultiFilter label="Location" items={ALL_LOCATIONS}      selected={selLocationsForCompany} onChange={setSelLocationsForCompany} max={5} isMobile={isMobile} />
-                      <MultiFilter label="Company"  items={allCompanyNames}    selected={selCompanies}           onChange={setSelCompanies}           max={5} isMobile={isMobile} />
-                      <MultiFilter label="Level"    items={allLevelNames}      selected={selLevels}              onChange={setSelLevels}              max={5} isMobile={isMobile} />
+                      <select
+                        value={selJobFunctionId}
+                        onChange={e => { setSelJobFunctionId(e.target.value); setSelLevels([]); setSelCompanies([]); }}
+                        disabled={!functionsReady}
+                        style={{
+                          height: 30, padding: '0 26px 0 10px', borderRadius: 8,
+                          border: selJobFunctionId ? '1.5px solid #3b82f6' : '1px solid var(--border)',
+                          background: selJobFunctionId ? 'var(--viz-1-dim, #eff6ff)' : 'var(--bg-2)',
+                          color: selJobFunctionId ? '#2563eb' : 'var(--text-2)',
+                          fontSize: 12, fontWeight: selJobFunctionId ? 600 : 400,
+                          cursor: 'pointer', appearance: 'none',
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
+                          backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
+                        }}
+                      >
+                        <option value="">{functionsReady ? 'All Functions' : 'Loading…'}</option>
+                        {functions.map(fn => <option key={fn.id} value={String(fn.id)}>{fn.displayName}</option>)}
+                      </select>
+                      <MultiFilter label="Location" items={ALL_LOCATIONS}   selected={selLocationsForCompany} onChange={setSelLocationsForCompany} max={5} isMobile={isMobile} />
+                      <MultiFilter label="Company"  items={allCompanyNames} selected={selCompanies}           onChange={setSelCompanies}           max={5} isMobile={isMobile} />
+                      {/* Level filter only shown when no function is selected — when a function IS selected the levels are already scoped */}
+                      {!selJobFunctionId && (
+                        <MultiFilter label="Level" items={allLevelNames} selected={selLevels} onChange={setSelLevels} max={5} isMobile={isMobile} />
+                      )}
                     </div>
-                    {(selLocationsForCompany.length > 0 || selCompanies.length > 0 || selLevels.length > 0) && (
-                      <button onClick={() => { setSelLocationsForCompany([]); setSelCompanies([]); setSelLevels([]); }}
+                    {(selLocationsForCompany.length > 0 || selCompanies.length > 0 || selLevels.length > 0 || selJobFunctionId) && (
+                      <button onClick={() => { setSelLocationsForCompany([]); setSelCompanies([]); setSelLevels([]); setSelJobFunctionId(''); }}
                         style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'IBM Plex Mono',monospace", alignSelf: isMobile ? 'flex-start' : 'flex-end' }}>
                         ✕ clear all
                       </button>
@@ -1037,6 +1067,23 @@ export default function DashboardPage() {
                 <Chips items={selLocationsForCompany} onRemove={loc => setSelLocationsForCompany(selLocationsForCompany.filter(l => l !== loc))} />
                 <Chips items={selCompanies}           onRemove={c   => setSelCompanies(selCompanies.filter(x => x !== c))} />
                 <Chips items={selLevels}              onRemove={l   => setSelLevels(selLevels.filter(x => x !== l))} />
+                {selJobFunctionId && (() => {
+                  const fn = functions.find(f => String(f.id) === selJobFunctionId);
+                  return fn ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 6 }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        padding: '2px 8px 2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                        background: 'var(--viz-1-dim, #eff6ff)', color: '#2563eb',
+                        border: '1.5px solid #3b82f640',
+                      }}>
+                        {fn.displayName}
+                        <button onClick={() => { setSelJobFunctionId(''); setSelLevels([]); }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb', padding: 0, lineHeight: 1, fontSize: 12 }}>✕</button>
+                      </span>
+                    </div>
+                  ) : null;
+                })()}
 
                 {/* Progress bar for refetch */}
                 <div style={{ height: 3, marginBottom: 8, borderRadius: 99, overflow: 'hidden', background: refetching ? 'rgba(59,130,246,0.12)' : 'transparent', transition: 'background 0.2s' }}>
@@ -1047,7 +1094,21 @@ export default function DashboardPage() {
 
                 <BarLegend isMobile={isMobile} />
 
-                {byCompanyLevel.length === 0 ? <EmptyState /> :
+                {byCompanyLevel.length === 0 && !selJobFunctionId ? (
+                  <div style={{
+                    textAlign: 'center', padding: '40px 24px',
+                    background: 'var(--bg-2)', borderRadius: 10,
+                    border: '1.5px dashed var(--border)',
+                  }}>
+                    <div style={{ fontSize: 22, marginBottom: 10 }}>🗂</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', marginBottom: 6 }}>
+                      Select a Job Function
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.6, maxWidth: 240, margin: '0 auto' }}>
+                      Choose a function above to see role-specific levels — e.g. <strong>Engineering</strong> shows SDE 1 → Staff Engineer, <strong>Product</strong> shows APM → Director of PM.
+                    </div>
+                  </div>
+                ) : byCompanyLevel.length === 0 ? <EmptyState /> :
                  visibleCompanies.length === 0 ? <EmptyState filtered filterLabel={selLocationsForCompany.join(', ')} /> : (() => {
                   const companiesToShow = selCompanies.length > 0
                     ? visibleCompanies

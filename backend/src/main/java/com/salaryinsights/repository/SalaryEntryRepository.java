@@ -418,4 +418,108 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "ORDER BY weighted_score DESC, hierarchy_rank ASC",
         nativeQuery = true)
     List<Object[]> avgSalaryByCompanyAndLevelFilteredRaw(@Param("locations") List<String> locations);
+
+    // Job-function-filtered variant: limits levels to entries for a specific job function.
+    // top_companies still ranks by weighted_score across ALL approved entries so the
+    // company order stays stable; level_agg then restricts to the chosen function.
+    @Query(value =
+        "WITH top_companies AS ( " +
+        "  SELECT c.id AS company_id, " +
+        "         c.name AS company_name, " +
+        "         c.logo_url AS logo_url, " +
+        "         c.website AS website, " +
+        "         COUNT(*) AS total_entries, " +
+        "         MAX(s.created_at) AS most_recent_entry, " +
+        "         AVG(s.total_compensation) * LN(COUNT(*) + 1) AS weighted_score " +
+        "  FROM salary_entries s " +
+        "  JOIN companies c ON s.company_id = c.id " +
+        "  WHERE s.review_status = 'APPROVED' " +
+        "  GROUP BY c.id, c.name, c.logo_url, c.website " +
+        "  ORDER BY most_recent_entry DESC " +
+        "  LIMIT 20 " +
+        "), " +
+        "level_agg AS ( " +
+        "  SELECT tc.company_name, " +
+        "         CAST(tc.company_id AS VARCHAR) AS company_id_str, " +
+        "         tc.logo_url, " +
+        "         tc.website, " +
+        "         tc.total_entries AS company_total_entries, " +
+        "         tc.most_recent_entry, " +
+        "         tc.weighted_score, " +
+        "         fl.name AS internalLevel, " +
+        "         fl.sort_order AS hierarchy_rank, " +
+        "         AVG(s.base_salary)        AS avgBaseSalary, " +
+        "         AVG(s.bonus)              AS avgBonus, " +
+        "         AVG(s.equity)             AS avgEquity, " +
+        "         AVG(s.total_compensation) AS avgTotalCompensation, " +
+        "         COUNT(*)                  AS cnt " +
+        "  FROM salary_entries s " +
+        "  JOIN top_companies tc ON s.company_id = tc.company_id " +
+        "  JOIN function_levels fl ON fl.id = s.function_level_id " +
+        "  WHERE s.review_status = 'APPROVED' " +
+        "    AND s.job_function_id = CAST(:jobFunctionId AS uuid) " +
+        "  GROUP BY tc.company_name, tc.company_id, tc.logo_url, tc.website, " +
+        "           tc.total_entries, tc.most_recent_entry, tc.weighted_score, " +
+        "           fl.id, fl.name, fl.sort_order " +
+        ") " +
+        "SELECT company_name, company_id_str, logo_url, website, internalLevel, " +
+        "       avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt, " +
+        "       company_total_entries, most_recent_entry, hierarchy_rank " +
+        "FROM level_agg " +
+        "ORDER BY weighted_score DESC, hierarchy_rank ASC",
+        nativeQuery = true)
+    List<Object[]> avgSalaryByCompanyAndLevelByFunctionRaw(@Param("jobFunctionId") String jobFunctionId);
+
+    // Location + job-function filtered variant
+    @Query(value =
+        "WITH top_companies AS ( " +
+        "  SELECT c.id AS company_id, " +
+        "         c.name AS company_name, " +
+        "         c.logo_url AS logo_url, " +
+        "         c.website AS website, " +
+        "         COUNT(*) AS total_entries, " +
+        "         MAX(s.created_at) AS most_recent_entry, " +
+        "         AVG(s.total_compensation) * LN(COUNT(*) + 1) AS weighted_score " +
+        "  FROM salary_entries s " +
+        "  JOIN companies c ON s.company_id = c.id " +
+        "  WHERE s.review_status = 'APPROVED' " +
+        "    AND s.location IN (:locations) " +
+        "  GROUP BY c.id, c.name, c.logo_url, c.website " +
+        "  ORDER BY most_recent_entry DESC " +
+        "  LIMIT 20 " +
+        "), " +
+        "level_agg AS ( " +
+        "  SELECT tc.company_name, " +
+        "         CAST(tc.company_id AS VARCHAR) AS company_id_str, " +
+        "         tc.logo_url, " +
+        "         tc.website, " +
+        "         tc.total_entries AS company_total_entries, " +
+        "         tc.most_recent_entry, " +
+        "         tc.weighted_score, " +
+        "         fl.name AS internalLevel, " +
+        "         fl.sort_order AS hierarchy_rank, " +
+        "         AVG(s.base_salary)        AS avgBaseSalary, " +
+        "         AVG(s.bonus)              AS avgBonus, " +
+        "         AVG(s.equity)             AS avgEquity, " +
+        "         AVG(s.total_compensation) AS avgTotalCompensation, " +
+        "         COUNT(*)                  AS cnt " +
+        "  FROM salary_entries s " +
+        "  JOIN top_companies tc ON s.company_id = tc.company_id " +
+        "  JOIN function_levels fl ON fl.id = s.function_level_id " +
+        "  WHERE s.review_status = 'APPROVED' " +
+        "    AND s.location IN (:locations) " +
+        "    AND s.job_function_id = CAST(:jobFunctionId AS uuid) " +
+        "  GROUP BY tc.company_name, tc.company_id, tc.logo_url, tc.website, " +
+        "           tc.total_entries, tc.most_recent_entry, tc.weighted_score, " +
+        "           fl.id, fl.name, fl.sort_order " +
+        ") " +
+        "SELECT company_name, company_id_str, logo_url, website, internalLevel, " +
+        "       avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt, " +
+        "       company_total_entries, most_recent_entry, hierarchy_rank " +
+        "FROM level_agg " +
+        "ORDER BY weighted_score DESC, hierarchy_rank ASC",
+        nativeQuery = true)
+    List<Object[]> avgSalaryByCompanyAndLevelByFunctionFilteredRaw(
+            @Param("jobFunctionId") String jobFunctionId,
+            @Param("locations") List<String> locations);
 }

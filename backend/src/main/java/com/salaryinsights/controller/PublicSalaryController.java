@@ -73,18 +73,30 @@ public class PublicSalaryController {
     }
 
     /**
+    /**
      * GET /public/salaries/analytics/by-company-level
      * Optional ?locations=Bengaluru&locations=Pune — when provided, averages are
      * scoped to those locations only (used by DashboardPage location filter).
-     * No param = nationwide averages (default, backwards compatible).
+     * Optional ?jobFunctionId=<uuid> — when provided, levels are scoped to that
+     * job function's function_levels (not the global standardized_levels taxonomy).
+     * No params = nationwide averages across all functions (backwards compatible).
      */
     @GetMapping("/analytics/by-company-level")
     public ResponseEntity<ApiResponse<List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO>>> getByCompanyAndLevel(
-            @RequestParam(required = false) List<String> locations) {
-        List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> data =
-            (locations != null && !locations.isEmpty())
-                ? salaryService.getAvgSalaryByCompanyAndLevelFiltered(locations)
-                : salaryService.getAvgSalaryByCompanyAndLevel();
+            @RequestParam(required = false) List<String> locations,
+            @RequestParam(required = false) String jobFunctionId) {
+        List<com.salaryinsights.dto.response.CompanyLevelSalaryDTO> data;
+        boolean hasLocations = locations != null && !locations.isEmpty();
+        boolean hasFn        = jobFunctionId != null && !jobFunctionId.isBlank();
+        if (hasFn && hasLocations) {
+            data = salaryService.getAvgSalaryByCompanyAndLevelByFunctionFiltered(jobFunctionId, locations);
+        } else if (hasFn) {
+            data = salaryService.getAvgSalaryByCompanyAndLevelByFunction(jobFunctionId);
+        } else if (hasLocations) {
+            data = salaryService.getAvgSalaryByCompanyAndLevelFiltered(locations);
+        } else {
+            data = salaryService.getAvgSalaryByCompanyAndLevel();
+        }
         return ResponseEntity.ok(ApiResponse.success(data));
     }
 
