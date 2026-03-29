@@ -21,6 +21,36 @@ const PALETTE = {
 
 const BAR_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#6366f1','#a78bfa','#22d3ee','#818cf8','#c4b5fd'];
 
+/* ─── Canonical level order — used as a tiebreaker when DB hierarchy_rank
+   values are stale or ambiguous (e.g. generic V2 rows mixed with SDE-tier rows).
+   Lower index = lower in the career ladder = shown first in charts.
+   Any level not listed here falls back to its hierarchyRank, then to Infinity. ─ */
+const CANONICAL_LEVEL_ORDER = [
+  'Intern',
+  'SDE 1', 'Junior',
+  'SDE 2', 'Mid',
+  'SDE 3', 'Senior',
+  'Staff Engineer', 'Lead',
+  'Principal Engineer', 'Principal',
+  'Architect',
+  'Engineering Manager', 'Manager',
+  'Sr. Engineering Manager',
+  'Director', 'Sr. Director',
+  'VP', 'VP Engineering',
+  'C-Level',
+];
+
+function levelSortKey(row) {
+  // Primary: DB hierarchy_rank (authoritative when correct)
+  // Secondary: canonical order index (guards against stale V2 ranks)
+  // Tertiary: Infinity (unknown levels sink to bottom)
+  const canonicalIdx = CANONICAL_LEVEL_ORDER.indexOf(row.internalLevel);
+  const rank = row.hierarchyRank ?? 9999;
+  // If two rows share the same rank (e.g. stale "Senior"=4 vs "Intern"=5 after V38),
+  // canonical index breaks the tie correctly.
+  return rank * 1000 + (canonicalIdx >= 0 ? canonicalIdx : 999);
+}
+
 const fmt = (val) => {
   if (!val && val !== 0) return '—';
   const l = val / 100000;
@@ -157,11 +187,20 @@ function BarRow({ label, sublabel, base, bonus, equity, total, count, maxTotal, 
 
   function onEnter(e) {
     setTip(true);
-    const card = rowRef.current?.closest('.chart-card');
-    if (card) {
-      const cardRect = card.getBoundingClientRect();
-      const rawX     = e.clientX - cardRect.left;
-      const clamped  = Math.max(100, Math.min(rawX, cardRect.width - 100));
+    if (rowRef.current) {
+      const rowRect  = rowRef.current.getBoundingClientRect();
+      const rawX     = e.clientX - rowRect.left;
+      const clamped  = Math.max(105, Math.min(rawX, rowRect.width - 105));
+      setTipX(clamped + 'px');
+    }
+  }
+
+  function onMove(e) {
+    if (!tip) return;
+    if (rowRef.current) {
+      const rowRect  = rowRef.current.getBoundingClientRect();
+      const rawX     = e.clientX - rowRect.left;
+      const clamped  = Math.max(105, Math.min(rawX, rowRect.width - 105));
       setTipX(clamped + 'px');
     }
   }
@@ -174,6 +213,7 @@ function BarRow({ label, sublabel, base, bonus, equity, total, count, maxTotal, 
         className="level-bar-row"
         style={{ cursor: isMobile ? 'pointer' : 'default' }}
         onMouseEnter={!isMobile ? onEnter : undefined}
+        onMouseMove={!isMobile ? onMove : undefined}
         onMouseLeave={!isMobile ? () => setTip(false) : undefined}
         onClick={isMobile ? () => setTip(v => !v) : undefined}
       >
@@ -221,14 +261,29 @@ function BarRow({ label, sublabel, base, bonus, equity, total, count, maxTotal, 
               sublabel={sublabel}
               base={base} bonus={bonus} equity={equity} total={total} count={count}
             />
+            {/* Arrow — centered under the tooltip box (box is already at tipX) */}
             <div style={{
               position: 'absolute', top: '100%', left: '50%',
               transform: 'translateX(-50%)',
-              width: 0, height: 0,
-              borderLeft: '6px solid transparent',
-              borderRight: '6px solid transparent',
-              borderTop: '6px solid var(--border)',
-            }} />
+              pointerEvents: 'none',
+            }}>
+              {/* Border triangle */}
+              <div style={{
+                width: 0, height: 0,
+                borderLeft: '7px solid transparent',
+                borderRight: '7px solid transparent',
+                borderTop: '7px solid var(--border)',
+              }} />
+              {/* Fill triangle — overlaps border triangle to show panel color */}
+              <div style={{
+                position: 'absolute', top: 0, left: '50%',
+                transform: 'translateX(-50%)',
+                width: 0, height: 0,
+                borderLeft: '6px solid transparent',
+                borderRight: '6px solid transparent',
+                borderTop: '6px solid var(--panel)',
+              }} />
+            </div>
           </div>
         )}
       </div>
@@ -651,11 +706,11 @@ export default function DashboardPage() {
     }, {}),
   [byLocationLevel]);
 
-  // Sort each location's rows by hierarchyRank ascending after grouping
+  // Sort each location's rows by levelSortKey ascending after grouping
   const locationGroupedSorted = useMemo(() => {
     const result = {};
     Object.entries(locationGrouped).forEach(([loc, rows]) => {
-      result[loc] = [...rows].sort((a, b) => (a.hierarchyRank ?? 9999) - (b.hierarchyRank ?? 9999));
+      result[loc] = [...rows].sort((a, b) => levelSortKey(a) - levelSortKey(b));
     });
     return result;
   }, [locationGrouped]);
@@ -668,11 +723,11 @@ export default function DashboardPage() {
     }, {}),
   [byCompanyLevel]);
 
-  // Sort each company's rows by hierarchyRank ascending after grouping
+  // Sort each company's rows by levelSortKey ascending after grouping
   const companyGroupedSorted = useMemo(() => {
     const result = {};
     Object.entries(companyGrouped).forEach(([company, rows]) => {
-      result[company] = [...rows].sort((a, b) => (a.hierarchyRank ?? 9999) - (b.hierarchyRank ?? 9999));
+      result[company] = [...rows].sort((a, b) => levelSortKey(a) - levelSortKey(b));
     });
     return result;
   }, [companyGrouped]);
@@ -683,13 +738,13 @@ export default function DashboardPage() {
   );
   const allCompanyNames = useMemo(() => Object.keys(companyGrouped), [companyGrouped]);
   const allLevelNames   = useMemo(() => {
-    // Build a rank lookup from the data itself — no hardcoded ORDER array needed
-    const rankMap = {};
-    byCompanyLevel.forEach(row => {
-      if (row.internalLevel && row.hierarchyRank != null) rankMap[row.internalLevel] = row.hierarchyRank;
-    });
+    // Build a rank lookup from the data itself — levelSortKey handles stale DB ranks
     const seen = new Set(byCompanyLevel.map(r => r.internalLevel).filter(Boolean));
-    return [...seen].sort((a, b) => (rankMap[a] ?? 9999) - (rankMap[b] ?? 9999));
+    // Build dummy row objects to reuse levelSortKey
+    return [...seen].sort((a, b) =>
+      levelSortKey({ internalLevel: a, hierarchyRank: byCompanyLevel.find(r => r.internalLevel === a)?.hierarchyRank }) -
+      levelSortKey({ internalLevel: b, hierarchyRank: byCompanyLevel.find(r => r.internalLevel === b)?.hierarchyRank })
+    );
   }, [byCompanyLevel]);
 
   const DEFAULT_VISIBLE = 5;
