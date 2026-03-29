@@ -21,36 +21,6 @@ const PALETTE = {
 
 const BAR_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#6366f1','#a78bfa','#22d3ee','#818cf8','#c4b5fd'];
 
-/* ─── Canonical level order — used as a tiebreaker when DB hierarchy_rank
-   values are stale or ambiguous (e.g. generic V2 rows mixed with SDE-tier rows).
-   Lower index = lower in the career ladder = shown first in charts.
-   Any level not listed here falls back to its hierarchyRank, then to Infinity. ─ */
-const CANONICAL_LEVEL_ORDER = [
-  'Intern',
-  'SDE 1', 'Junior',
-  'SDE 2', 'Mid',
-  'SDE 3', 'Senior',
-  'Staff Engineer', 'Lead',
-  'Principal Engineer', 'Principal',
-  'Architect',
-  'Engineering Manager', 'Manager',
-  'Sr. Engineering Manager',
-  'Director', 'Sr. Director',
-  'VP', 'VP Engineering',
-  'C-Level',
-];
-
-function levelSortKey(row) {
-  // Primary: DB hierarchy_rank (authoritative when correct)
-  // Secondary: canonical order index (guards against stale V2 ranks)
-  // Tertiary: Infinity (unknown levels sink to bottom)
-  const canonicalIdx = CANONICAL_LEVEL_ORDER.indexOf(row.internalLevel);
-  const rank = row.hierarchyRank ?? 9999;
-  // If two rows share the same rank (e.g. stale "Senior"=4 vs "Intern"=5 after V38),
-  // canonical index breaks the tie correctly.
-  return rank * 1000 + (canonicalIdx >= 0 ? canonicalIdx : 999);
-}
-
 const fmt = (val) => {
   if (!val && val !== 0) return '—';
   const l = val / 100000;
@@ -706,11 +676,11 @@ export default function DashboardPage() {
     }, {}),
   [byLocationLevel]);
 
-  // Sort each location's rows by levelSortKey ascending after grouping
+  // Sort each location's rows by hierarchyRank ascending after grouping
   const locationGroupedSorted = useMemo(() => {
     const result = {};
     Object.entries(locationGrouped).forEach(([loc, rows]) => {
-      result[loc] = [...rows].sort((a, b) => levelSortKey(a) - levelSortKey(b));
+      result[loc] = [...rows].sort((a, b) => (a.hierarchyRank ?? 9999) - (b.hierarchyRank ?? 9999));
     });
     return result;
   }, [locationGrouped]);
@@ -723,11 +693,11 @@ export default function DashboardPage() {
     }, {}),
   [byCompanyLevel]);
 
-  // Sort each company's rows by levelSortKey ascending after grouping
+  // Sort each company's rows by hierarchyRank ascending after grouping
   const companyGroupedSorted = useMemo(() => {
     const result = {};
     Object.entries(companyGrouped).forEach(([company, rows]) => {
-      result[company] = [...rows].sort((a, b) => levelSortKey(a) - levelSortKey(b));
+      result[company] = [...rows].sort((a, b) => (a.hierarchyRank ?? 9999) - (b.hierarchyRank ?? 9999));
     });
     return result;
   }, [companyGrouped]);
@@ -738,13 +708,12 @@ export default function DashboardPage() {
   );
   const allCompanyNames = useMemo(() => Object.keys(companyGrouped), [companyGrouped]);
   const allLevelNames   = useMemo(() => {
-    // Build a rank lookup from the data itself — levelSortKey handles stale DB ranks
+    const rankMap = {};
+    byCompanyLevel.forEach(row => {
+      if (row.internalLevel && row.hierarchyRank != null) rankMap[row.internalLevel] = row.hierarchyRank;
+    });
     const seen = new Set(byCompanyLevel.map(r => r.internalLevel).filter(Boolean));
-    // Build dummy row objects to reuse levelSortKey
-    return [...seen].sort((a, b) =>
-      levelSortKey({ internalLevel: a, hierarchyRank: byCompanyLevel.find(r => r.internalLevel === a)?.hierarchyRank }) -
-      levelSortKey({ internalLevel: b, hierarchyRank: byCompanyLevel.find(r => r.internalLevel === b)?.hierarchyRank })
-    );
+    return [...seen].sort((a, b) => (rankMap[a] ?? 9999) - (rankMap[b] ?? 9999));
   }, [byCompanyLevel]);
 
   const DEFAULT_VISIBLE = 5;
