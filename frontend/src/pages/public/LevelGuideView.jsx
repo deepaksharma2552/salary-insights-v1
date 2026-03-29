@@ -503,6 +503,122 @@ function CompanyCombo({ selected, onChange }) {
   );
 }
 
+/* ─── Function Filter ─────────────────────────────────────────────────────── */
+const PINNED_FUNCTIONS = ['Engineering', 'Product', 'Design', 'Program'];
+
+function FunctionFilter({ jobFunctions, selected, onSelect }) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef(null);
+
+  const pinned = jobFunctions.filter(fn => PINNED_FUNCTIONS.includes(fn.displayName));
+  const rest   = jobFunctions.filter(fn => !PINNED_FUNCTIONS.includes(fn.displayName));
+  const moreHasSelected = rest.some(fn => fn.displayName === selected);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function h(e) {
+      if (moreRef.current && !moreRef.current.contains(e.target)) setMoreOpen(false);
+    }
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const pillStyle = (active) => ({
+    padding: '5px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600,
+    cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
+    background: active ? '#3b82f6' : 'var(--bg-3)',
+    color:      active ? '#fff'    : 'var(--text-3)',
+    border:     active ? '1px solid #3b82f6' : '1px solid var(--border)',
+  });
+
+  return (
+    <>
+      <style>{`
+        @media (max-width: 480px) {
+          .fn-filter-row { flex-wrap: nowrap !important; overflow-x: auto !important; padding-bottom: 4px !important; }
+          .fn-filter-row::-webkit-scrollbar { display: none; }
+          .fn-more-dropdown { left: 0 !important; right: auto !important; min-width: 200px !important; }
+        }
+      `}</style>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16 }}>
+        <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 500, flexShrink: 0 }}>Function:</span>
+        <div className="fn-filter-row" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1 }}>
+
+          {/* Pinned pills */}
+          {pinned.map(fn => (
+            <button key={fn.id}
+              onClick={() => { onSelect(fn.displayName); setMoreOpen(false); }}
+              style={pillStyle(functionActive(fn.displayName, selected, rest))}
+            >{fn.displayName}</button>
+          ))}
+
+          {/* More dropdown — only render if there are extra functions */}
+          {rest.length > 0 && (
+            <div ref={moreRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setMoreOpen(v => !v)}
+                style={{
+                  ...pillStyle(moreHasSelected),
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                }}
+              >
+                {moreHasSelected ? selected : 'More'}
+                <svg width="11" height="11" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor" strokeWidth="2.5"
+                  style={{ transform: moreOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+
+              {moreOpen && (
+                <div className="fn-more-dropdown" style={{
+                  position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                  background: 'var(--panel)', border: '1px solid var(--border)',
+                  borderRadius: 12, padding: 8,
+                  display: 'flex', flexDirection: 'column', gap: 2,
+                  zIndex: 100, minWidth: 210,
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+                }}>
+                  {rest.map(fn => {
+                    const active = fn.displayName === selected;
+                    return (
+                      <button key={fn.id}
+                        onClick={() => { onSelect(fn.displayName); setMoreOpen(false); }}
+                        style={{
+                          padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: active ? 600 : 400,
+                          cursor: 'pointer', textAlign: 'left', border: 'none',
+                          background: active ? 'rgba(59,130,246,0.1)' : 'transparent',
+                          color: active ? '#3b82f6' : 'var(--text-2)',
+                          transition: 'background 0.1s',
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        }}
+                        onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--bg-2)'; }}
+                        onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        {fn.displayName}
+                        {active && (
+                          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#3b82f6" strokeWidth="2.5">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function functionActive(displayName, selected, rest) {
+  // A pinned pill is active if it's the selected function AND it's not in "rest"
+  return displayName === selected && !rest.some(fn => fn.displayName === displayName);
+}
+
 /* ─── Main View ───────────────────────────────────────────────────────────── */
 export default function LevelGuideView() {
   const [selected,         setSelected]         = useState([]);
@@ -563,22 +679,12 @@ export default function LevelGuideView() {
 
         <CompanyCombo selected={selected} onChange={setSelected} />
 
-        {/* Function filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 500, marginRight: 4 }}>Function:</span>
-          {jobFunctions.map(fn => (
-            <button key={fn.id}
-              onClick={() => { TopProgressBar.start(); setFunctionCategory(fn.displayName); }}
-              style={{
-                padding: '4px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600,
-                cursor: 'pointer', transition: 'all 0.15s',
-                background: functionCategory === fn.displayName ? '#3b82f6' : 'var(--bg-3)',
-                color:      functionCategory === fn.displayName ? '#fff'    : 'var(--text-3)',
-                border:     functionCategory === fn.displayName ? '1px solid #3b82f6' : '1px solid var(--border)',
-              }}
-            >{fn.displayName}</button>
-          ))}
-        </div>
+        {/* Function filter — pinned pills + More dropdown */}
+        <FunctionFilter
+          jobFunctions={jobFunctions}
+          selected={functionCategory}
+          onSelect={(name) => { TopProgressBar.start(); setFunctionCategory(name); }}
+        />
       </div>
 
       {/* Empty state */}
