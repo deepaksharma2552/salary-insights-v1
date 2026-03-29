@@ -46,9 +46,11 @@ export default function SalaryDetailDrawer({ open, salary: rowSalary, salaryId, 
         const base = mapSalary(s);
         setSalary({
           ...base,
-          standardized: s.standardizedLevelName ?? null,
-          dataSource:   s.dataSource ?? null,
-          equityTotalGrant: s.equityTotalGrant ?? null,
+          standardized:      s.standardizedLevelName  ?? null,
+          dataSource:        s.dataSource             ?? null,
+          equityTotalGrant:  s.equityTotalGrant       ?? null,
+          jobFunctionName:   s.jobFunctionName        ?? null,
+          functionLevelName: s.functionLevelName      ?? null,
         });
       })
       .catch(console.error)
@@ -189,6 +191,8 @@ export default function SalaryDetailDrawer({ open, salary: rowSalary, salaryId, 
             <div className="drawer-section-title">Role & Experience</div>
             <div className="detail-grid">
               <DetailItem label="Job Title"           value={salary.role} />
+              <DetailItem label="Job Function"        value={salary.jobFunctionName && salary.jobFunctionName !== '—' ? salary.jobFunctionName : null} />
+              <DetailItem label="Function Level"      value={salary.functionLevelName && salary.functionLevelName !== '—' ? salary.functionLevelName : null} />
               <DetailItem label="Internal Level"      value={salary.internalLevel !== '—' ? salary.internalLevel : null} />
               <DetailItem label="Standardised Level"  value={salary.standardized} />
               <DetailItem label="Years of Experience" value={salary.yoe !== '—' ? salary.yoe : null} />

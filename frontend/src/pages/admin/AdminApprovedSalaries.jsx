@@ -215,11 +215,35 @@ function EditDrawer({ entry, onClose, onSaved }) {
     bonus:               entry.bonus               ?? '',
     equity:              entry.equity              ?? '',
     employmentType:      entry.employmentType      ?? '',
+    jobFunctionId:       entry.jobFunctionId        ?? '',
+    functionLevelId:     entry.functionLevelId      ?? '',
   });
-  const [saving, setSaving] = useState(false);
-  const [error,  setError]  = useState(null);
+  const [saving,         setSaving]         = useState(false);
+  const [error,          setError]          = useState(null);
+  const [jobFunctions,   setJobFunctions]   = useState([]);
+  const [functionLevels, setFunctionLevels] = useState([]);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  // Load job functions once on mount
+  useEffect(() => {
+    api.get('/public/job-functions').then(r => {
+      setJobFunctions(r.data?.data ?? []);
+    }).catch(() => {});
+  }, []);
+
+  // Update available function levels when job function changes
+  useEffect(() => {
+    if (!form.jobFunctionId) { setFunctionLevels([]); return; }
+    const fn = jobFunctions.find(f => f.id === form.jobFunctionId);
+    setFunctionLevels(fn?.levels ?? []);
+  }, [form.jobFunctionId, jobFunctions]);
+
+  const set = (k, v) => {
+    if (k === 'jobFunctionId') {
+      setForm(f => ({ ...f, jobFunctionId: v, functionLevelId: '' }));
+    } else {
+      setForm(f => ({ ...f, [k]: v }));
+    }
+  };
 
   async function handleSave() {
     setSaving(true);
@@ -234,6 +258,8 @@ function EditDrawer({ entry, onClose, onSaved }) {
     if (form.bonus       !== '')   payload.bonus       = Number(form.bonus);
     if (form.equity      !== '')   payload.equity      = Number(form.equity);
     if (form.employmentType)       payload.employmentType = form.employmentType;
+    if (form.jobFunctionId)        payload.jobFunctionId   = form.jobFunctionId;
+    if (form.functionLevelId)      payload.functionLevelId = form.functionLevelId;
 
     try {
       const res = await api.patch(`/admin/salaries/${entry.id}`, payload);
@@ -286,6 +312,24 @@ function EditDrawer({ entry, onClose, onSaved }) {
           {field('Department',          'department')}
           {select('Experience Level',   'experienceLevel',      EXPERIENCE_LEVELS)}
           {select('Employment Type',    'employmentType',       EMPLOYMENT_TYPES)}
+          <div style={styles.fieldRow}>
+            <label style={styles.fieldLabel}>Job Function</label>
+            <select value={form.jobFunctionId} onChange={e => set('jobFunctionId', e.target.value)} style={styles.fieldInput}>
+              <option value=''>— unchanged —</option>
+              {jobFunctions.map(fn => (
+                <option key={fn.id} value={fn.id}>{fn.displayName || fn.name}</option>
+              ))}
+            </select>
+          </div>
+          <div style={styles.fieldRow}>
+            <label style={styles.fieldLabel}>Function Level (STD. Level)</label>
+            <select value={form.functionLevelId} onChange={e => set('functionLevelId', e.target.value)} style={styles.fieldInput} disabled={!form.jobFunctionId}>
+              <option value=''>— unchanged —</option>
+              {functionLevels.map(lvl => (
+                <option key={lvl.id} value={lvl.id}>{lvl.name}</option>
+              ))}
+            </select>
+          </div>
           {select('Location',           'location',             LOCATION_OPTIONS)}
           {field('Years of Experience', 'yearsOfExperience',    'number')}
           {field('Base Salary (₹)',     'baseSalary',           'number')}

@@ -83,6 +83,8 @@ export function mapSalary(s) {
     yoe:           s.yearsOfExperience != null
       ? `${s.yearsOfExperience} year${s.yearsOfExperience !== 1 ? 's' : ''}`
       : '—',
+    jobFunctionName:  s.jobFunctionName  ?? '—',
+    functionLevelName: s.functionLevelName ?? '—',
     empType:       s.employmentType ?? 'Full-time',
     base:          fmtSalary(s.baseSalary),
     bonus:         fmtSalary(s.bonus),
