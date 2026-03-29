@@ -1042,8 +1042,8 @@ function CompanyCard({ c, onViewDetails, openRoles }) {
           </div>
         </div>
         <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0, marginTop:2 }}>
-          <span className="entries-badge-mono" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:"var(--text-3)", background:"var(--bg-2)", padding:"2px 7px", borderRadius:6, border:"1px solid var(--border)", whiteSpace:"nowrap" }}>
-            {c.entries} entries
+          <span className="entries-badge-mono" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color: c.entries > 0 ? "var(--text-3)" : "var(--text-3)", background:"var(--bg-2)", padding:"2px 7px", borderRadius:6, border:"1px solid var(--border)", whiteSpace:"nowrap", opacity: c.entries === 0 ? 0.5 : 1 }}>
+            {c.entries === 0 ? 'no data yet' : `${c.entries} ${c.entries === 1 ? 'entry' : 'entries'}`}
           </span>
         </div>
       </div>
@@ -1159,6 +1159,8 @@ export default function CompaniesPage() {
   const [totalElements, setTotalElements] = useState(0);
   const [selected,      setSelected]      = useState(null); // { company, initialTab }
   const [hiringMap,     setHiringMap]     = useState(new Map());
+  const [sortBy,        setSortBy]        = useState('entries'); // entries | name | recent
+  const [showAll,       setShowAll]       = useState(false);
 
   useEffect(() => {
     api.get("/public/companies/industries")
@@ -1194,14 +1196,20 @@ export default function CompaniesPage() {
 
   const fetchCompanies = useCallback(() => {
     setLoading(true); setError(null);
-    api.get('/public/companies', { params: { page, size: PAGE_SIZE, ...(search && { name: search }), ...(industry && { industry }) } })
+    api.get('/public/companies', { params: {
+      page, size: PAGE_SIZE,
+      ...(search && { name: search }),
+      ...(industry && { industry }),
+      sortBy,
+      showAll: showAll || !!search, // always show all when searching so users find 0-entry companies too
+    }})
       .then(r => {
         const paged = r.data?.data;
         setItems((paged?.content ?? []).map(c => ({
           id: c.id, name: c.name ?? '—', industry: c.industry ?? '—',
           logoUrl: c.logoUrl ?? null, website: c.website ?? null,
           updatedLabel: fmtDate(c.updatedAt ?? c.createdAt),
-          entries: c.entryCount ?? '—',
+          entries: c.entryCount ?? 0,
           avgBase: fmtSalary(c.avgBaseSalary),
           avgTC:   fmtSalary(c.avgTotalCompensation),
           tcMin:   c.tcMin ?? null, tcMax: c.tcMax ?? null,
@@ -1213,9 +1221,10 @@ export default function CompaniesPage() {
       })
       .catch(err => setError(`Failed to load companies (${err.response?.status ?? 'network error'})`))
       .finally(() => setLoading(false));
-  }, [page, search, industry]);
+  }, [page, search, industry, sortBy, showAll]);
 
   useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
+  useEffect(() => { setPage(0); }, [sortBy, showAll]);
 
   return (
     <section className="section">
@@ -1344,11 +1353,11 @@ export default function CompaniesPage() {
           <h2 className="section-title">Browse <em>Companies</em></h2>
         </div>
         <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:12, color:'var(--text-3)', padding:'6px 14px', background:'var(--ink-3)', border:'1px solid var(--border)', borderRadius:8 }}>
-          {loading ? 'Loading…' : `${totalElements} compan${totalElements !== 1 ? 'ies' : 'y'}`}
+          {loading ? 'Loading…' : `${totalElements} compan${totalElements !== 1 ? 'ies' : 'y'}${!showAll && !search ? ' with data' : ''}`}
         </div>
       </div>
 
-      <div className="filter-bar" style={{ marginBottom:32 }}>
+      <div className="filter-bar" style={{ marginBottom:32, gap: 10, flexWrap: 'wrap' }}>
         <div style={{ position:'relative', flex:1, minWidth:200 }}>
           <div className="search-box" style={{ width:'100%' }}>
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -1363,12 +1372,48 @@ export default function CompaniesPage() {
             </div>
           )}
         </div>
+
+        {/* Industry filter */}
         <ScrollableSelect
           value={industry}
           onChange={v => { setIndustry(v); setPage(0); }}
           options={[{ value: '', label: 'All Industries' }, ...industries.map(i => ({ value: i, label: i }))]}
           placeholder="All Industries"
         />
+
+        {/* Sort dropdown */}
+        <select
+          value={sortBy}
+          onChange={e => setSortBy(e.target.value)}
+          style={{
+            fontSize: 12, padding: '8px 12px', borderRadius: 9,
+            border: '1px solid var(--border)', background: 'var(--bg-1)',
+            color: 'var(--text-2)', cursor: 'pointer', outline: 'none',
+            fontFamily: "Inter,sans-serif",
+          }}
+        >
+          <option value="entries">Sort: Most Data</option>
+          <option value="recent">Sort: Recently Updated</option>
+          <option value="name">Sort: A–Z</option>
+        </select>
+
+        {/* Show all toggle */}
+        <button
+          onClick={() => setShowAll(v => !v)}
+          style={{
+            fontSize: 12, padding: '8px 14px', borderRadius: 9,
+            border: `1px solid ${showAll ? '#3b82f6' : 'var(--border)'}`,
+            background: showAll ? 'rgba(59,130,246,0.08)' : 'var(--bg-1)',
+            color: showAll ? '#3b82f6' : 'var(--text-3)',
+            cursor: 'pointer', fontWeight: showAll ? 600 : 400,
+            display: 'flex', alignItems: 'center', gap: 6,
+            transition: 'all 0.15s', whiteSpace: 'nowrap',
+            fontFamily: "Inter,sans-serif",
+          }}
+        >
+          <span style={{ fontSize: 14, lineHeight: 1 }}>{showAll ? '◉' : '○'}</span>
+          Show all companies
+        </button>
       </div>
 
       {loading && (

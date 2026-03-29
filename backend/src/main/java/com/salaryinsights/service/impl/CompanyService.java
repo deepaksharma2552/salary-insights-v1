@@ -13,6 +13,7 @@ import com.salaryinsights.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,8 +35,15 @@ public class CompanyService {
         value = "companyList",
         key = "'page:' + #pageable.pageNumber + ':size:' + #pageable.pageSize + ':name:' + #name + ':industry:' + #industry + ':location:' + #location"
     )
-    public PagedResponse<CompanyResponse> getAllCompanies(String name, String industry, String location, Pageable pageable) {
-        Page<Company> page = companyRepository.searchCompanies(CompanyStatus.ACTIVE, name, industry, location, pageable);
+    public PagedResponse<CompanyResponse> getAllCompanies(String name, String industry, String location, String sortBy, boolean showAll, Pageable pageable) {
+        // Validate sortBy — default to "entries" if unrecognised
+        String sort = (sortBy != null && List.of("entries", "name", "recent").contains(sortBy)) ? sortBy : "entries";
+        // hasData = true unless user explicitly asked to showAll or is searching by name
+        boolean hasData = !showAll && (name == null || name.isBlank());
+        Page<Company> page = companyRepository.searchCompaniesSorted(
+                name == null || name.isBlank() ? null : name,
+                industry == null || industry.isBlank() ? null : industry,
+                sort, hasData, pageable);
         List<com.salaryinsights.dto.response.CompanyResponse> enriched = page.getContent().stream()
                 .map(c -> {
                     com.salaryinsights.dto.response.CompanyResponse r = enrichWithStats(companyMapper.toResponse(c), c.getId());

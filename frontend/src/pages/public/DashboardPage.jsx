@@ -692,6 +692,8 @@ export default function DashboardPage() {
     return [...seen].sort((a, b) => (rankMap[a] ?? 9999) - (rankMap[b] ?? 9999));
   }, [byCompanyLevel]);
 
+  const DEFAULT_VISIBLE = 5;
+
   const visibleLocations = selLocations.length > 0
     ? selLocations.filter(l => locationGroupedSorted[l])
     : allLocations;
@@ -821,6 +823,32 @@ export default function DashboardPage() {
           grid-template-columns: 1fr 1fr;
           gap: 12px;
           margin-bottom: 12px;
+          align-items: start;
+        }
+
+        /* ── Scrollable chart body ── */
+        .chart-scroll-body {
+          max-height: 520px;
+          overflow-y: auto;
+          overflow-x: hidden;
+          padding-right: 4px;
+          scrollbar-width: thin;
+          scrollbar-color: var(--border) transparent;
+        }
+        .chart-scroll-body::-webkit-scrollbar { width: 4px; }
+        .chart-scroll-body::-webkit-scrollbar-track { background: transparent; }
+        .chart-scroll-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+        /* ── Show-more fade hint ── */
+        .chart-scroll-fade {
+          position: sticky;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 40px;
+          background: linear-gradient(to bottom, transparent, var(--panel));
+          pointer-events: none;
+          margin-top: -40px;
         }
 
         /* ── Mobile overrides ── */
@@ -917,27 +945,43 @@ export default function DashboardPage() {
                 <BarLegend isMobile={isMobile} />
 
                 {byLocationLevel.length === 0 ? <EmptyState /> :
-                 visibleLocations.length === 0 ? <EmptyState filtered filterLabel={selLocations.join(', ')} /> : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    {visibleLocations.map((loc, li) => {
-                      const rows  = locationGroupedSorted[loc] ?? [];
-                      const color = BAR_COLORS[li % BAR_COLORS.length];
-                      return (
-                        <div key={loc}>
-                          <GroupHeader dot={color} meta={`${rows.length} level${rows.length !== 1 ? 's' : ''}`} isMobile={isMobile}>{loc}</GroupHeader>
-                          <div className="level-bars">
-                            {rows.map(row => (
-                              <BarRow key={row.internalLevel} label={row.internalLevel} sublabel={loc}
-                                base={row.avgBaseSalary} bonus={row.avgBonus} equity={row.avgEquity}
-                                total={row.avgTotalCompensation} count={row.count}
-                                maxTotal={maxLocTotal} labelWidth={isMobile ? 72 : 130} isMobile={isMobile} />
-                            ))}
-                          </div>
+                 visibleLocations.length === 0 ? <EmptyState filtered filterLabel={selLocations.join(', ')} /> : (() => {
+                  const locationsToShow = selLocations.length > 0
+                    ? visibleLocations
+                    : visibleLocations.slice(0, DEFAULT_VISIBLE);
+                  const hasMore = selLocations.length === 0 && visibleLocations.length > DEFAULT_VISIBLE;
+                  return (
+                    <div style={{ position: 'relative' }}>
+                      <div className="chart-scroll-body">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                          {locationsToShow.map((loc, li) => {
+                            const rows  = locationGroupedSorted[loc] ?? [];
+                            const color = BAR_COLORS[li % BAR_COLORS.length];
+                            return (
+                              <div key={loc}>
+                                <GroupHeader dot={color} meta={`${rows.length} level${rows.length !== 1 ? 's' : ''}`} isMobile={isMobile}>{loc}</GroupHeader>
+                                <div className="level-bars">
+                                  {rows.map(row => (
+                                    <BarRow key={row.internalLevel} label={row.internalLevel} sublabel={loc}
+                                      base={row.avgBaseSalary} bonus={row.avgBonus} equity={row.avgEquity}
+                                      total={row.avgTotalCompensation} count={row.count}
+                                      maxTotal={maxLocTotal} labelWidth={isMobile ? 72 : 130} isMobile={isMobile} />
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        {hasMore && <div className="chart-scroll-fade" />}
+                      </div>
+                      {hasMore && (
+                        <div style={{ textAlign: 'center', paddingTop: 8, fontSize: 11, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
+                          +{visibleLocations.length - DEFAULT_VISIBLE} more · use Location filter to explore
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* ── CHART 2: Company × Level ── */}
@@ -980,34 +1024,50 @@ export default function DashboardPage() {
                 <BarLegend isMobile={isMobile} />
 
                 {byCompanyLevel.length === 0 ? <EmptyState /> :
-                 visibleCompanies.length === 0 ? <EmptyState filtered filterLabel={selLocationsForCompany.join(', ')} /> : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    {visibleCompanies.map((company, ci) => {
-                      const allRows = companyGroupedSorted[company] ?? [];
-                      const rows    = selLevels.length > 0 ? allRows.filter(r => selLevels.includes(r.internalLevel)) : allRows;
-                      if (rows.length === 0) return null;
-                      const firstRow = rows[0];
-                      const color    = BAR_COLORS[ci % BAR_COLORS.length];
-                      return (
-                        <div key={company}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                            <CompanyLogo companyId={firstRow?.companyId} companyName={company} logoUrl={firstRow?.logoUrl} website={firstRow?.website} size={20} radius={4} />
-                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>{company}</span>
-                            <ConfidenceBadge tier={firstRow?.confidenceTier} label={firstRow?.confidenceLabel} />
-                          </div>
-                          <div className="level-bars">
-                            {rows.map(row => (
-                              <BarRow key={row.internalLevel} label={row.internalLevel} sublabel={company}
-                                base={row.avgBaseSalary} bonus={row.avgBonus} equity={row.avgEquity}
-                                total={row.avgTotalCompensation} count={row.count}
-                                maxTotal={maxCoTotal} labelWidth={isMobile ? 72 : 130} isMobile={isMobile} />
-                            ))}
-                          </div>
+                 visibleCompanies.length === 0 ? <EmptyState filtered filterLabel={selLocationsForCompany.join(', ')} /> : (() => {
+                  const companiesToShow = selCompanies.length > 0
+                    ? visibleCompanies
+                    : visibleCompanies.slice(0, DEFAULT_VISIBLE);
+                  const hasMoreCo = selCompanies.length === 0 && visibleCompanies.length > DEFAULT_VISIBLE;
+                  return (
+                    <div style={{ position: 'relative' }}>
+                      <div className="chart-scroll-body">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                          {companiesToShow.map((company, ci) => {
+                            const allRows = companyGroupedSorted[company] ?? [];
+                            const rows    = selLevels.length > 0 ? allRows.filter(r => selLevels.includes(r.internalLevel)) : allRows;
+                            if (rows.length === 0) return null;
+                            const firstRow = rows[0];
+                            const color    = BAR_COLORS[ci % BAR_COLORS.length];
+                            return (
+                              <div key={company}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                  <CompanyLogo companyId={firstRow?.companyId} companyName={company} logoUrl={firstRow?.logoUrl} website={firstRow?.website} size={20} radius={4} />
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>{company}</span>
+                                  <ConfidenceBadge tier={firstRow?.confidenceTier} label={firstRow?.confidenceLabel} />
+                                </div>
+                                <div className="level-bars">
+                                  {rows.map(row => (
+                                    <BarRow key={row.internalLevel} label={row.internalLevel} sublabel={company}
+                                      base={row.avgBaseSalary} bonus={row.avgBonus} equity={row.avgEquity}
+                                      total={row.avgTotalCompensation} count={row.count}
+                                      maxTotal={maxCoTotal} labelWidth={isMobile ? 72 : 130} isMobile={isMobile} />
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        {hasMoreCo && <div className="chart-scroll-fade" />}
+                      </div>
+                      {hasMoreCo && (
+                        <div style={{ textAlign: 'center', paddingTop: 8, fontSize: 11, color: 'var(--text-3)', fontFamily: "'IBM Plex Mono',monospace" }}>
+                          +{visibleCompanies.length - DEFAULT_VISIBLE} more · use Company filter to explore
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 

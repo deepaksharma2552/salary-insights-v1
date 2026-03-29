@@ -29,12 +29,14 @@ public class PublicCompanyController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String industry,
             @RequestParam(required = false) String location,
+            @RequestParam(defaultValue = "entries") String sortBy,
+            @RequestParam(defaultValue = "false") boolean showAll,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        PageRequest pageable = PageRequest.of(page, size, Sort.by("name").ascending());
+        PageRequest pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(ApiResponse.success(
-                companyService.getAllCompanies(name, industry, location, pageable)));
+                companyService.getAllCompanies(name, industry, location, sortBy, showAll, pageable)));
     }
 
     @GetMapping("/{id}")
