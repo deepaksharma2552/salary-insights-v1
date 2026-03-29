@@ -452,7 +452,7 @@ public class SalaryService {
     }
 
     @Transactional(readOnly = true)
-    @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'byLocationLevel'")
+    @org.springframework.cache.annotation.Cacheable(value = "analytics", key = "'byLocationLevel_v2'")
     public List<LocationLevelSalaryDTO> getAvgSalaryByLocationAndLevel() {
         return salaryEntryRepository.avgSalaryByLocationAndLevelRaw().stream().map(row -> {
             // col: location[0], levelName[1], avgBaseSalary[2], avgBonus[3], avgEquity[4], avgTotalComp[5], cnt[6], hierarchyRank[7]

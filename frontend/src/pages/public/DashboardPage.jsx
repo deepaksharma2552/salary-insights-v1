@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import React from 'react';
+import ReactDOM from 'react-dom';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -152,29 +153,24 @@ function TooltipContent({ label, sublabel, base, bonus, equity, total, count }) 
 
 /* ─── Full bar row: label + stacked bar + value + hover tooltip ─────────── */
 function BarRow({ label, sublabel, base, bonus, equity, total, count, maxTotal, labelWidth = 110, isMobile = false }) {
-  const [tip, setTip]     = useState(false);
-  const [tipX, setTipX]   = useState('50%');
-  const rowRef            = useRef(null);
+  const [tip, setTip]         = useState(false);
+  const [tipPos, setTipPos]   = useState({ x: 0, y: 0 });
+  const rowRef                = useRef(null);
+  const portalRoot            = typeof document !== 'undefined' ? document.body : null;
 
-  function onEnter(e) {
-    setTip(true);
-    if (rowRef.current) {
-      const rowRect  = rowRef.current.getBoundingClientRect();
-      const rawX     = e.clientX - rowRect.left;
-      const clamped  = Math.max(105, Math.min(rawX, rowRect.width - 105));
-      setTipX(clamped + 'px');
-    }
+  function calcPos(e) {
+    if (!rowRef.current) return;
+    const rowRect = rowRef.current.getBoundingClientRect();
+    // X: follow mouse, clamped so tooltip (210px wide) stays on screen
+    const rawX   = e.clientX;
+    const clampedX = Math.max(115, Math.min(rawX, window.innerWidth - 115));
+    // Y: above the row, using absolute viewport Y
+    const y = rowRect.top + window.scrollY - 10;
+    setTipPos({ x: clampedX, y });
   }
 
-  function onMove(e) {
-    if (!tip) return;
-    if (rowRef.current) {
-      const rowRect  = rowRef.current.getBoundingClientRect();
-      const rawX     = e.clientX - rowRect.left;
-      const clamped  = Math.max(105, Math.min(rawX, rowRect.width - 105));
-      setTipX(clamped + 'px');
-    }
-  }
+  function onEnter(e) { setTip(true);  calcPos(e); }
+  function onMove(e)  { if (tip) calcPos(e); }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -210,54 +206,53 @@ function BarRow({ label, sublabel, base, bonus, equity, total, count, maxTotal, 
         <span className="level-bar-val" style={{ fontSize: isMobile ? 10 : 11, minWidth: isMobile ? 44 : 52 }}>
           {fmt(total || base)}
         </span>
-
-        {/* Desktop tooltip */}
-        {!isMobile && tip && (
-          <div style={{
-            position: 'absolute',
-            bottom: 'calc(100% + 10px)',
-            left: tipX,
-            transform: 'translateX(-50%)',
-            width: 210,
-            background: 'var(--panel)',
-            border: '1px solid var(--border)',
-            borderRadius: 12,
-            padding: '12px 14px',
-            zIndex: 300,
-            pointerEvents: 'none',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
-          }}>
-            <TooltipContent
-              label={label}
-              sublabel={sublabel}
-              base={base} bonus={bonus} equity={equity} total={total} count={count}
-            />
-            {/* Arrow — centered under the tooltip box (box is already at tipX) */}
-            <div style={{
-              position: 'absolute', top: '100%', left: '50%',
-              transform: 'translateX(-50%)',
-              pointerEvents: 'none',
-            }}>
-              {/* Border triangle */}
-              <div style={{
-                width: 0, height: 0,
-                borderLeft: '7px solid transparent',
-                borderRight: '7px solid transparent',
-                borderTop: '7px solid var(--border)',
-              }} />
-              {/* Fill triangle — overlaps border triangle to show panel color */}
-              <div style={{
-                position: 'absolute', top: 0, left: '50%',
-                transform: 'translateX(-50%)',
-                width: 0, height: 0,
-                borderLeft: '6px solid transparent',
-                borderRight: '6px solid transparent',
-                borderTop: '6px solid var(--panel)',
-              }} />
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Desktop tooltip — portalled to body so it escapes overflow:hidden */}
+      {!isMobile && tip && portalRoot && ReactDOM.createPortal(
+        <div style={{
+          position: 'absolute',
+          top: tipPos.y,
+          left: tipPos.x,
+          transform: 'translate(-50%, -100%)',
+          width: 210,
+          background: 'var(--panel)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: '12px 14px',
+          zIndex: 9999,
+          pointerEvents: 'none',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
+        }}>
+          <TooltipContent
+            label={label}
+            sublabel={sublabel}
+            base={base} bonus={bonus} equity={equity} total={total} count={count}
+          />
+          {/* Arrow pointing down */}
+          <div style={{
+            position: 'absolute', top: '100%', left: '50%',
+            transform: 'translateX(-50%)',
+            pointerEvents: 'none',
+          }}>
+            <div style={{
+              width: 0, height: 0,
+              borderLeft: '7px solid transparent',
+              borderRight: '7px solid transparent',
+              borderTop: '7px solid var(--border)',
+            }} />
+            <div style={{
+              position: 'absolute', top: 0, left: '50%',
+              transform: 'translateX(-50%)',
+              width: 0, height: 0,
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderTop: '6px solid var(--panel)',
+            }} />
+          </div>
+        </div>,
+        portalRoot
+      )}
 
       {/* Mobile inline breakdown — shown when row is tapped */}
       {isMobile && tip && (

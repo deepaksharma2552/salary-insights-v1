@@ -186,9 +186,13 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         nativeQuery = true)
     List<Object[]> avgSalaryByCompanyAndLevelRaw();
 
-    // Avg salary by location × standardized level (top 5 most-recent locations).
-    // CASE block removed — JOIN to standardized_levels returns sl.name directly.
-    // ORDER BY sl.hierarchy_rank gives consistent level ordering within each location.
+    // Avg salary by location × function level (top 20 most-recent locations).
+    // Groups by function_level_id first (the function-specific ladder name, e.g.
+    // "Staff Engineer", "Sr. Program Manager") with a COALESCE fallback to
+    // standardized_levels.name for legacy entries that have no function_level_id.
+    // This prevents a single "Staff Engineer" entry from appearing as "SDE 1" /
+    // "SDE 2" etc. because its standardized_level_id happened to map there.
+    // Ordering: function levels use fl.sort_order; fallback rows use sl.hierarchy_rank.
     @Query(value =
         "WITH loc_recency AS ( " +
         "  SELECT location, MAX(created_at) AS most_recent_entry " +
@@ -202,8 +206,8 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "  SELECT " +
         "    s.location, " +
         "    lr.most_recent_entry, " +
-        "    sl.name AS internalLevel, " +
-        "    sl.hierarchy_rank, " +
+        "    COALESCE(fl.name, sl.name)              AS internalLevel, " +
+        "    COALESCE(fl.sort_order, sl.hierarchy_rank) AS hierarchy_rank, " +
         "    AVG(s.base_salary)        AS avgBaseSalary, " +
         "    AVG(s.bonus)              AS avgBonus, " +
         "    AVG(s.equity)             AS avgEquity, " +
@@ -211,9 +215,13 @@ public interface SalaryEntryRepository extends JpaRepository<SalaryEntry, UUID>,
         "    COUNT(*)                  AS cnt " +
         "  FROM salary_entries s " +
         "  JOIN loc_recency lr ON s.location = lr.location " +
-        "  JOIN standardized_levels sl ON sl.id = s.standardized_level_id " +
+        "  LEFT JOIN function_levels fl ON fl.id = s.function_level_id " +
+        "  LEFT JOIN standardized_levels sl ON sl.id = s.standardized_level_id " +
         "  WHERE s.review_status = 'APPROVED' " +
-        "  GROUP BY s.location, lr.most_recent_entry, sl.id, sl.name, sl.hierarchy_rank " +
+        "    AND (s.function_level_id IS NOT NULL OR s.standardized_level_id IS NOT NULL) " +
+        "  GROUP BY s.location, lr.most_recent_entry, " +
+        "           COALESCE(fl.name, sl.name), " +
+        "           COALESCE(fl.sort_order, sl.hierarchy_rank) " +
         ") " +
         "SELECT location, internalLevel, avgBaseSalary, avgBonus, avgEquity, avgTotalCompensation, cnt, hierarchy_rank " +
         "FROM loc_lvl " +
