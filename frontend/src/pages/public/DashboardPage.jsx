@@ -346,6 +346,147 @@ function ConfidenceBadge({ tier, label }) {
   );
 }
 
+/* ─── Single-select filter (same visual style as MultiFilter) ────────────── */
+function SingleFilter({ label, items, value, onChange, isMobile = false }) {
+  const [open, setOpen]     = useState(false);
+  const [search, setSearch] = useState('');
+  const wrapRef             = useRef(null);
+
+  useEffect(() => {
+    function handle(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+        setSearch('');
+      }
+    }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  const filtered = items.filter(item =>
+    item.label.toLowerCase().includes(search.toLowerCase())
+  );
+  const selected = items.find(item => item.value === value);
+
+  function pick(item) {
+    onChange(item.value);
+    setOpen(false);
+    setSearch('');
+  }
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative' }}>
+      {/* Trigger button */}
+      <button onClick={() => setOpen(o => !o)} style={{
+        display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 6,
+        padding: isMobile ? '4px 8px' : '5px 10px', borderRadius: 8,
+        background: open ? 'var(--bg-3)' : 'var(--bg-2)',
+        border: `1px solid ${value ? '#3b82f680' : 'var(--border)'}`,
+        cursor: 'pointer', fontSize: isMobile ? 10 : 11, color: 'var(--text-2)',
+        fontFamily: "'IBM Plex Mono',monospace",
+        transition: 'all 0.15s',
+        whiteSpace: 'nowrap',
+      }}>
+        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+          <line x1="4" y1="6" x2="20" y2="6"/>
+          <line x1="4" y1="12" x2="14" y2="12"/>
+          <line x1="4" y1="18" x2="9" y2="18"/>
+        </svg>
+        {selected ? selected.label : label}
+        {value && (
+          <span style={{
+            background: '#3b82f6', color: '#fff',
+            borderRadius: 100, padding: '1px 6px',
+            fontSize: 10, fontWeight: 700,
+          }}>1</span>
+        )}
+      </button>
+
+      {/* Dropdown panel */}
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+          background: 'var(--panel)', border: '1px solid var(--border)',
+          borderRadius: 12, minWidth: 230, zIndex: 50,
+          boxShadow: '0 12px 40px rgba(0,0,0,0.22)',
+          overflow: 'hidden',
+        }}>
+          {/* Search */}
+          <div style={{ padding: '8px 8px 4px' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'var(--bg-2)', border: '1px solid var(--border)',
+              borderRadius: 7, padding: '5px 8px',
+            }}>
+              <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="var(--text-3)" strokeWidth="2.5">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                autoFocus value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search…"
+                style={{
+                  flex: 1, border: 'none', background: 'transparent',
+                  fontSize: 11, color: 'var(--text-1)', outline: 'none',
+                  fontFamily: "'IBM Plex Mono',monospace",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* List */}
+          <div style={{ maxHeight: 220, overflowY: 'auto', padding: '2px 4px 6px' }}>
+            {filtered.length === 0 && (
+              <div style={{ fontSize: 11, color: 'var(--text-3)', padding: '10px 8px', textAlign: 'center' }}>
+                No matches
+              </div>
+            )}
+            {filtered.map(item => {
+              const isActive = item.value === value;
+              return (
+                <div
+                  key={item.value}
+                  onClick={() => pick(item)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 9,
+                    padding: '7px 8px', borderRadius: 7, marginBottom: 1,
+                    cursor: 'pointer',
+                    background: isActive ? '#3b82f610' : 'transparent',
+                    transition: 'background 0.12s',
+                    userSelect: 'none',
+                  }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--bg-2)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = isActive ? '#3b82f610' : 'transparent'; }}
+                >
+                  {/* Radio dot */}
+                  <div style={{
+                    width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+                    border: isActive ? '2px solid #3b82f6' : '1.5px solid var(--border-2, #6b728060)',
+                    background: 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.12s',
+                  }}>
+                    {isActive && (
+                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#3b82f6' }} />
+                    )}
+                  </div>
+                  <span style={{
+                    fontSize: 12, flex: 1,
+                    color: isActive ? 'var(--text-1)' : 'var(--text-2)',
+                    fontWeight: isActive ? 600 : 400,
+                  }}>
+                    {item.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Multiselect filter ─────────────────────────────────────────────────── */
 function MultiFilter({ label, items, selected, onChange, max = 5, isMobile = false }) {
   const [open, setOpen]     = useState(false);
@@ -635,6 +776,13 @@ export default function DashboardPage() {
   const [selLevels,              setSelLevels]              = useState([]);
   const [selJobFunctionId,       setSelJobFunctionId]       = useState('');
 
+  // Default to Engineering once functions are available
+  useEffect(() => {
+    if (!functionsReady || selJobFunctionId) return;
+    const eng = functions.find(f => f.name === 'ENGINEERING' || f.displayName?.toLowerCase() === 'engineering');
+    if (eng) setSelJobFunctionId(String(eng.id));
+  }, [functionsReady, functions]); // eslint-disable-line
+
   /* ── Company filter fetch ── */
   const fetchCompanyLevel = React.useCallback(() => {
     const params = {};
@@ -643,17 +791,17 @@ export default function DashboardPage() {
     return api.get('/public/salaries/analytics/by-company-level', { params });
   }, [selLocationsForCompany, selJobFunctionId]);
 
-  /* ── Initial load — all data + header stats in parallel ── */
+  /* ── Initial load — location/yoe/stats only.
+        Company-level data loads once the Engineering default is set via
+        the selJobFunctionId effect, which triggers fetchCompanyLevel.       ── */
   useEffect(() => {
     Promise.all([
       api.get('/public/salaries/analytics/by-location-level'),
-      api.get('/public/salaries/analytics/by-company-level'),
       api.get('/public/salaries/analytics/by-yoe'),
       api.get('/public/salaries', { params: { page: 0, size: 1 } }),
       api.get('/public/salaries/stats/this-month'),
-    ]).then(([locLvl, cl, yoe, salaries, month]) => {
+    ]).then(([locLvl, yoe, salaries, month]) => {
       setByLocationLevel(locLvl.data?.data ?? []);
-      setByCompanyLevel(cl.data?.data      ?? []);
       setByYoe(yoe.data?.data             ?? []);
       setTotalEntries(salaries.data?.data?.totalElements ?? null);
       setThisMonth(month.data?.data ?? null);
@@ -1024,41 +1172,30 @@ export default function DashboardPage() {
                     <div className="chart-subtitle">
                       {selJobFunctionId
                         ? `${functions.find(f => String(f.id) === selJobFunctionId)?.displayName ?? ''} · ${isMobile ? 'Tap' : 'Hover'} a bar for Base · Bonus · Equity`
-                        : `Select a Job Function to see role-specific levels`}
+                        : 'Select a Job Function to see role-specific levels'}
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, width: isMobile ? '100%' : undefined, flexShrink: 0 }}>
-                    {/* Job Function — primary filter, always visible */}
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end', width: '100%' }}>
-                      <select
+                      {/* Job Function — same visual style as Location / Company */}
+                      <SingleFilter
+                        label="Function"
+                        items={functions.map(fn => ({ value: String(fn.id), label: fn.displayName }))}
                         value={selJobFunctionId}
-                        onChange={e => { setSelJobFunctionId(e.target.value); setSelLevels([]); setSelCompanies([]); }}
-                        disabled={!functionsReady}
-                        style={{
-                          height: 30, padding: '0 26px 0 10px', borderRadius: 8,
-                          border: selJobFunctionId ? '1.5px solid #3b82f6' : '1px solid var(--border)',
-                          background: selJobFunctionId ? 'var(--viz-1-dim, #eff6ff)' : 'var(--bg-2)',
-                          color: selJobFunctionId ? '#2563eb' : 'var(--text-2)',
-                          fontSize: 12, fontWeight: selJobFunctionId ? 600 : 400,
-                          cursor: 'pointer', appearance: 'none',
-                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
-                          backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
-                        }}
-                      >
-                        <option value="">{functionsReady ? 'All Functions' : 'Loading…'}</option>
-                        {functions.map(fn => <option key={fn.id} value={String(fn.id)}>{fn.displayName}</option>)}
-                      </select>
+                        onChange={v => { setSelJobFunctionId(v); setSelLevels([]); }}
+                        isMobile={isMobile}
+                      />
                       <MultiFilter label="Location" items={ALL_LOCATIONS}   selected={selLocationsForCompany} onChange={setSelLocationsForCompany} max={5} isMobile={isMobile} />
                       <MultiFilter label="Company"  items={allCompanyNames} selected={selCompanies}           onChange={setSelCompanies}           max={5} isMobile={isMobile} />
-                      {/* Level filter only shown when no function is selected — when a function IS selected the levels are already scoped */}
+                      {/* Level multi-filter only shown when no function is active */}
                       {!selJobFunctionId && (
                         <MultiFilter label="Level" items={allLevelNames} selected={selLevels} onChange={setSelLevels} max={5} isMobile={isMobile} />
                       )}
                     </div>
-                    {(selLocationsForCompany.length > 0 || selCompanies.length > 0 || selLevels.length > 0 || selJobFunctionId) && (
-                      <button onClick={() => { setSelLocationsForCompany([]); setSelCompanies([]); setSelLevels([]); setSelJobFunctionId(''); }}
+                    {(selLocationsForCompany.length > 0 || selCompanies.length > 0 || selLevels.length > 0) && (
+                      <button onClick={() => { setSelLocationsForCompany([]); setSelCompanies([]); setSelLevels([]); }}
                         style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'IBM Plex Mono',monospace", alignSelf: isMobile ? 'flex-start' : 'flex-end' }}>
-                        ✕ clear all
+                        ✕ clear filters
                       </button>
                     )}
                   </div>
