@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import CompanyLogo from '../../components/shared/CompanyLogo';
-import ScrollableSelect from '../../components/shared/ScrollableSelect';
 import { useAppData } from '../../context/AppDataContext';
 
 const VIZ_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#6366f1','#a78bfa','#818cf8'];
@@ -1228,12 +1227,11 @@ function CompanyCard({ c, onViewDetails, openRoles }) {
 // ── Main CompaniesPage ────────────────────────────────────────────────────────
 export default function CompaniesPage() {
   const [items,         setItems]         = useState([]);
-  const [industries,    setIndustries]    = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState(null);
   const [inputValue,    setInputValue]    = useState('');
   const [search,        setSearch]        = useState('');
-  const [industry,      setIndustry]      = useState('');
+  const [location,      setLocation]      = useState('');
   const debounceRef = useRef(null);
   const [page,          setPage]          = useState(0);
   const [totalPages,    setTotalPages]    = useState(1);
@@ -1243,10 +1241,9 @@ export default function CompaniesPage() {
   const [sortBy,        setSortBy]        = useState('entries'); // entries | name | recent
   const [showAll,       setShowAll]       = useState(false);
 
+  const { functions: jobFunctions } = useAppData();
+
   useEffect(() => {
-    api.get("/public/companies/industries")
-      .then(r => setIndustries(r.data?.data ?? []))
-      .catch(console.error);
     api.get("/public/companies/hiring-now")
       .then(r => {
         const hMap = new Map();
@@ -1280,7 +1277,7 @@ export default function CompaniesPage() {
     api.get('/public/companies', { params: {
       page, size: PAGE_SIZE,
       ...(search && { name: search }),
-      ...(industry && { industry }),
+      ...(location && { location }),
       sortBy,
       showAll: showAll || !!search, // always show all when searching so users find 0-entry companies too
     }})
@@ -1302,10 +1299,10 @@ export default function CompaniesPage() {
       })
       .catch(err => setError(`Failed to load companies (${err.response?.status ?? 'network error'})`))
       .finally(() => setLoading(false));
-  }, [page, search, industry, sortBy, showAll]);
+  }, [page, search, location, sortBy, showAll]);
 
   useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
-  useEffect(() => { setPage(0); }, [sortBy, showAll]);
+  useEffect(() => { setPage(0); }, [sortBy, showAll, location]);
 
   return (
     <section className="section">
@@ -1455,12 +1452,29 @@ export default function CompaniesPage() {
         </div>
 
         {/* Industry filter */}
-        <ScrollableSelect
-          value={industry}
-          onChange={v => { setIndustry(v); setPage(0); }}
-          options={[{ value: '', label: 'All Industries' }, ...industries.map(i => ({ value: i, label: i }))]}
-          placeholder="All Industries"
-        />
+        {/* Location filter */}
+        <select
+          value={location}
+          onChange={e => { setLocation(e.target.value); setPage(0); }}
+          style={{
+            fontSize: 12, padding: '8px 12px', borderRadius: 9,
+            border: location ? '1px solid #3b82f6' : '1px solid var(--border)',
+            background: location ? 'rgba(59,130,246,0.06)' : 'var(--bg-1)',
+            color: location ? '#3b82f6' : 'var(--text-2)',
+            cursor: 'pointer', outline: 'none',
+            fontFamily: "Inter,sans-serif",
+          }}
+        >
+          <option value="">All Locations</option>
+          <option value="BENGALURU">Bengaluru</option>
+          <option value="HYDERABAD">Hyderabad</option>
+          <option value="PUNE">Pune</option>
+          <option value="DELHI_NCR">Delhi NCR</option>
+          <option value="MUMBAI">Mumbai</option>
+          <option value="CHENNAI">Chennai</option>
+          <option value="KOLKATA">Kolkata</option>
+          <option value="REMOTE">Remote</option>
+        </select>
 
         {/* Sort dropdown */}
         <select
@@ -1483,17 +1497,17 @@ export default function CompaniesPage() {
           onClick={() => setShowAll(v => !v)}
           style={{
             fontSize: 12, padding: '8px 14px', borderRadius: 9,
-            border: `1px solid ${showAll ? '#3b82f6' : 'var(--border)'}`,
-            background: showAll ? 'rgba(59,130,246,0.08)' : 'var(--bg-1)',
-            color: showAll ? '#3b82f6' : 'var(--text-3)',
-            cursor: 'pointer', fontWeight: showAll ? 600 : 400,
+            border: '1px solid #3b82f6',
+            background: showAll ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.08)',
+            color: '#3b82f6',
+            cursor: 'pointer', fontWeight: 600,
             display: 'flex', alignItems: 'center', gap: 6,
             transition: 'all 0.15s', whiteSpace: 'nowrap',
             fontFamily: "Inter,sans-serif",
           }}
         >
           <span style={{ fontSize: 14, lineHeight: 1 }}>{showAll ? '◉' : '○'}</span>
-          Show all companies
+          {showAll ? 'Showing all companies' : 'Show all companies'}
         </button>
       </div>
 
@@ -1520,6 +1534,35 @@ export default function CompaniesPage() {
               <CompanyCard key={c.id} c={c} onViewDetails={(initialTab) => setSelected({ company: c, initialTab })} openRoles={hiringMap.get(String(c.id)) ?? 0} />
             ))}
           </div>
+
+          {/* Nudge banner — only show in data-only mode (not showAll, not searching) */}
+          {!showAll && !search && (
+            <div style={{
+              marginTop: 24,
+              padding: '14px 20px',
+              background: 'rgba(59,130,246,0.06)',
+              border: '1px solid rgba(59,130,246,0.2)',
+              borderRadius: 12,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              flexWrap: 'wrap', gap: 12,
+            }}>
+              <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>Only showing companies with verified salary data.</span>
+                {' '}Many more companies are listed but don't have data yet.
+              </div>
+              <button
+                onClick={() => setShowAll(true)}
+                style={{
+                  fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+                  padding: '7px 16px', borderRadius: 8,
+                  background: '#3b82f6', color: '#fff',
+                  border: 'none', cursor: 'pointer',
+                }}
+              >
+                Show all companies →
+              </button>
+            </div>
+          )}
           {totalPages > 1 && (
             <div className="pagination">
               <span className="page-info">Showing {page*PAGE_SIZE+1}–{Math.min((page+1)*PAGE_SIZE, totalElements)} of {totalElements}</span>
