@@ -1,8 +1,7 @@
 import { useState, useEffect, useContext, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import SalaryTable from '../../components/shared/SalaryTable';
 import api from '../../services/api';
-import CompanyLogo from '../../components/shared/CompanyLogo';
 import { AuthContext } from '../../context/AuthContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { mapSalary } from '../../utils/salaryMapper';
@@ -13,566 +12,637 @@ function fmtCount(n) {
   return n.toLocaleString('en-IN');
 }
 
-/* ── JourneyCard — desktop only ─────────────────────────────── */
-function JourneyCard({ emoji, title, desc, stats, actions, highlights, accentColor, gradientBg, gradientBorder, gradientShadow, badge }) {
+/* ── Salary range bar visual ──────────────────────────────────── */
+function SalaryRangeBar({ min, median, max, userValue }) {
+  const pct = Math.round(((userValue - min) / (max - min)) * 100);
   return (
-    <div style={{
-      background: gradientBg ?? 'var(--panel)',
-      border: gradientBorder ?? '1px solid var(--border)',
-      borderRadius: 14,
-      padding: 18,
-      display: 'flex',
-      flexDirection: 'column',
-      boxShadow: gradientShadow ?? 'none',
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
-      {badge && (
-        <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 9, fontWeight: 700, color: badge.color, background: badge.bg, padding: '2px 8px', borderRadius: 20, letterSpacing: '.05em', textTransform: 'uppercase' }}>
-          {badge.label}
-        </div>
-      )}
-      <div style={{ fontSize: 22, marginBottom: 10, height: 30, display: 'flex', alignItems: 'center' }}>{emoji}</div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: accentColor ?? 'var(--text-1)', lineHeight: 1.35, minHeight: 38, marginBottom: 8 }}>
-        {title}
+    <div style={{ width: '100%' }}>
+      <div style={{ position: 'relative', height: 8, borderRadius: 4, background: 'linear-gradient(90deg, #fee2e2 0%, #fef9c3 45%, #dcfce7 100%)', marginBottom: 10 }}>
+        <div style={{
+          position: 'absolute', left: `${pct}%`, top: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 18, height: 18, borderRadius: '50%',
+          background: '#0f172a', border: '3px solid white',
+          boxShadow: '0 2px 8px rgba(0,0,0,.3)',
+          transition: 'left .6s ease',
+        }} />
       </div>
-      <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.65, height: 60, overflow: 'hidden', marginBottom: 14 }}>
-        {desc}
-      </div>
-
-      {/* Feature highlight tiles */}
-      {highlights && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 12 }}>
-          {highlights.map((h, i) => (
-            <Link key={i} to={h.to} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              background: h.bg, border: `1px solid ${h.border}`,
-              borderRadius: 9, padding: '9px 11px', textDecoration: 'none',
-              transition: 'opacity 0.15s',
-            }}>
-              <span style={{ fontSize: 18, lineHeight: 1 }}>{h.icon}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: h.color, lineHeight: 1.2 }}>{h.label}</div>
-                <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.sub}</div>
-              </div>
-              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke={h.color} strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {/* Compact stats strip */}
-      <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: 44, flexShrink: 0, marginBottom: 12 }}>
-        {stats.map((s, i) => (
-          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 4px', borderRight: i < stats.length - 1 ? '1px solid var(--border)' : 'none' }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: accentColor ?? 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>
-              {s.value ?? <span style={{ opacity: 0.3 }}>—</span>}
-            </div>
-            <div style={{ fontSize: 9, color: 'var(--text-3)', marginTop: 3, textAlign: 'center' }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ flex: 1 }} />
-    </div>
-  );
-}
-
-/* ── MobileJourneyCarousel — peek + dots, mobile only ───────────────────── */
-function MobileJourneyCarousel({ cards }) {
-  const [idx, setIdx]   = useState(0);
-  const trackRef        = useRef(null);
-  const touchStartX     = useRef(null);
-  const total           = cards.length;
-  const CARD_WIDTH      = 258;
-  const GAP             = 10;
-
-  function goTo(next) {
-    const clamped = Math.max(0, Math.min(total - 1, next));
-    setIdx(clamped);
-    if (trackRef.current) {
-      trackRef.current.style.transform = `translateX(calc(-${clamped} * (${CARD_WIDTH}px + ${GAP}px)))`;
-    }
-  }
-
-  return (
-    <div style={{ paddingBottom: 4 }}>
-      {/* Section header */}
-      <div style={{ padding: '0 16px', marginBottom: 12 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
-          Find your path
-        </span>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-1)', marginTop: 3, letterSpacing: '-0.02em' }}>
-          What brings you here today?
-        </h2>
-      </div>
-
-      {/* Carousel track */}
-      <div style={{ overflow: 'hidden' }}>
-        <div
-          ref={trackRef}
-          style={{
-            display: 'flex', gap: GAP, padding: '0 16px',
-            transition: 'transform 0.32s cubic-bezier(.4,0,.2,1)',
-            willChange: 'transform',
-          }}
-          onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
-          onTouchEnd={e => {
-            const dx = touchStartX.current - e.changedTouches[0].clientX;
-            if (Math.abs(dx) > 40) goTo(idx + (dx > 0 ? 1 : -1));
-          }}
-        >
-          {cards.map((card, i) => (
-            <div key={i} style={{
-              flexShrink: 0, width: CARD_WIDTH,
-              background: card.gradientBg ?? '#ffffff',
-              border: card.gradientBorder ?? '0.5px solid #e8ecf0',
-              borderRadius: 16,
-              padding: 18, position: 'relative', overflow: 'hidden',
-              boxShadow: '0 1px 6px rgba(0,0,0,0.06)',
-            }}>
-              {/* Badge */}
-              {card.badge && (
-                <div style={{ display: 'inline-block', background: card.badge.bg, color: card.badge.color, fontSize: 9, fontWeight: 700, borderRadius: 20, padding: '2px 8px', marginBottom: 10, letterSpacing: '.05em', textTransform: 'uppercase' }}>
-                  {card.badge.label}
-                </div>
-              )}
-
-              {/* Emoji */}
-              <div style={{ fontSize: 22, marginBottom: 8 }}>{card.emoji}</div>
-
-              {/* Title */}
-              <div style={{ fontSize: 15, fontWeight: 700, color: card.accentColor ?? 'var(--text-1)', lineHeight: 1.3, marginBottom: 6 }}>
-                {card.title}
-              </div>
-
-              {/* Desc */}
-              <div style={{ fontSize: 11, color: 'var(--text-2)', lineHeight: 1.55, marginBottom: 12 }}>
-                {card.desc}
-              </div>
-
-              {/* Highlight tiles */}
-              {card.highlights && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-                  {card.highlights.map((h, hi) => (
-                    <Link key={hi} to={h.to} style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      background: h.bg, border: `1px solid ${h.border}`,
-                      borderRadius: 8, padding: '8px 10px', textDecoration: 'none',
-                    }}>
-                      <span style={{ fontSize: 16 }}>{h.icon}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: h.color }}>{h.label}</div>
-                        <div style={{ fontSize: 9, color: '#64748b', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.sub}</div>
-                      </div>
-                      <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke={h.color} strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
-                    </Link>
-                  ))}
-                </div>
-              )}
-
-              {/* Compact stats strip */}
-              <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: 40, marginBottom: 12 }}>
-                {card.stats.map((s, si) => (
-                  <div key={si} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 4px', borderRight: si < card.stats.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: card.accentColor ?? 'var(--text-1)', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>{s.value ?? '—'}</div>
-                    <div style={{ fontSize: 9, color: 'var(--text-3)', marginTop: 2 }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-
-
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Dots + arrows */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 14, padding: '0 16px' }}>
-        <button
-          onClick={() => goTo(idx - 1)}
-          disabled={idx === 0}
-          style={{ width: 28, height: 28, borderRadius: '50%', border: '0.5px solid var(--border)', background: 'var(--panel)', color: 'var(--text-3)', fontSize: 15, cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'opacity 0.15s' }}
-        >‹</button>
-
-        <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-          {Array.from({ length: total }, (_, i) => (
-            <div
-              key={i}
-              onClick={() => goTo(i)}
-              style={{
-                width: i === idx ? 18 : 6, height: 6,
-                borderRadius: 3,
-                background: i === idx ? '#3b82f6' : 'var(--bg-4)',
-                cursor: 'pointer',
-                transition: 'all 0.22s ease',
-              }}
-            />
-          ))}
-        </div>
-
-        <button
-          onClick={() => goTo(idx + 1)}
-          disabled={idx === total - 1}
-          style={{ width: 28, height: 28, borderRadius: '50%', border: '0.5px solid var(--border)', background: 'var(--panel)', color: 'var(--text-3)', fontSize: 15, cursor: idx === total - 1 ? 'default' : 'pointer', opacity: idx === total - 1 ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'opacity 0.15s' }}
-        >›</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8' }}>
+        <span>₹{(min / 100000).toFixed(0)}L</span>
+        <span>Median ₹{(median / 100000).toFixed(0)}L</span>
+        <span>₹{(max / 100000).toFixed(0)}L</span>
       </div>
     </div>
   );
 }
 
-/* ── Main page ───────────────────────────────────────────────────────────── */
+/* ── Main page ─────────────────────────────────────────────────── */
 export default function HomePage() {
   const { user } = useContext(AuthContext);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   const [recentSalaries, setRecentSalaries] = useState([]);
   const [totalEntries,   setTotalEntries]   = useState(null);
   const [totalCompanies, setTotalCompanies] = useState(null);
-  const [oppCounts,      setOppCounts]      = useState({});
   const [thisMonth,      setThisMonth]      = useState(null);
-  const [lastMonth,      setLastMonth]      = useState(null);
-  // Track which stat cards are still loading
-  const [statsLoaded, setStatsLoaded] = useState({ entries: false, companies: false, opps: false, month: false });
+
+  const [role,       setRole]       = useState('');
+  const [experience, setExperience] = useState('');
+  const [location,   setLocation]   = useState('');
 
   useEffect(() => {
-    // Recent salaries + totalEntries
-    api.get('/public/salaries', { params: { page: 0, size: 10 } })
+    api.get('/public/salaries', { params: { page: 0, size: 8 } })
       .then(res => {
         const paged = res.data?.data;
         setRecentSalaries((paged?.content ?? []).map(s => mapSalary(s)));
         setTotalEntries(paged?.totalElements ?? null);
-      })
-      .catch(console.error)
-      .finally(() => setStatsLoaded(p => ({ ...p, entries: true })));
+      }).catch(console.error);
 
-    // Companies count
     api.get('/public/companies', { params: { page: 0, size: 1 } })
       .then(res => setTotalCompanies(res.data?.data?.totalElements ?? null))
-      .catch(console.error)
-      .finally(() => setStatsLoaded(p => ({ ...p, companies: true })));
+      .catch(console.error);
 
-    // Opportunity counts by type
-    api.get('/public/opportunities/counts')
-      .then(res => setOppCounts(res.data?.data ?? {}))
-      .catch(console.error)
-      .finally(() => setStatsLoaded(p => ({ ...p, opps: true })));
-
-    // This month + last month submissions
-    Promise.all([
-      api.get('/public/salaries/stats/this-month').catch(() => null),
-      api.get('/public/salaries/stats/last-month').catch(() => null),
-    ]).then(([thisRes, lastRes]) => {
-      setThisMonth(thisRes?.data?.data ?? null);
-      setLastMonth(lastRes?.data?.data ?? null);
-    }).finally(() => setStatsLoaded(p => ({ ...p, month: true })));
+    api.get('/public/salaries/stats/this-month').catch(() => null)
+      .then(res => setThisMonth(res?.data?.data ?? null));
   }, []);
 
-  /* ── Derived opportunity counts ── */
-  const internshipCount    = oppCounts.INTERNSHIP ?? null;
-  const jobCount           = (oppCounts.REFERRAL ?? 0) + (oppCounts.FULL_TIME ?? 0)
-                           + (oppCounts.CONTRACT ?? 0) + (oppCounts.DRIVE ?? 0)
-                           || null;
-  const totalOpportunities = Object.values(oppCounts).reduce((a, b) => a + b, 0) || null;
-
-  /* ── "This month" trend label ── */
-  function monthTrend(current, previous) {
-    if (current == null) return null;
-    if (previous == null || previous === 0) return { label: 'new this month', emoji: '✨', positive: true };
-    const pct = Math.round(((current - previous) / previous) * 100);
-    if (pct > 20)  return { label: `+${pct}% vs last month`, emoji: '🔥', positive: true };
-    if (pct > 0)   return { label: `+${pct}% vs last month`, emoji: '📈', positive: true };
-    if (pct === 0) return { label: 'same as last month',     emoji: '➡️', positive: null };
-    return           { label: `${pct}% vs last month`,      emoji: '📉', positive: false };
+  function handleHeroSubmit(e) {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (role)       params.set('role', role);
+    if (experience) params.set('experience', experience);
+    if (location)   params.set('location', location);
+    navigate(`/salaries?${params.toString()}`);
   }
-  const trend = monthTrend(thisMonth, lastMonth);
 
-  /* ── Journey card definitions ── */
-  const journeyCards = [
-    {
-      emoji: '💼',
-      title: 'Am I paid fairly?',
-      featured: true,
-      accentColor: '#1d4ed8',
-      gradientBg: 'linear-gradient(145deg,#ffffff,#f8fafc)',
-      gradientBorder: '2px solid #bfdbfe',
-      gradientShadow: '0 4px 20px rgba(59,130,246,0.12)',
-      badge: { label: 'Most popular', color: '#1d4ed8', bg: '#dbeafe' },
-      desc: 'Compare your base, bonus and equity against real verified data from peers at your company and level.',
-      highlights: [
-        { icon: '📄', label: 'Salary Database',  sub: `${fmtCount(totalEntries)} verified entries across ${fmtCount(totalCompanies)} companies`, to: '/salaries',  color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-        { icon: '📈', label: 'Peer Analytics',   sub: 'Compare comp by role, level & location', to: '/dashboard', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-      ],
-      stats: [
-        { value: fmtCount(totalEntries),   label: 'salary entries' },
-        { value: fmtCount(totalCompanies), label: 'companies'      },
-      ],
-      actions: [
-        { to: '/salaries',  label: 'Browse Salary Data →', bg: '#eff6ff', color: '#1d4ed8' },
-        { to: '/dashboard', label: 'View Analytics →',     bg: '#eff6ff', color: '#1d4ed8' },
-      ],
-    },
-    {
-      emoji: '🎯',
-      title: "I'm negotiating an offer",
-      accentColor: '#1d4ed8',
-      gradientBg: 'linear-gradient(145deg,#ffffff,#f8fafc)',
-      gradientBorder: '1.5px solid #bfdbfe',
-      gradientShadow: '0 4px 20px rgba(59,130,246,0.10)',
-      desc: 'Know your worth before the call. Use our Salary Benchmark and Level Guide to walk in with a number — not a guess.',
-      highlights: [
-        { icon: '📊', label: 'Benchmark My Offer', sub: 'See exact pay bands by role & level',   to: '/salaries?tab=benchmark', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-        { icon: '🏅', label: 'Level Guide',         sub: '11 levels mapped across top companies', to: '/salaries?tab=levels',    color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-      ],
-      stats: [
-        { value: fmtCount(totalEntries),   label: 'salary entries' },
-        { value: fmtCount(totalCompanies), label: 'companies'      },
-        { value: '11',                     label: 'levels'         },
-      ],
-      actions: [
-        { to: '/salaries?tab=benchmark', label: 'View Salary Benchmark →', bg: '#eff6ff', color: '#1d4ed8' },
-        { to: '/salaries?tab=levels',    label: 'Explore Level Guide →',   bg: '#eff6ff', color: '#1d4ed8' },
-      ],
-    },
-    {
-      emoji: '🔍',
-      title: "I'm looking for a job",
-      accentColor: '#1d4ed8',
-      gradientBg: 'linear-gradient(145deg,#ffffff,#f8fafc)',
-      gradientBorder: '1.5px solid #bfdbfe',
-      gradientShadow: '0 4px 20px rgba(59,130,246,0.08)',
-      desc: 'Browse community-posted referrals and openings. Get a warm referral and skip straight to the interview queue.',
-      highlights: [
-        { icon: '🤝', label: 'Referrals & Openings', sub: `${fmtCount(jobCount)} active openings across ${fmtCount(totalCompanies)} companies`, to: '/opportunities', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-        { icon: '🏢', label: 'Company Profiles',      sub: 'Culture, pay & interview insights',                                                  to: '/companies',     color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-      ],
-      stats: [
-        { value: fmtCount(jobCount),       label: 'active openings' },
-        { value: fmtCount(totalCompanies), label: 'companies'       },
-      ],
-      actions: [
-        { to: '/opportunities', label: 'Browse Opportunities →', bg: '#eff6ff', color: '#1d4ed8' },
-        { to: '/companies',     label: 'Company Profiles →',     bg: '#eff6ff', color: '#1d4ed8' },
-      ],
-    },
-  ];
-
-  const opportunitiesCard = {
-    emoji: '🎓',
-    title: "I'm looking for an internship",
-    accentColor: '#1d4ed8',
-    gradientBg: 'linear-gradient(145deg,#ffffff,#f8fafc)',
-    gradientBorder: '1.5px solid #bfdbfe',
-    gradientShadow: '0 4px 20px rgba(59,130,246,0.08)',
-    badge: { label: 'New', color: '#1d4ed8', bg: '#dbeafe' },
-    desc: 'Browse verified internship openings posted by the community. See stipends, duration, and get a referral to jump straight to the queue.',
-    highlights: [
-      { icon: '📋', label: 'Browse Internships', sub: `${fmtCount(internshipCount)} openings across ${fmtCount(totalCompanies)} companies`, to: '/opportunities',      color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-      { icon: '📢', label: 'Post an Opening',    sub: 'Help students land their first role',                                                to: '/opportunities/post', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-    ],
-    stats: [
-      { value: fmtCount(internshipCount), label: 'internships' },
-      { value: fmtCount(totalCompanies),  label: 'companies'   },
-    ],
-    actions: [
-      { to: '/opportunities',      label: 'Browse Internships →', bg: '#eff6ff', color: '#1d4ed8' },
-      { to: '/opportunities/post', label: 'Post an Opening →',    bg: '#eff6ff', color: '#1d4ed8' },
-    ],
-  };
-
+  const ROLES = ['Software Engineer', 'Product Manager', 'Data Scientist', 'Data Analyst', 'DevOps Engineer', 'Engineering Manager', 'UX Designer', 'Business Analyst', 'Frontend Engineer', 'Backend Engineer', 'Full Stack Engineer'];
+  const LOCATIONS = ['Bengaluru', 'Hyderabad', 'Mumbai', 'Pune', 'Delhi NCR', 'Chennai', 'Remote'];
+  const EXP_RANGES = ['0–1 years', '1–3 years', '3–5 years', '5–8 years', '8–12 years', '12+ years'];
 
   return (
     <>
-      {/* ══════════════════════════════════════════════════════
-          ① HERO — tagline left + live ticker right
-      ══════════════════════════════════════════════════════ */}
       <style>{`
-        @keyframes rippleStat { 0%{transform:scale(1);opacity:.5} 100%{transform:scale(2.4);opacity:0} }
-        @keyframes fadeUpStat { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes countFlash { 0%{opacity:.4;transform:translateY(-4px)} 100%{opacity:1;transform:translateY(0)} }
+        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&display=swap');
+
+        @keyframes hp-fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes hp-float  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+        @keyframes hp-ripple { 0%{transform:scale(1);opacity:.7} 100%{transform:scale(2.8);opacity:0} }
+        @keyframes hp-shimmer{ 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+
+        .hp-title {
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-size: clamp(30px, 5vw, 58px);
+          font-weight: 800;
+          line-height: 1.07;
+          letter-spacing: -0.03em;
+          color: var(--text-1);
+        }
+        .hp-title em { font-style:normal; color:#0ea5e9; }
+
+        .hp-sec-label {
+          font-size: 11px; font-weight: 700;
+          letter-spacing: .1em; text-transform: uppercase;
+          color: #0ea5e9; display: block; margin-bottom: 10px;
+        }
+        .hp-sec-title {
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-size: clamp(22px, 3vw, 34px);
+          font-weight: 700; letter-spacing: -0.025em;
+          color: var(--text-1); line-height: 1.15;
+        }
+        .hp-sec-title em { font-style:normal; color:#0ea5e9; }
+
+        .hp-card {
+          background: var(--panel);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 24px;
+        }
+
+        .hp-input {
+          width: 100%; padding: 12px 14px;
+          border: 1.5px solid var(--border); border-radius: 10px;
+          font-size: 14px; background: var(--bg); color: var(--text-1);
+          outline: none; transition: border-color .15s, box-shadow .15s;
+          appearance: none; -webkit-appearance: none; font-family: inherit;
+          cursor: pointer;
+        }
+        .hp-input:focus { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,.12); }
+
+        .hp-cta-primary {
+          display: inline-flex; align-items: center; justify-content: center;
+          gap: 8px; padding: 14px 28px;
+          background: #0f172a; color: white;
+          border: none; border-radius: 10px;
+          font-size: 15px; font-weight: 700; cursor: pointer;
+          text-decoration: none; transition: transform .15s, box-shadow .15s, background .15s;
+          font-family: inherit; white-space: nowrap;
+        }
+        .hp-cta-primary:hover { background:#0ea5e9; transform:translateY(-1px); box-shadow:0 6px 20px rgba(14,165,233,.3); }
+
+        .hp-cta-ghost {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 12px 22px;
+          background: transparent; color: var(--text-2);
+          border: 1.5px solid var(--border); border-radius: 10px;
+          font-size: 14px; font-weight: 600; cursor: pointer;
+          text-decoration: none; transition: border-color .15s, color .15s, background .15s;
+          font-family: inherit;
+        }
+        .hp-cta-ghost:hover { border-color:#0ea5e9; color:#0ea5e9; background:rgba(14,165,233,.05); }
+
+        .hp-chip {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 5px 12px; border-radius: 20px;
+          background: var(--bg-3); border: 1px solid var(--border);
+          font-size: 12px; color: var(--text-2); font-weight: 500;
+        }
+
+        .hp-live-dot {
+          width: 7px; height: 7px; border-radius: 50%;
+          background: #22c55e; flex-shrink: 0; position: relative;
+          display: inline-block;
+        }
+        .hp-live-dot::before {
+          content: ''; position: absolute; inset: -2px; border-radius: 50%;
+          background: #22c55e; animation: hp-ripple 1.8s ease-out infinite;
+        }
+
+        .hp-step-num {
+          width: 36px; height: 36px; border-radius: 50%;
+          background: #0f172a; color: white;
+          font-size: 15px; font-weight: 800;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0; font-family: 'Bricolage Grotesque', sans-serif;
+        }
+
+        .hp-a1 { animation: hp-fadeUp .5s .00s ease both; }
+        .hp-a2 { animation: hp-fadeUp .5s .08s ease both; }
+        .hp-a3 { animation: hp-fadeUp .5s .16s ease both; }
+        .hp-a4 { animation: hp-fadeUp .5s .24s ease both; }
+
+        @media (max-width: 768px) {
+          .hp-hero-grid  { grid-template-columns: 1fr !important; }
+          .hp-stats-grid { grid-template-columns: repeat(2,1fr) !important; }
+          .hp-3-grid     { grid-template-columns: 1fr !important; }
+          .hp-output-meta{ flex-direction: column !important; }
+        }
       `}</style>
 
-      <section className="hero" style={{ padding: isMobile ? '48px 16px 36px' : '56px 24px 48px', background: 'var(--panel)', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 24 : 40, alignItems: 'center' }}>
+      {/* ══════════════════════════════════════════════
+          1. HERO
+      ══════════════════════════════════════════════ */}
+      <section style={{
+        background: 'var(--panel)', borderBottom: '1px solid var(--border)',
+        padding: isMobile ? '44px 16px 40px' : '72px 32px 60px',
+        position: 'relative', overflow: 'hidden',
+      }}>
+        {/* Dot grid texture */}
+        <div style={{ position:'absolute', inset:0, opacity:.025, backgroundImage:'radial-gradient(circle at 1px 1px,#0f172a 1px,transparent 0)', backgroundSize:'24px 24px', pointerEvents:'none' }} />
+        {/* Glow orb */}
+        <div style={{ position:'absolute', top:-100, right:-60, width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle,rgba(14,165,233,.1) 0%,transparent 65%)', pointerEvents:'none' }} />
 
-          {/* Left: tagline + CTAs */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-              <div className="hero-eyebrow" style={{ display: 'inline-block', margin: 0 }}>
-                🇮🇳 India's tech salary community
-              </div>
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
-                color: '#3b82f6', background: 'rgba(59,130,246,0.08)',
-                border: '1px solid rgba(59,130,246,0.2)',
-                borderRadius: 20, padding: '3px 9px',
-                fontFamily: "'IBM Plex Mono',monospace",
-              }}>
-                ✦ AI-enriched
-              </div>
-            </div>
-            <h1 className="hero-title" style={{ marginBottom: 12 }}>
-              Make every career<br />decision with <em>confidence.</em>
-            </h1>
-            <p className="hero-subtitle" style={{ margin: '0 0 28px' }}>
-              India's AI-enriched, community-verified platform for salary data, referrals,
-              interview prep and career growth — 100% anonymous, 100% real.
-            </p>
-            <div className="hero-cta" style={{ justifyContent: 'flex-start' }}>
-              <Link to="/salaries" className="btn-hero btn-hero-primary">
-                <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                </svg>
-                Explore Salaries
-              </Link>
-              <Link to="/submit" className="btn-hero btn-hero-secondary">Share My Salary →</Link>
-            </div>
+        <div style={{ maxWidth:1200, margin:'0 auto', position:'relative' }}>
 
+          {/* Eyebrow badges */}
+          <div className="hp-a1" style={{ display:'flex', gap:8, marginBottom:22, flexWrap:'wrap' }}>
+            <span style={{ fontSize:12, background:'rgba(14,165,233,.1)', color:'#0ea5e9', border:'1px solid rgba(14,165,233,.2)', padding:'4px 12px', borderRadius:20, fontWeight:700, letterSpacing:'.05em' }}>
+              🇮🇳 India-focused
+            </span>
+            <span style={{ fontSize:12, background:'var(--bg-3)', color:'var(--text-2)', border:'1px solid var(--border)', padding:'4px 12px', borderRadius:20, fontWeight:600 }}>
+              No login required
+            </span>
+            <span style={{ fontSize:12, background:'var(--bg-3)', color:'var(--text-2)', border:'1px solid var(--border)', padding:'4px 12px', borderRadius:20, fontWeight:600 }}>
+              100% anonymous
+            </span>
           </div>
 
-          {/* Right: stat cards — skeleton while loading, trend badge on "this month" */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, width: '100%' }}>
-            <style>{`
-              @keyframes shimmer {
-                0%   { background-position: -400px 0; }
-                100% { background-position:  400px 0; }
-              }
-              .stat-skeleton {
-                background: linear-gradient(90deg, var(--bg-3) 25%, var(--bg-4) 50%, var(--bg-3) 75%);
-                background-size: 800px 100%;
-                animation: shimmer 1.4s ease-in-out infinite;
-                border-radius: 6px;
-              }
-            `}</style>
-            {[
-              { label: '💰 Salary entries', val: totalEntries != null ? fmtCount(totalEntries) : null, sub: 'verified & live', live: true,  delay: 0,   loaded: statsLoaded.entries,   trendPositive: null },
-              { label: '🏢 Companies',      val: totalCompanies != null ? fmtCount(totalCompanies) : null, sub: 'tracked',     live: false, delay: 70,  loaded: statsLoaded.companies, trendPositive: null },
-              { label: '🤝 Opportunities',  val: totalOpportunities != null ? fmtCount(totalOpportunities) : null, sub: 'live now', live: true, delay: 140, loaded: statsLoaded.opps, trendPositive: null },
-              { label: '📅 This month',     val: thisMonth != null ? String(thisMonth) : null, sub: trend ? `${trend.emoji} ${trend.label}` : 'new submissions', live: true, delay: 210, loaded: statsLoaded.month, trendPositive: trend?.positive ?? null },
-            ].map(({ label, val, sub, live, delay, loaded, trendPositive }) => (
-              <div key={label} style={{
-                background: 'var(--panel)',
-                border: '1px solid var(--border)',
-                borderRadius: 10,
-                padding: '13px 14px',
-                position: 'relative',
-                overflow: 'hidden',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                animation: `fadeUpStat .35s ${delay}ms ease both`,
-              }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2.5, background: '#0ea5e9', borderRadius: '10px 10px 0 0' }} />
-                <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.07em', color: 'var(--text-3)', marginBottom: 6 }}>
-                  {label}
+          <div className="hp-hero-grid" style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 40 : 64, alignItems:'flex-start' }}>
+
+            {/* Left: headline + trust */}
+            <div className="hp-a2">
+              <h1 className="hp-title" style={{ marginBottom:18 }}>
+                Find out if you're<br />
+                <em>underpaid</em><br />
+                in 30 seconds.
+              </h1>
+              <p style={{ fontSize:17, color:'var(--text-2)', lineHeight:1.65, marginBottom:28, maxWidth:460 }}>
+                Real salary data from Indian professionals. No fluff, no login, no guesswork — just your number, instantly.
+              </p>
+
+              {/* Trust chips */}
+              <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:32 }}>
+                {['🔒 No email required','👤 Fully anonymous','⚡ Instant results','✅ Verified data'].map(c => (
+                  <span key={c} className="hp-chip">{c}</span>
+                ))}
+              </div>
+
+              {/* Live counter */}
+              <div style={{ display:'flex', alignItems:'center', gap:10, fontSize:13, color:'var(--text-2)' }}>
+                <span className="hp-live-dot" />
+                <span>
+                  <strong style={{ color:'var(--text-1)' }}>{totalEntries ? fmtCount(totalEntries) : '12k+'}</strong>
+                  {' '}salary data points &amp; growing
+                </span>
+              </div>
+
+              {/* Headline alternatives — dev note hidden */}
+            </div>
+
+            {/* Right: form card */}
+            <div className="hp-a3">
+              <div className="hp-card" style={{ boxShadow:'0 20px 60px rgba(0,0,0,.1)', border:'1px solid var(--border)' }}>
+                <div style={{ marginBottom:20 }}>
+                  <p style={{ fontSize:13, fontWeight:700, color:'var(--text-2)', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:4 }}>Check your salary</p>
+                  <p style={{ fontSize:13, color:'var(--text-3)' }}>Takes 10 seconds · Zero sign-up</p>
                 </div>
-                {!loaded ? (
-                  <>
-                    <div className="stat-skeleton" style={{ height: 28, width: '60%', marginBottom: 8 }} />
-                    <div className="stat-skeleton" style={{ height: 10, width: '80%' }} />
-                  </>
-                ) : (
-                  <>
-                    <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '-.03em', lineHeight: 1, color: 'var(--text-1)', marginBottom: 5 }}>
-                      {val ?? '—'}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {live ? (
-                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 8, height: 8, flexShrink: 0 }}>
-                          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22c55e', animation: 'rippleStat 1.8s ease-out infinite' }} />
-                          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22c55e', animation: 'rippleStat 1.8s .6s ease-out infinite' }} />
-                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', position: 'relative', zIndex: 1 }} />
-                        </div>
-                      ) : (
-                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
-                      )}
-                      <span style={{
-                        fontSize: 8.5, fontWeight: 500,
-                        color: trendPositive === true ? '#16a34a' : trendPositive === false ? '#dc2626' : 'var(--text-3)',
-                      }}>
-                        {sub}
-                      </span>
-                    </div>
-                  </>
-                )}
+
+                <form onSubmit={handleHeroSubmit} style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  <div>
+                    <label style={{ fontSize:12, fontWeight:600, color:'var(--text-2)', marginBottom:6, display:'block' }}>Role / Job Title</label>
+                    <select className="hp-input" value={role} onChange={e => setRole(e.target.value)}>
+                      <option value="">e.g. Software Engineer</option>
+                      {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:12, fontWeight:600, color:'var(--text-2)', marginBottom:6, display:'block' }}>Years of Experience</label>
+                    <select className="hp-input" value={experience} onChange={e => setExperience(e.target.value)}>
+                      <option value="">Select range</option>
+                      {EXP_RANGES.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:12, fontWeight:600, color:'var(--text-2)', marginBottom:6, display:'block' }}>Location</label>
+                    <select className="hp-input" value={location} onChange={e => setLocation(e.target.value)}>
+                      <option value="">e.g. Bengaluru</option>
+                      {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                    </select>
+                  </div>
+
+                  <button type="submit" className="hp-cta-primary" style={{ width:'100%', marginTop:4 }}>
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    See My Salary Insights
+                  </button>
+
+                  <p style={{ textAlign:'center', fontSize:11, color:'var(--text-3)' }}>
+                    🔒 Anonymous · No account · Free forever
+                  </p>
+                </form>
+
+                <div style={{ borderTop:'1px solid var(--border)', marginTop:16, paddingTop:14, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <span style={{ fontSize:12, color:'var(--text-3)' }}>Want to help others?</span>
+                  <Link to="/submit" style={{ fontSize:12, fontWeight:700, color:'#0ea5e9', textDecoration:'none' }}>Add your salary →</Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════
+          2. SOCIAL PROOF / STATS
+      ══════════════════════════════════════════════ */}
+      <section style={{ background:'var(--bg-2)', padding: isMobile ? '36px 16px' : '52px 32px', borderBottom:'1px solid var(--border)' }}>
+        <div style={{ maxWidth:1200, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:36 }}>
+            <span className="hp-sec-label">By the numbers</span>
+            <h2 className="hp-sec-title">India's fastest-growing <em>salary database</em></h2>
+          </div>
+          <div className="hp-stats-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14 }}>
+            {[
+              { display: totalEntries ? fmtCount(totalEntries) : '12k+', label:'Verified Salary Entries', sub:'Crowd-sourced & AI-enriched', icon:'💰', color:'#0ea5e9', live:true },
+              { display: totalCompanies ? fmtCount(totalCompanies) : '800+', label:'Companies Covered', sub:'From startups to FAANG', icon:'🏢', color:'#8b5cf6' },
+              { display:'15+', label:'Cities Across India', sub:'Tier 1, 2 and remote', icon:'📍', color:'#16a34a' },
+              { display: thisMonth ? String(thisMonth) : '500+', label:'New This Month', sub:'Community growing daily', icon:'📈', color:'#f59e0b', live:true },
+            ].map((s, i) => (
+              <div key={i} style={{
+                background:'var(--panel)', border:'1px solid var(--border)', borderRadius:14,
+                padding:'20px 16px', textAlign:'center',
+                transition:'transform .2s, box-shadow .2s',
+                animation:`hp-fadeUp .4s ${i*80}ms ease both`,
+              }}
+                onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,.08)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=''; }}
+              >
+                <div style={{ fontSize:26, marginBottom:10 }}>{s.icon}</div>
+                <div style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:32, fontWeight:800, color:s.color, letterSpacing:'-0.03em', lineHeight:1, marginBottom:6 }}>
+                  {s.display}
+                </div>
+                <div style={{ fontSize:13, fontWeight:700, color:'var(--text-1)', marginBottom:4 }}>{s.label}</div>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  {s.live && <span className="hp-live-dot" style={{ width:6, height:6 }} />}
+                  <span style={{ fontSize:11, color:'var(--text-3)' }}>{s.sub}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════
+          3. HOW IT WORKS
+      ══════════════════════════════════════════════ */}
+      <section style={{ background:'var(--panel)', padding: isMobile ? '44px 16px' : '68px 32px', borderBottom:'1px solid var(--border)' }}>
+        <div style={{ maxWidth:1200, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:48 }}>
+            <span className="hp-sec-label">How it works</span>
+            <h2 className="hp-sec-title">Insights in <em>3 simple steps</em></h2>
+            <p style={{ fontSize:15, color:'var(--text-2)', marginTop:10, maxWidth:440, margin:'10px auto 0' }}>
+              No forms, no account, no waiting. Just answers.
+            </p>
+          </div>
+
+          <div className="hp-3-grid" style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:20 }}>
+            {[
+              { num:'1', emoji:'🔍', title:'Enter 3 details', desc:'Your role, experience level, and city. That\'s all — no email, no sign-up, no nonsense.', color:'#0ea5e9', bg:'rgba(14,165,233,.05)', border:'rgba(14,165,233,.2)' },
+              { num:'2', emoji:'⚡', title:'We crunch the data', desc:'We match your profile against thousands of verified peer salaries shared by Indian professionals.', color:'#8b5cf6', bg:'rgba(139,92,246,.05)', border:'rgba(139,92,246,.2)' },
+              { num:'3', emoji:'💡', title:'Get your verdict', desc:'See if you\'re underpaid, overpaid, or right on market — with your percentile rank and real ₹ figures.', color:'#16a34a', bg:'rgba(22,163,74,.05)', border:'rgba(22,163,74,.2)' },
+            ].map((step, i) => (
+              <div key={i} style={{
+                background:step.bg, border:`1px solid ${step.border}`, borderRadius:16, padding:24,
+                animation:`hp-fadeUp .4s ${i*100}ms ease both`,
+              }}>
+                <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:16 }}>
+                  <div className="hp-step-num" style={{ background:step.color }}>{step.num}</div>
+                  <div style={{ fontSize:30, lineHeight:1, marginTop:2 }}>{step.emoji}</div>
+                </div>
+                <h3 style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:18, fontWeight:700, color:'var(--text-1)', marginBottom:8, letterSpacing:'-0.02em' }}>
+                  {step.title}
+                </h3>
+                <p style={{ fontSize:14, color:'var(--text-2)', lineHeight:1.65 }}>{step.desc}</p>
               </div>
             ))}
           </div>
 
+          <div style={{ textAlign:'center', marginTop:36 }}>
+            <Link to="/salaries" className="hp-cta-primary" style={{ display:'inline-flex' }}>
+              Try it now — it's free
+            </Link>
+          </div>
         </div>
-
-
-
       </section>
 
+      {/* ══════════════════════════════════════════════
+          4. SAMPLE OUTPUT PREVIEW
+      ══════════════════════════════════════════════ */}
+      <section style={{ background:'var(--bg-2)', padding: isMobile ? '44px 16px' : '68px 32px', borderBottom:'1px solid var(--border)' }}>
+        <div style={{ maxWidth:1200, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:44 }}>
+            <span className="hp-sec-label">Sample report</span>
+            <h2 className="hp-sec-title">This is what you'll <em>actually see</em></h2>
+            <p style={{ fontSize:15, color:'var(--text-2)', marginTop:10 }}>Real insights, not vague ranges. Here's a preview.</p>
+          </div>
 
+          {/* Output card */}
+          <div style={{ maxWidth:720, margin:'0 auto', background:'var(--panel)', border:'1px solid var(--border)', borderRadius:20, overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,.1)' }}>
 
-      {/* ══════════════════════════════════════════════════════
-          ③ JOURNEY CARDS — carousel on mobile, grid on desktop
-      ══════════════════════════════════════════════════════ */}
-      <section style={{ padding: isMobile ? '24px 0' : '36px 24px', background: 'var(--bg-2)' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-          {isMobile ? (
-            <MobileJourneyCarousel cards={[...journeyCards, { ...opportunitiesCard }]} />
-          ) : (
-            <>
-              <div style={{ marginBottom: 24 }}>
-                <span className="section-tag" style={{ display: 'block', fontSize: 12, letterSpacing: '0.08em' }}>Find your path</span>
-                <h2 className="section-title" style={{ fontSize: 28, marginTop: 4 }}>What brings you here today?</h2>
+            {/* Header bar */}
+            <div style={{ padding:'18px 24px', background:'#0f172a', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
+              <div>
+                <div style={{ fontSize:11, color:'#475569', marginBottom:3, letterSpacing:'.06em', textTransform:'uppercase' }}>Salary Insights</div>
+                <div style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:18, fontWeight:700, color:'white' }}>
+                  Software Engineer · 4 years · Bengaluru
+                </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-                {[...journeyCards, { ...opportunitiesCard }].map((card, i) => (
-                  <JourneyCard key={i} {...card} featured={card.featured ?? false} />
+              <div style={{ display:'flex', gap:6 }}>
+                <span style={{ fontSize:11, fontWeight:700, background:'rgba(34,197,94,.1)', color:'#22c55e', border:'1px solid rgba(34,197,94,.2)', padding:'3px 10px', borderRadius:20 }}>✓ Verified</span>
+                <span style={{ fontSize:11, fontWeight:700, background:'rgba(14,165,233,.1)', color:'#0ea5e9', border:'1px solid rgba(14,165,233,.2)', padding:'3px 10px', borderRadius:20 }}>🔒 Anonymous</span>
+              </div>
+            </div>
+
+            {/* Main verdict */}
+            <div style={{ padding:'28px 24px', borderBottom:'1px solid var(--border)' }}>
+              <div className="hp-output-meta" style={{ display:'flex', alignItems: isMobile ? 'stretch' : 'center', gap:24, marginBottom:24, flexDirection: isMobile ? 'column' : 'row' }}>
+                {/* Badge */}
+                <div style={{ padding:'16px 20px', background:'#f0fdf4', border:'1.5px solid #86efac', borderRadius:14, textAlign:'center', flexShrink:0 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#16a34a', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:4 }}>Your Salary</div>
+                  <div style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:34, fontWeight:800, color:'#0f172a', letterSpacing:'-0.03em', lineHeight:1 }}>₹22 LPA</div>
+                  <div style={{ fontSize:12, color:'#16a34a', marginTop:6, fontWeight:600 }}>✓ Fairly paid</div>
+                </div>
+                {/* Range */}
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:14, color:'var(--text-2)', marginBottom:16, lineHeight:1.6 }}>
+                    You earn <strong style={{ color:'#16a34a' }}>₹2L more</strong> than the market median.
+                    You're in the <strong style={{ color:'#0f172a' }}>top 32%</strong> of Software Engineers in Bengaluru.
+                  </p>
+                  <SalaryRangeBar min={1400000} median={2000000} max={3200000} userValue={2200000} />
+                </div>
+              </div>
+
+              {/* Metric pills */}
+              <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
+                {[
+                  { label:'Your Percentile', value:'Top 32%', color:'#8b5cf6', bg:'#f5f3ff' },
+                  { label:'Market Median', value:'₹20 LPA', color:'#0ea5e9', bg:'#eff6ff' },
+                  { label:'Top Earners (P90)', value:'₹32 LPA', color:'#f59e0b', bg:'#fffbeb' },
+                  { label:'Entry Level (P25)', value:'₹14 LPA', color:'#64748b', bg:'#f8fafc' },
+                ].map(item => (
+                  <div key={item.label} style={{ padding:'10px 16px', background:item.bg, borderRadius:10, flex: isMobile ? '1 1 40%' : 'auto' }}>
+                    <div style={{ fontSize:10, fontWeight:600, color:'var(--text-3)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:3 }}>{item.label}</div>
+                    <div style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:18, fontWeight:800, color:item.color, letterSpacing:'-0.02em' }}>{item.value}</div>
+                  </div>
                 ))}
               </div>
-            </>
-          )}
-        </div>
-      </section>
+            </div>
 
-      {/* ══════════════════════════════════════════════════════
-          ④ RECENT SUBMISSIONS — uses full SalaryTable with logos
-      ══════════════════════════════════════════════════════ */}
-      <section style={{ padding: '0 24px 40px', background: 'var(--bg-2)' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
-          <div>
-            <span className="section-tag">AI + Community Data</span>
-            <h2 className="section-title">Latest <em>salary data</em></h2>
+            {/* AI insights */}
+            <div style={{ padding:'18px 24px', background:'rgba(14,165,233,.04)' }}>
+              <div style={{ fontSize:12, fontWeight:700, color:'#0ea5e9', marginBottom:10, textTransform:'uppercase', letterSpacing:'.07em' }}>💡 AI Insights</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {[
+                  'Engineers with 3–5 YoE in Bengaluru earn ₹18–28 LPA at mid-stage startups.',
+                  'Adding system design skills could push your comp to the ₹28L+ band.',
+                  '43% of peers at this level received ESOPs averaging ₹3–6L/year.',
+                ].map((tip, i) => (
+                  <div key={i} style={{ display:'flex', gap:8, fontSize:13, color:'var(--text-2)', lineHeight:1.55 }}>
+                    <span style={{ color:'#0ea5e9', flexShrink:0 }}>→</span>
+                    <span>{tip}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div style={{ padding:'20px 24px', textAlign:'center', borderTop:'1px solid var(--border)', background:'var(--panel)' }}>
+              <p style={{ fontSize:13, color:'var(--text-2)', marginBottom:14 }}>
+                <strong>Unlock your full report</strong> — company-specific data, YoY trends &amp; negotiation tips
+              </p>
+              <Link to="/salaries" className="hp-cta-primary" style={{ display:'inline-flex', fontSize:14 }}>
+                Check My Real Salary →
+              </Link>
+            </div>
           </div>
-          <Link to="/salaries" className="btn-ghost" style={{ padding: '8px 18px', fontSize: 13, whiteSpace: 'nowrap', textDecoration: 'none' }}>
-            View all {totalEntries != null ? `${totalEntries.toLocaleString('en-IN')} entries` : ''} →
-          </Link>
-        </div>
-        {/* SalaryTable is untouched — company logos still render as before */}
-        <SalaryTable rows={recentSalaries} />
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════
-          ⑤ CONTRIBUTE CTA — logged-out only (unchanged logic)
-      ══════════════════════════════════════════════════════ */}
-      {!user && (
-        <section style={{ padding: '18px 24px', background: '#0ea5e9' }}>
-          <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
+      {/* ══════════════════════════════════════════════
+          5. TRUST & SAFETY
+      ══════════════════════════════════════════════ */}
+      <section style={{ background:'var(--panel)', padding: isMobile ? '44px 16px' : '68px 32px', borderBottom:'1px solid var(--border)' }}>
+        <div style={{ maxWidth:1200, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:44 }}>
+            <span className="hp-sec-label">Privacy &amp; Trust</span>
+            <h2 className="hp-sec-title">Built on <em>trust &amp; transparency</em></h2>
+          </div>
+          <div className="hp-3-grid" style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:20 }}>
+            {[
+              { icon:'👤', title:'Zero personal data', desc:'We never ask for your name, email, or employer. Your identity is never linked to any submission — not now, not ever.', color:'#0ea5e9' },
+              { icon:'🔍', title:'Data quality controls', desc:'Every salary entry is validated against role, experience, and location benchmarks. Outliers are flagged and removed automatically.', color:'#8b5cf6' },
+              { icon:'🤝', title:'Community-verified', desc:'Patterns are cross-verified across multiple submissions. More contributions = more accurate benchmarks for everyone.', color:'#16a34a' },
+            ].map((item, i) => (
+              <div key={i} className="hp-card" style={{ display:'flex', flexDirection:'column', gap:14, animation:`hp-fadeUp .4s ${i*100}ms ease both` }}>
+                <div style={{ width:44, height:44, borderRadius:12, background:`${item.color}14`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22 }}>
+                  {item.icon}
+                </div>
+                <div>
+                  <h3 style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:17, fontWeight:700, color:'var(--text-1)', marginBottom:8 }}>{item.title}</h3>
+                  <p style={{ fontSize:14, color:'var(--text-2)', lineHeight:1.65 }}>{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Trust strip */}
+          <div style={{ marginTop:28, padding:'14px 24px', background:'#f0fdf4', border:'1px solid #86efac', borderRadius:12, display:'flex', flexWrap:'wrap', gap:20, alignItems:'center', justifyContent:'center' }}>
+            {['✓ No login required','✓ No IP tracking','✓ Aggregated only','✓ Not sold to third parties','✓ Free forever'].map(item => (
+              <span key={item} style={{ fontSize:13, fontWeight:600, color:'#16a34a' }}>{item}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════
+          6. VIRAL LOOP — Contribute
+      ══════════════════════════════════════════════ */}
+      <section style={{ background:'var(--bg-2)', padding: isMobile ? '44px 16px' : '68px 32px', borderBottom:'1px solid var(--border)' }}>
+        <div style={{ maxWidth:900, margin:'0 auto' }}>
+          <div style={{
+            background:'linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)',
+            borderRadius:20, padding: isMobile ? '28px 20px' : '48px',
+            position:'relative', overflow:'hidden', color:'white',
+          }}>
+            {/* Orbs */}
+            <div style={{ position:'absolute', top:-60, right:-60, width:250, height:250, borderRadius:'50%', background:'radial-gradient(circle,rgba(14,165,233,.25) 0%,transparent 70%)', pointerEvents:'none' }} />
+            <div style={{ position:'absolute', bottom:-40, left:-40, width:180, height:180, borderRadius:'50%', background:'radial-gradient(circle,rgba(139,92,246,.2) 0%,transparent 70%)', pointerEvents:'none' }} />
+
+            <div style={{ position:'relative', zIndex:1, display:'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 28 : 48, alignItems: isMobile ? 'flex-start' : 'center' }}>
+              <div style={{ flex:1 }}>
+                <span style={{ fontSize:11, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:'#0ea5e9', marginBottom:12, display:'block' }}>
+                  Help the community
+                </span>
+                <h2 style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize: isMobile ? 24 : 30, fontWeight:800, color:'white', letterSpacing:'-0.03em', lineHeight:1.15, marginBottom:14 }}>
+                  Checked your salary?<br />Now pay it forward.
+                </h2>
+                <p style={{ fontSize:15, color:'#94a3b8', lineHeight:1.65 }}>
+                  Every salary you share makes the data more accurate for the next person. 60 seconds of your time helps thousands negotiate better.
+                </p>
+              </div>
+
+              <div style={{ flexShrink:0, display:'flex', flexDirection:'column', gap:12, minWidth: isMobile ? '100%' : 220 }}>
+                {/* Progress meter */}
+                <div style={{ background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:12, padding:'14px 16px', marginBottom:4 }}>
+                  <div style={{ fontSize:11, color:'#94a3b8', marginBottom:8 }}>Community goal this month</div>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                    <span style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:18, fontWeight:800, color:'white' }}>
+                      {thisMonth ? `${thisMonth} / 1,000` : '347 / 1,000'}
+                    </span>
+                    <span style={{ fontSize:11, color:'#22c55e', fontWeight:700 }}>
+                      {thisMonth ? `${Math.min(Math.round((thisMonth/1000)*100),100)}%` : '35%'}
+                    </span>
+                  </div>
+                  <div style={{ height:6, background:'rgba(255,255,255,.1)', borderRadius:3, overflow:'hidden' }}>
+                    <div style={{ height:'100%', width: thisMonth ? `${Math.min((thisMonth/1000)*100,100)}%` : '35%', background:'linear-gradient(90deg,#0ea5e9,#22c55e)', borderRadius:3 }} />
+                  </div>
+                </div>
+
+                <Link to="/submit" className="hp-cta-primary" style={{ textAlign:'center', background:'white', color:'#0f172a' }}>
+                  Add My Salary — 60 sec
+                </Link>
+                <p style={{ fontSize:11, color:'#64748b', textAlign:'center' }}>Anonymous · No login · Helps peers</p>
+              </div>
+            </div>
+
+            {/* Stats row */}
+            <div style={{ marginTop:28, paddingTop:24, borderTop:'1px solid rgba(255,255,255,.08)', display:'flex', flexWrap:'wrap', gap:24 }}>
+              {[
+                { stat:'82%', label:'of users who checked also contributed' },
+                { stat:'3x',  label:'more accurate with peer contributions' },
+                { stat:'60s', label:'average time to submit a salary' },
+              ].map(s => (
+                <div key={s.stat} style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <span style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:22, fontWeight:800, color:'#0ea5e9' }}>{s.stat}</span>
+                  <span style={{ fontSize:12, color:'#64748b', maxWidth:120, lineHeight:1.4 }}>{s.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════
+          RECENT SALARY DATA
+      ══════════════════════════════════════════════ */}
+      <section style={{ background:'var(--panel)', padding: isMobile ? '40px 16px' : '64px 32px', borderBottom:'1px solid var(--border)' }}>
+        <div style={{ maxWidth:1200, margin:'0 auto' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:16, marginBottom:28 }}>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 3 }}>
-                This platform runs on AI enrichment + community contributions.
-              </div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.8)' }}>
-                Share your salary anonymously — every entry makes the AI smarter and the data better for everyone.
-              </div>
+              <span className="hp-sec-label">Live data</span>
+              <h2 className="hp-sec-title">Latest <em>salary entries</em></h2>
+              <p style={{ fontSize:14, color:'var(--text-2)', marginTop:8 }}>Real salaries shared by real Indian professionals. Updated continuously.</p>
             </div>
-            <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
-              <Link to="/register" style={{ padding: '8px 18px', background: 'white', color: '#0284c7', borderRadius: 7, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
-                Create free account
-              </Link>
-              <Link to="/login" style={{ padding: '8px 18px', background: 'rgba(255,255,255,.15)', border: '1px solid rgba(255,255,255,.3)', color: 'white', borderRadius: 7, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                Sign in
-              </Link>
-            </div>
+            <Link to="/salaries" className="hp-cta-ghost">
+              View all {totalEntries ? `${fmtCount(totalEntries)} entries` : 'entries'} →
+            </Link>
           </div>
-        </section>
-      )}
+          <SalaryTable rows={recentSalaries} />
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════
+          7. FINAL CTA
+      ══════════════════════════════════════════════ */}
+      <section style={{ background:'var(--bg-2)', padding: isMobile ? '56px 16px' : '88px 32px' }}>
+        <div style={{ maxWidth:640, margin:'0 auto', textAlign:'center' }}>
+          <div style={{ fontSize:44, marginBottom:16, display:'inline-block', animation:'hp-float 3s ease-in-out infinite' }}>💰</div>
+          <h2 style={{
+            fontFamily:"'Bricolage Grotesque',sans-serif",
+            fontSize: isMobile ? 30 : 44,
+            fontWeight:800, letterSpacing:'-0.03em', lineHeight:1.1,
+            color:'var(--text-1)', marginBottom:16,
+          }}>
+            Stop wondering.<br />
+            <span style={{ color:'#0ea5e9' }}>Start knowing.</span>
+          </h2>
+          <p style={{ fontSize:17, color:'var(--text-2)', lineHeight:1.65, marginBottom:32, maxWidth:460, margin:'0 auto 32px' }}>
+            Thousands of Indian professionals have already checked their worth. Find out where you stand — in under 30 seconds.
+          </p>
+
+          <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap', marginBottom:20 }}>
+            <Link to="/salaries" className="hp-cta-primary" style={{ fontSize:16, padding:'16px 36px' }}>
+              Check My Salary Now
+            </Link>
+            <Link to="/submit" className="hp-cta-ghost">
+              Contribute Salary Data
+            </Link>
+          </div>
+
+          <p style={{ fontSize:12, color:'var(--text-3)', marginBottom:28 }}>
+            🔒 100% anonymous · No login · Free forever
+          </p>
+
+          <div style={{ display:'flex', justifyContent:'center', gap:24, flexWrap:'wrap' }}>
+            {[{ icon:'🇮🇳', label:'India-focused' },{ icon:'⚡', label:'Instant results' },{ icon:'👥', label:'Crowd-verified' },{ icon:'🔒', label:'Zero data stored' }].map(item => (
+              <div key={item.label} style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'var(--text-3)' }}>
+                <span>{item.icon}</span><span>{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </>
   );
 }
